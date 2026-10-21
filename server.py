@@ -23,7 +23,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -636,8 +636,10 @@ class Probe:
             "app": "probe", "v": 1, "id": self.id, "name": self.conf["name"], "seq": self.seq,
             "up": round(time.time() - self.started), "kind": "gigabit",
             "link": {"up": self.link["up"], "speed": net.get("speed"), "duplex": net.get("duplex"), "flaps": len(self.link["flaps"])},
-            "cdp": {"sw": nb.get("switch"), "port": nb.get("port"), "vlan": nb.get("vlan"), "via": nb.get("via")} if nb else None,
-            "ip": net.get("ip"), "gw": {"ok": bool(gw and gw["last"] is not None), "ms": gw and gw["avg"], "loss": gw and gw["loss"]},
+            "cdp": {"sw": nb.get("switch"), "port": nb.get("port"), "vlan": nb.get("vlan"), "via": nb.get("via"),
+                    "plat": nb.get("platform"), "mgmt": nb.get("mgmt")} if nb else None,
+            "ip": net.get("ip"), "ipt": self.link["ip_after"], "web": 80, "temp": self.system()["temp"],
+            "gw": {"ok": bool(gw and gw["last"] is not None), "ms": gw and gw["avg"], "loss": gw and gw["loss"]},
             "dns": all(d["ok"] for d in self.checks["dns"]) if self.checks["dns"] else None,
             "inet": (self.checks["http"] or {}).get("ok"),
             "speed": {"down": (last.get("down") or {}).get("bps"), "up": (last.get("up") or {}).get("bps")} if last else None,

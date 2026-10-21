@@ -35,7 +35,8 @@ It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same l
 - **Sweep all** runs a 2-second test from every station to the probe in turn. It follows Perf-Deck's rules: it waits while another station is sweeping, and every station rests 5 minutes after any sweep.
 
 ### Probe message (for the displays)
-- Every ~9 s the probe broadcasts a small JSON summary on **UDP 47474**: switch and port, VLAN, link, IP, gateway ping, DNS and internet status, and the last speed test. This is the shared probe message from [t-display-progs](https://github.com/turkey415/t-display-progs) (`TODO.md`) for the T-Display and CYD **Probe Viewer**, and for PorkChopCheck. `GET /api/probe` returns the same message.
+- The probe announces itself over **mDNS** as `_probe-deck._tcp`, so displays can find it by name and poll `GET /api/probe`. That works even where the Wi-Fi drops broadcasts.
+- Every ~9 s the probe broadcasts a small JSON summary on **UDP 47474**: switch and port, VLAN, link, IP, gateway ping, DNS and internet status, and the last speed test. This is the shared probe message from [t-display-progs](https://github.com/turkey415/t-display-progs) (`TODO.md`) for the T-Display and CYD **Probe Viewer** app, and for PorkChopCheck. `GET /api/probe` returns the same message.
 
 ### Settings and system
 - Probe name, ping targets, check interval, DNS test name, internet check URL, and on/off switches for the iperf3 server, Perf-Deck discovery, the broadcast, and DHCP-on-replug. Settings are saved from the page.
@@ -128,9 +129,10 @@ Cross-site POSTs are refused (an `Origin` header must match `Host`).
 | TCP 5201 | iperf3 server |
 | UDP 52010 | Perf-Deck discovery (broadcast hello, plus ping/pong for station latency) |
 | UDP 47474 | Probe message broadcast |
+| UDP 5353 | mDNS: `<host>.local` and `_probe-deck._tcp` (avahi) |
 
 ## Related
 
 - [iPerf Deck](https://github.com/turkey415/Perf-Deck): the desktop speed-test station this probe joins.
-- [t-display-progs](https://github.com/turkey415/t-display-progs): T-Display-S3 and CYD firmware. A Probe Viewer app for this probe's broadcast is planned.
+- [t-display-progs](https://github.com/turkey415/t-display-progs): T-Display-S3 and CYD firmware. Its **Probe Viewer** app shows this probe's results.
 - [PorkChopCheck](https://github.com/turkey415/PorkChopCheck): LAN party network checks.
