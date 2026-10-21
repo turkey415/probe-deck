@@ -119,7 +119,31 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
 .peers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -4px; }
 .peers button { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text-2); cursor: pointer; }
 .peers button:hover { color: var(--text); border-color: var(--accent); }
-@media (prefers-reduced-motion: reduce) { .dot.live { animation: none; } }
+/* stations (from iPerf Deck) */
+.stlist { display: flex; flex-direction: column; gap: 8px; }
+.strow { display: grid; grid-template-columns: 12px minmax(120px, 1.7fr) 64px minmax(40px, 1fr) 110px 74px auto; gap: 12px; align-items: center; padding: 9px 12px; background: var(--well); border: 1px solid rgba(255, 255, 255, .06); border-radius: 8px; }
+.strow .who { min-width: 0; }
+.strow .who b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.strow .who .k { display: block; overflow: hidden; text-overflow: ellipsis; letter-spacing: .06em; text-transform: none; }
+.strow .num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.strow .num small { display: block; color: var(--muted); font-size: 11px; }
+.bar { display: flex; gap: 3px; min-width: 0; }
+.bar i { flex: 1; height: 12px; border-radius: 2px; background: var(--led-off); }
+.bar i.on { background: var(--accent); box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 70%, transparent); }
+.dirs { display: flex; gap: 4px; }
+.dirs button { font: 600 9.5px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; padding: 7px 9px; cursor: pointer;
+  color: var(--text-2); background: linear-gradient(#232322, #191918); border: 1px solid #3a3a37; border-radius: 4px; }
+.dirs button:hover:not(:disabled) { color: var(--text); border-color: var(--accent); }
+.dirs button:disabled { color: #55544f; cursor: not-allowed; }
+.sled { width: 10px; height: 10px; border-radius: 50%; background: #3a3a37; }
+.sled.ready { background: #3ddc5a; box-shadow: 0 0 7px #3ddc5a; }
+.sled.busy { background: #fab219; box-shadow: 0 0 7px #fab219; }
+.sled.testing { background: #ff4d4d; box-shadow: 0 0 8px #ff4d4d; animation: pulse .5s steps(2, jump-none) infinite; }
+.sweepbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.sweepbar .sub { flex: 1; min-width: 200px; }
+.empty { color: var(--muted); font-size: 13px; padding: 4px 2px; }
+@media (max-width: 760px) { .strow { grid-template-columns: 12px minmax(0, 1fr) auto; } .strow .bar, .strow .ping, .strow .state { display: none; } .dirs { grid-column: 1 / -1; } .dirs button { flex: 1; } }
+@media (prefers-reduced-motion: reduce) { .dot.live, .sled.testing { animation: none; } }
 </style>
 </head>
 <body>
@@ -141,7 +165,7 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
     <h2>Speed test</h2>
     <form class="form" id="f-speed">
       <label class="f">iperf3 server
-        <input type="text" id="sp-server" placeholder="IP or name, e.g. 192.168.1.143" autocomplete="off" spellcheck="false">
+        <input type="text" id="sp-server" placeholder="IP or name, e.g. 192.168.1.10" autocomplete="off" spellcheck="false">
       </label>
       <div class="peers" id="sp-peers"></div>
       <div class="seg" role="radiogroup" aria-label="Direction">
@@ -224,6 +248,15 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
     <section class="card"><h2>Traffic on the port <span class="spacer"></span><span class="sub">last 2½ min</span></h2><div class="legend" id="lg-rate"></div><div class="chart" id="c-rate"></div></section>
   </div>
 
+  <section class="card">
+    <h2>Stations <span class="spacer"></span><span class="sub" id="st-count"></span></h2>
+    <div class="sweepbar">
+      <button class="btn" id="b-sweep">Sweep all</button>
+      <span class="sub" id="sw-note"></span>
+    </div>
+    <div class="stlist" id="st-list"></div>
+  </section>
+
   <section class="card deck">
     <h2>Speed test <span class="spacer"></span><span class="lamp" id="sp-lamp"></span></h2>
     <div class="speeds">
@@ -237,7 +270,7 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
   <section class="card">
     <h2>Speed test history <span class="spacer"></span><button class="btn ghost" id="b-hclear">Clear</button></h2>
     <div class="tablewrap"><table>
-      <thead><tr><th>When</th><th class="l">Server</th><th class="l">Port</th><th>Download</th><th>Upload</th><th>Retries</th></tr></thead>
+      <thead><tr><th>When</th><th class="l">Station</th><th class="l">Port</th><th>Download</th><th>Upload</th><th>Retries</th></tr></thead>
       <tbody id="hist"></tbody>
     </table></div>
   </section>
@@ -442,16 +475,16 @@ function render() {
     setSeg('#sp-' + ph, v == null ? '----' : n, 5);
     $(`#sp-${ph}-u`).textContent = (u || 'Mbps') + (sp.running && sp.phase === ph ? ' · live' : '');
   }
-  $('#sp-lamp').innerHTML = sp.running ? `<span class="dot live"></span>${sp.phase === 'down' ? 'download' : 'upload'} · ${esc(sp.server)}` : sp.error ? `<span class="dot err"></span>error` : last.t ? `<span class="dot on"></span>last ${fmtWhen(last.t)}` : '<span class="dot"></span>idle';
+  $('#sp-lamp').innerHTML = sp.running ? `<span class="dot live"></span>${sp.phase === 'down' ? 'download' : 'upload'} · ${esc(sp.label || sp.server)}` : sp.error ? `<span class="dot err"></span>error` : last.t ? `<span class="dot on"></span>last ${fmtWhen(last.t)}` : '<span class="dot"></span>idle';
   const spSeries = ['down', 'up'].map((ph, i) => ({ name: ph === 'down' ? 'Download' : 'Upload', color: C.s[i], pts: (sp.points || []).filter(p => p[0] === ph).map(p => [p[1], p[2]]) }));
-  legend('#lg-sp', spSeries); cSp.set(spSeries, Math.max(s.conf.iperf_secs, ...spSeries.flatMap(x => x.pts.map(p => p[0]))));
+  legend('#lg-sp', spSeries); cSp.set(spSeries, Math.max(sp.secs || s.conf.iperf_secs, ...spSeries.flatMap(x => x.pts.map(p => p[0]))));
   $('#sp-go').textContent = sp.running ? 'Stop test' : 'Start test';
   $('#sp-go').className = 'btn ' + (sp.running ? 'danger' : 'primary');
   $('#sp-err').hidden = !sp.error; $('#sp-err').textContent = sp.error || '';
   const ph = s.peers.map(p => `<button type="button" data-ip="${esc(p.ip)}" title="${esc(p.ip)}${p.running ? '' : ' (iperf3 server off)'}">${esc(p.name)}</button>`).join('');
   if ($('#sp-peers')._h !== ph) { $('#sp-peers').innerHTML = ph; $('#sp-peers')._h = ph; }
 
-  const hh = s.history.map(r => `<tr><td>${fmtWhen(r.t)}</td><td class="l mono">${esc(r.server)}</td><td class="l mono">${esc(r.port || '—')}</td>
+  const hh = s.history.map(r => `<tr><td>${fmtWhen(r.t)}</td><td class="l" title="${esc(r.server)}">${esc(r.label && r.label !== r.server ? r.label : r.server)}</td><td class="l mono">${esc(r.port || '—')}</td>
     <td>${r.down ? fmtBps(r.down.bps) : '—'}</td><td>${r.up ? fmtBps(r.up.bps) : '—'}</td><td>${r.up && r.up.retr != null ? r.up.retr : '—'}</td></tr>`).join('') || '<tr><td colspan="6" class="sub">No tests yet.</td></tr>';
   if ($('#hist')._h !== hh) { $('#hist').innerHTML = hh; $('#hist')._h = hh; }
 
@@ -462,8 +495,64 @@ function render() {
     .map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('');
   if ($('#sys')._h !== sh) { $('#sys').innerHTML = sh; $('#sys')._h = sh; }
 
+  renderStations();
   if (!formsFilled) fillForms();
 }
+
+// ---------- stations + sweep ----------
+const QUICK = 5;
+function renderStations() {
+  const s = S, sw = s.sweep, res = new Map(sw.results.map(r => [r.id, r])), busyHere = s.speed.running || sw.running;
+  const tops = s.peers.map(p => (res.get(p.id) || {}).bps || (p.last || {}).bps || 0);
+  const top = Math.max(1e9, ...tops);
+  $('#st-count').textContent = s.peers.length ? `${s.peers.length} heard` : '';
+  const html = s.peers.map(p => {
+    const r = res.get(p.id), testing = (r && r.status === 'testing') || (s.speed.running && s.speed.server === p.ip);
+    const state = testing ? 'testing' : !p.running ? 'off' : p.busy || p.sweeping ? 'busy' : 'ready';
+    const word = testing ? 'Testing' : !p.running ? 'Server off' : p.sweeping ? 'Sweeping' : p.busy ? 'Busy' : 'Ready';
+    const bps = r && r.bps ? r.bps : p.last ? p.last.bps : null;
+    const lit = bps ? Math.max(1, Math.round(bps / top * 20)) : 0;
+    let rate;
+    if (r && r.status !== 'done') rate = `<small title="${esc(r.error || '')}">${{ queued: 'queued', testing: 'testing…', busy: 'was busy', failed: 'no result', skipped: 'skipped' }[r.status]}</small>`;
+    else if (r) rate = `${esc(fmtBps(r.bps))}<small>to the probe</small>`;
+    else if (p.last && p.last.down != null && p.last.up != null) rate = `${esc(fmtBps(p.last.down))}<small>↑ ${esc(fmtBps(p.last.up))}</small>`;
+    else if (p.last) rate = `${esc(fmtBps(p.last.bps))}<small>${p.last.dir === 'up' ? 'probe → station' : 'station → probe'}</small>`;
+    else rate = '<small>not tested yet</small>';
+    const dis = !p.running || busyHere ? ' disabled' : '';
+    return `<div class="strow"><span class="sled ${state}"></span>
+      <div class="who"><b>${esc(p.name)}</b><span class="k">${esc(p.ip)}:${p.port} · ${esc(p.os || '?')} · ${esc(p.version || '?')}</span></div>
+      <div class="num ping">${p.ping_ms == null ? '—' : esc(p.ping_ms < 10 ? p.ping_ms.toFixed(2) : p.ping_ms.toFixed(0))}<small>ms ping</small></div>
+      <div class="bar">${Array.from({ length: 20 }, (_, i) => `<i${i < lit ? ' class="on"' : ''}></i>`).join('')}</div>
+      <div class="num">${rate}</div><span class="k state">${word}</span>
+      <div class="dirs" role="group" aria-label="Test ${esc(p.name)}">${[['up', 'Send', 'Probe sends to this station'], ['down', 'Receive', 'This station sends to the probe'], ['both', 'Both', 'Receive, then send']]
+        .map(([d, label, tip]) => `<button type="button" data-ip="${esc(p.ip)}" data-port="${p.port}" data-name="${esc(p.name)}" data-dir="${d}" title="${tip} (${QUICK} s)"${dis}>${label}</button>`).join('')}</div></div>`;
+  }).join('') || `<div class="empty">${s.conf.perfdeck ? 'No Perf-Deck stations heard yet. Any machine running Perf-Deck (or another probe) on this network appears here within a few seconds.' : 'Perf-Deck discovery is off in Settings.'}</div>`;
+  if ($('#st-list')._h !== html) { $('#st-list').innerHTML = html; $('#st-list')._h = html; }
+  const w = sw.wait || {}, targets = s.peers.filter(p => p.running).length;
+  let note;
+  if (sw.running) { const done = sw.results.filter(r => !['queued', 'testing'].includes(r.status)).length; note = `Sweeping · ${Math.min(done + 1, sw.results.length)} of ${sw.results.length}. Each station sends to the probe for ${sw.secs} s.`; }
+  else if (w.reason === 'busy') note = `${w.by} is sweeping the network right now.`;
+  else if (w.left > 0) note = `Recharging · ${Math.floor(w.left / 60)}:${String(Math.floor(w.left % 60)).padStart(2, '0')} left${w.reason === 'lan' ? ` (${w.by} swept the network)` : ''}. Perf-Deck stations share a 5-minute rest after any sweep.`;
+  else note = targets ? `One ${sw.secs}-second test per station, station → probe. About ${targets * (sw.secs + 1)} s in all.` : 'No stations with an iperf3 server running.';
+  $('#sw-note').textContent = note;
+  const b = $('#b-sweep');
+  b.textContent = sw.running ? 'Stop sweep' : 'Sweep all';
+  b.className = 'btn ' + (sw.running ? 'danger' : 'primary');
+  b.disabled = !sw.running && (s.speed.running || !targets || w.reason === 'busy' || w.left > 0);
+}
+$('#st-list').onclick = async e => {
+  const b = e.target.closest('[data-dir]');
+  if (!b || b.disabled) return;
+  $('#sp-err').hidden = true;
+  try { await api('/api/speed/start', { server: b.dataset.ip, port: +b.dataset.port, secs: QUICK, mode: b.dataset.dir, quick: true, label: b.dataset.name }); }
+  catch (err) { $('#sp-err').textContent = err.message; $('#sp-err').hidden = false; }
+  poll();
+};
+$('#b-sweep').onclick = async () => {
+  try { await api(S.sweep.running ? '/api/sweep/stop' : '/api/sweep/start'); }
+  catch (err) { $('#sw-note').textContent = err.message; }
+  poll();
+};
 
 function fillForms() {
   const c = S.conf;

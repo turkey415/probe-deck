@@ -23,7 +23,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -31,6 +31,9 @@ IFACE = "eth0"
 PERFDECK_TAG, PERFDECK_PORT = "perf-deck", 52010
 PROBE_PORT = 47474
 PING_EVERY = 2
+QUICK_SECS = 5            # per-station quick test
+SWEEP_SECS = 2            # per-station sweep test (same as Perf-Deck)
+SWEEP_COOLDOWN = 300      # Perf-Deck's base recharge after anyone's sweep
 HISTORY_MAX = 60
 
 DEFAULTS = {
@@ -103,7 +106,9 @@ class Probe:
         self.net = {}
         self.speed = {"running": False, "phase": None, "points": [], "error": None}
         self.history = []
-        self.peers = {}                              # Perf-Deck stations heard
+        self.peers = {}                              # Perf-Deck stations heard, by id
+        self.peer_pings = {}                         # nonce -> (peer id, sent)
+        self.sweep = {"running": False, "results": [], "started": None, "ended": None, "cancel": False}
         self.seq = 0
         self.renewing = False
         self.iperf_srv = None
@@ -373,12 +378,19 @@ class Probe:
         mode = opts.get("mode", "both")
         if mode not in ("both", "up", "down"):
             raise ValueError("Bad mode")
+        port = int(opts.get("port") or self.conf["iperf_port"])
+        secs = int(opts.get("secs") or self.conf["iperf_secs"])
+        if not (0 < port < 65536 and 1 <= secs <= 60):
+            raise ValueError("Bad port or length")
         with self.lock:
             if self.speed["running"]:
                 raise ValueError("A test is already running")
+            if self.sweep["running"]:
+                raise ValueError("Wait for the sweep to finish")
             self.speed = {"running": True, "phase": None, "points": [], "error": None, "server": server, "mode": mode,
+                          "port": port, "secs": secs, "label": str(opts.get("label") or server)[:40],
                           "started": time.time(), "result": {}}
-        if server != self.conf["iperf_server"]:
+        if not opts.get("quick") and server != self.conf["iperf_server"]:
             try:
                 self.save_conf({"iperf_server": server})
             except ValueError:
@@ -403,14 +415,18 @@ class Probe:
             sp = self.speed
             sp["running"], sp["phase"] = False, None
             if res:
-                entry = {"t": round(sp["started"]), "server": server, "secs": self.conf["iperf_secs"],
+                entry = {"t": round(sp["started"]), "server": server, "label": sp.get("label"), "secs": sp["secs"],
                          "streams": self.conf["iperf_streams"], **res,
                          "port": (self.neighbor or {}).get("port"), "switch": (self.neighbor or {}).get("switch")}
                 self.history = (self.history + [entry])[-HISTORY_MAX:]
+                for p in self.peers.values():
+                    if p["ip"] == server:
+                        p["last"] = {"bps": (res.get("down") or res.get("up"))["bps"], "dir": next(iter(res)), "t": time.time(),
+                                     "down": (res.get("down") or {}).get("bps"), "up": (res.get("up") or {}).get("bps")}
                 (DATA / "history.json").write_text(json.dumps(self.history))
 
     def iperf_once(self, server, phase):
-        argv = ["iperf3", "-c", server, "-p", str(self.conf["iperf_port"]), "-t", str(self.conf["iperf_secs"]),
+        argv = ["iperf3", "-c", server, "-p", str(self.speed["port"]), "-t", str(self.speed["secs"]),
                 "-P", str(self.conf["iperf_streams"]), "--json-stream", "--forceflush", "--connect-timeout", "4000"]
         if phase == "down":
             argv.append("-R")
@@ -451,6 +467,71 @@ class Probe:
         if p and p.poll() is None:
             p.terminate()
 
+    # ---------- sweep: a short test against every station ----------
+    def sweep_wait(self):
+        """Seconds to wait before a sweep, and why. Follows Perf-Deck's rules so stations don't pile on."""
+        now = time.time()
+        with self.lock:
+            for p in self.peers.values():
+                if p["sweeping"]:
+                    return {"left": None, "reason": "busy", "by": p["name"]}
+            best = {"left": 0, "reason": None, "by": None}
+            if self.sweep["ended"]:
+                best = {"left": max(0, self.sweep["ended"] + SWEEP_COOLDOWN - now), "reason": "own", "by": None}
+            for p in self.peers.values():
+                if p.get("swept") and SWEEP_COOLDOWN - (now - p["swept"]) > best["left"]:
+                    best = {"left": SWEEP_COOLDOWN - (now - p["swept"]), "reason": "lan", "by": p["name"]}
+            return best if best["left"] > 0 else {"left": 0, "reason": None, "by": None}
+
+    def start_sweep(self):
+        w = self.sweep_wait()
+        if w["reason"] == "busy":
+            raise ValueError(f"{w['by']} is sweeping right now")
+        if w["left"]:
+            raise ValueError(f"Recharging: {int(w['left'])} s left")
+        with self.lock:
+            if self.speed["running"] or self.sweep["running"]:
+                raise ValueError("Wait for the running test to finish")
+            targets = [p for p in self.peers.values() if p["running"]]
+            if not targets:
+                raise ValueError("No stations with a running iperf3 server")
+            self.sweep = {"running": True, "cancel": False, "started": time.time(), "ended": None,
+                          "results": [{"id": p["id"], "name": p["name"], "ip": p["ip"], "port": p["port"], "status": "queued",
+                                       "bps": None, "retr": None, "error": None} for p in sorted(targets, key=lambda p: p["name"].lower())]}
+        threading.Thread(target=self.sweep_run, daemon=True).start()
+
+    def sweep_run(self):
+        try:
+            for attempt in (1, 2):  # stations that were busy get one more try
+                for r in self.sweep["results"]:
+                    if r["status"] in ("queued", "busy") and not self.sweep["cancel"]:
+                        if attempt == 2:
+                            time.sleep(1)
+                        self.sweep_one(r)
+            for r in self.sweep["results"]:
+                if r["status"] == "queued":
+                    r["status"] = "skipped"
+        finally:
+            with self.lock:
+                self.sweep["running"], self.sweep["ended"] = False, time.time()
+
+    def sweep_one(self, r):
+        r["status"] = "testing"
+        # Reverse: the station sends, so this is its speed to the probe (as in Perf-Deck).
+        argv = ["iperf3", "-c", r["ip"], "-p", str(r["port"]), "-t", str(SWEEP_SECS), "-R", "-J", "--connect-timeout", "2000"]
+        try:
+            data = json.loads(run(argv, SWEEP_SECS + 10) or "{}")
+            if data.get("error"):
+                raise ValueError(str(data["error"]).removeprefix("error - "))
+            end = data["end"]
+            r.update(status="done", bps=end["sum_received"]["bits_per_second"], retr=end["sum_sent"].get("retransmits"))
+        except (ValueError, KeyError, TypeError) as e:
+            r.update(status="busy" if "busy" in str(e).lower() else "failed", error=str(e)[:160] or "No result")
+        with self.lock:
+            p = self.peers.get(r["id"])
+            if p and r["bps"]:
+                p["last"] = {"bps": r["bps"], "dir": "down", "t": time.time()}
+
     # ---------- Perf-Deck discovery + probe broadcast ----------
     def start_udp(self):
         self.dsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -471,12 +552,21 @@ class Probe:
                 continue
             if not isinstance(m, dict) or m.get("app") != PERFDECK_TAG or m.get("t") != "hello" or m.get("id") == self.id:
                 continue
-            port = m.get("iperf")
+            pid, port, pport, ago = m.get("id"), m.get("iperf"), m.get("ping"), m.get("sweep_ago")
+            if not isinstance(pid, str) or not re.fullmatch(r"[0-9a-f]{12}", pid):
+                continue
+            if not all(isinstance(v, int) and 0 < v < 65536 for v in (port, pport)):
+                continue
+            now = time.time()
             with self.lock:
-                if len(self.peers) < 64 or addr[0] in self.peers:
-                    self.peers[addr[0]] = {"ip": addr[0], "name": re.sub(r"[^\w .\-]", "", str(m.get("name") or ""))[:40] or addr[0],
-                                           "port": port if isinstance(port, int) else 5201, "running": bool(m.get("running")),
-                                           "seen": time.time()}
+                if pid not in self.peers and len(self.peers) >= 64:
+                    continue
+                self.peers.setdefault(pid, {"id": pid, "ping_ms": None, "rtts": [], "last": None}).update(
+                    ip=addr[0], name=re.sub(r"[^\w .\-]", "", str(m.get("name") or ""))[:40] or addr[0],
+                    port=port, ping_port=pport, seen=now, running=bool(m.get("running")), busy=bool(m.get("busy")),
+                    sweeping=bool(m.get("sweeping")), version=re.sub(r"[^\w.\-]", "", str(m.get("version") or ""))[:20],
+                    os=re.sub(r"[^\w]", "", str(m.get("os") or ""))[:12],
+                    swept=now - ago if isinstance(ago, (int, float)) and ago >= 0 else None)
 
     def disc_pong(self):
         while True:
@@ -485,11 +575,21 @@ class Probe:
                 m = json.loads(data)
             except (OSError, ValueError):
                 continue
-            if isinstance(m, dict) and m.get("app") == PERFDECK_TAG and m.get("t") == "ping" and isinstance(m.get("n"), str) and len(m["n"]) <= 32:
+            if not (isinstance(m, dict) and m.get("app") == PERFDECK_TAG and isinstance(m.get("n"), str) and len(m["n"]) <= 32):
+                continue
+            if m.get("t") == "ping":
                 try:
                     self.psock.sendto(json.dumps({"app": PERFDECK_TAG, "t": "pong", "n": m["n"]}).encode(), addr)
                 except OSError:
                     pass
+            elif m.get("t") == "pong":
+                with self.lock:
+                    sent = self.peer_pings.pop(m["n"], None)
+                    peer = sent and self.peers.get(sent[0])
+                    if peer and peer["ip"] == addr[0]:
+                        # Best of the last few, like Perf-Deck: one sample carries scheduling jitter.
+                        peer["rtts"] = (peer["rtts"] + [(time.perf_counter() - sent[1]) * 1000])[-5:]
+                        peer["ping_ms"] = round(min(peer["rtts"]), 2)
 
     def beacon_loop(self):
         n = 0
@@ -500,7 +600,8 @@ class Probe:
                     hello = {"app": PERFDECK_TAG, "t": "hello", "id": self.id, "name": self.conf["name"],
                              "iperf": 5201, "ping": self.psock.getsockname()[1],
                              "running": bool(self.conf["iperf_listen"] and self.iperf_srv),
-                             "busy": self.speed["running"], "sweeping": False, "sweep_ago": None,
+                             "busy": self.speed["running"] or self.sweep["running"], "sweeping": self.sweep["running"],
+                             "sweep_ago": round(time.time() - self.sweep["ended"]) if self.sweep["ended"] else None,
                              "version": __version__, "os": "linux"}
                     self.send(self.dsock, hello, bc, PERFDECK_PORT)
                 if self.conf["broadcast"] and n % 3 == 0:
@@ -508,6 +609,13 @@ class Probe:
             with self.lock:
                 now = time.time()
                 self.peers = {k: v for k, v in self.peers.items() if now - v["seen"] < 12}
+                self.peer_pings = {k: v for k, v in self.peer_pings.items() if time.perf_counter() - v[1] < 10}
+                peers = list(self.peers.values())
+            for p in peers:
+                nonce = uuid.uuid4().hex[:16]
+                with self.lock:
+                    self.peer_pings[nonce] = (p["id"], time.perf_counter())
+                self.send(self.psock, {"app": PERFDECK_TAG, "t": "ping", "n": nonce}, p["ip"], p["ping_port"])
             n += 1
             time.sleep(3)
 
@@ -553,6 +661,7 @@ class Probe:
 
     def snapshot(self):
         pings = self.ping_stats()
+        wait = self.sweep_wait()
         with self.lock:
             return {
                 "id": self.id, "now": time.time(), "started": self.started, "conf": self.conf, "system": self.system(),
@@ -561,7 +670,9 @@ class Probe:
                 "net": self.net, "neighbor": self.neighbor, "pings": pings, "checks": self.checks,
                 "rates": [[round(t, 1), round(r), round(x)] for t, r, x in self.rates],
                 "speed": self.speed, "history": self.history[::-1],
-                "peers": sorted(self.peers.values(), key=lambda p: p["name"].lower()),
+                "peers": sorted(({k: v for k, v in p.items() if k not in ("rtts", "ping_port")} for p in self.peers.values()),
+                                key=lambda p: (p["name"].lower(), p["ip"])),
+                "sweep": {**{k: v for k, v in self.sweep.items() if k != "cancel"}, "wait": wait, "secs": SWEEP_SECS},
                 "iperf_server": bool(self.iperf_srv and self.iperf_srv.poll() is None),
             }
 
@@ -608,6 +719,10 @@ class Handler(BaseHTTPRequestHandler):
                 p.start_speed(body)
             elif path == "/api/speed/stop":
                 p.stop_speed()
+            elif path == "/api/sweep/start":
+                p.start_sweep()
+            elif path == "/api/sweep/stop":
+                p.sweep["cancel"] = True
             elif path == "/api/recheck":
                 p.wake.set()
             elif path == "/api/renew":
