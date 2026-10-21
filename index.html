@@ -54,7 +54,7 @@ aside, main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .btn:disabled { opacity: .5; cursor: default; }
 .btn:focus-visible, input:focus-visible, .seg label:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-input[type=text], input[type=number] { width: 100%; background: var(--bg); border: 1px solid var(--line-2); border-radius: 7px; padding: 7px 9px; min-width: 0; }
+input[type=text], input[type=number], input[type=password] { width: 100%; background: var(--bg); border: 1px solid var(--line-2); border-radius: 7px; padding: 7px 9px; min-width: 0; }
 input::placeholder { color: #6b6a65; }
 label.f { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-2); min-width: 0; }
 label.chk { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: var(--text-2); cursor: pointer; }
@@ -144,6 +144,70 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
 .empty { color: var(--muted); font-size: 13px; padding: 4px 2px; }
 @media (max-width: 760px) { .strow { grid-template-columns: 12px minmax(0, 1fr) auto; } .strow .bar, .strow .ping, .strow .state { display: none; } .dirs { grid-column: 1 / -1; } .dirs button { flex: 1; } }
 @media (prefers-reduced-motion: reduce) { .dot.live, .sled.testing { animation: none; } }
+
+/* ---------- tabs ---------- */
+.tabs { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--line-2); border-radius: 8px; padding: 2px; flex-wrap: wrap; }
+.tabs a { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 6px; color: var(--text-2); text-decoration: none;
+  font: 600 10.5px ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; }
+.tabs a:hover { color: var(--text); }
+.tabs a.on { background: var(--raised); color: var(--text); box-shadow: inset 0 -2px 0 var(--amber); }
+.tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.badge { min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--crit); color: #fff; font-size: 10px; letter-spacing: 0; display: inline-grid; place-items: center; box-shadow: 0 0 8px color-mix(in srgb, var(--crit) 70%, transparent); }
+.layout.r { grid-template-columns: minmax(0, 1fr) 330px; }
+@media (max-width: 960px) { .layout.r { grid-template-columns: minmax(0, 1fr); } }
+select, textarea { font: inherit; color: inherit; width: 100%; background: var(--bg); border: 1px solid var(--line-2); border-radius: 7px; padding: 7px 9px; min-width: 0; }
+textarea { font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; font-size: 12.5px; resize: vertical; }
+select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.key { font: 600 9.5px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; padding: 7px 10px; cursor: pointer; white-space: nowrap;
+  color: var(--text-2); background: linear-gradient(#232322, #191918); border: 1px solid #3a3a37; border-radius: 4px; }
+.key:hover:not(:disabled) { color: var(--text); border-color: var(--amber); }
+.key:disabled { color: #55544f; cursor: not-allowed; }
+.key.hot { color: #ffd6d6; border-color: #7a2b2b; background: linear-gradient(#3a1d1d, #251414); }
+.key.hot:hover:not(:disabled) { border-color: #ff4d4d; color: #fff; }
+.key.sel { color: var(--text); border-color: var(--amber); box-shadow: 0 0 6px color-mix(in srgb, var(--amber) 40%, transparent); }
+.keys { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { display: inline-block; font: 600 9.5px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--line-2); color: var(--text-2); }
+.chip.ok { color: #7fe08f; border-color: #2f5f37; } .chip.bad { color: #ff9b9b; border-color: #7a2b2b; background: #2a1515; } .chip.warn { color: var(--warn); border-color: #6a5320; }
+.lamp.alarm { color: #ff9b9b; } .lamp.clear { color: #7fe08f; }
+.well.alarm { border-color: rgba(255, 77, 77, .45); box-shadow: inset 0 0 26px rgba(255, 40, 40, .12), 0 0 12px rgba(255, 60, 60, .15); }
+.well.alarm .seg7 { --c: #ff5a4d; }
+.evlist { display: flex; flex-direction: column; gap: 2px; max-height: 420px; overflow: auto; }
+.ev { display: grid; grid-template-columns: 76px 12px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 6px 4px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.ev .k { letter-spacing: .06em; }
+.ev .dot { transform: translateY(1px); }
+.note { font-size: 12.5px; color: var(--text-2); background: var(--panel-2); border: 1px solid var(--line-2); border-left: 3px solid var(--warn); border-radius: 7px; padding: 9px 12px; }
+.note.crit { border-left-color: var(--crit); }
+
+/* ---------- console screen ---------- */
+.screen { --ph: #ffb000; position: relative; background: #0b0b0a; border-radius: 12px; padding: 12px 8px 12px 14px;
+  border: 1px solid rgba(255, 255, 255, .07); box-shadow: inset 0 0 50px rgba(0, 0, 0, .85), 0 0 0 4px #161615, 0 0 0 5px #2e2e2b; }
+.screen.green { --ph: #3dff7a; } .screen.white { --ph: #e9e7dd; }
+.screen::after { content: ""; position: absolute; inset: 0; border-radius: 12px; pointer-events: none; z-index: 2;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px), radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, .35)); }
+.screen:fullscreen { border-radius: 0; padding: 16px; }
+.screen:fullscreen .term { height: calc(100vh - 32px); }
+.term { height: max(380px, calc(100vh - 360px)); }
+.term .xterm-rows { text-shadow: 0 0 5px color-mix(in srgb, var(--ph) 55%, transparent); }
+.term .xterm-viewport { background: transparent !important; }
+.term .xterm-viewport::-webkit-scrollbar { width: 8px; } .term .xterm-viewport::-webkit-scrollbar-thumb { background: #2e2e2b; border-radius: 4px; }
+.lock { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; background: rgba(11, 11, 10, .93); border-radius: 12px; padding: 20px; }
+.lock form { display: flex; flex-direction: column; gap: 10px; width: min(320px, 100%); text-align: center; }
+.lock .big-port { font-size: 22px; letter-spacing: .12em; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.toolbar .spacer { flex: 1; }
+dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line-2); border-radius: var(--r); padding: 18px; width: min(680px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgba(0, 0, 0, .6); }
+dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+.mrow { display: grid; grid-template-columns: 22px 12px minmax(110px, 1.4fr) minmax(60px, .6fr) 130px minmax(110px, 1fr) 70px auto; gap: 10px; align-items: center;
+  padding: 8px 12px; background: var(--well); border: 1px solid rgba(255, 255, 255, .06); border-radius: 8px; }
+.mrow b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.mrow .k { overflow: hidden; text-overflow: ellipsis; letter-spacing: .06em; text-transform: none; }
+.mrow .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mrow .num small, .mrow .who small { display: block; color: var(--muted); font-size: 11px; }
+.mrow input[type=checkbox] { accent-color: var(--amber); width: 15px; height: 15px; margin: 0; }
+.sled.waking { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: pulse .8s ease-in-out infinite; }
+@media (max-width: 760px) { .mrow { grid-template-columns: 22px 12px minmax(0, 1fr) auto; } .mrow .grp, .mrow .macc, .mrow .ipc, .mrow .ping { display: none; } }
+@media (prefers-reduced-motion: reduce) { .sled.waking { animation: none; } }
 </style>
 </head>
 <body>
@@ -152,6 +216,12 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
     <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#212120"/><path d="M9 7h14v9H9z M12 16v5 M16 16v5 M20 16v5 M7 25h18" fill="none" stroke="#ffb000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
     Probe Deck
   </div>
+  <nav class="tabs" aria-label="Views">
+    <a href="#probe" data-view="probe">Probe</a>
+    <a href="#console" data-view="console">Console <span class="dot" id="t-con"></span></a>
+    <a href="#watch" data-view="watch">Watchdog <span class="badge" id="t-watch" hidden></span></a>
+    <a href="#wake" data-view="wake">Wake</a>
+  </nav>
   <span class="pill"><span class="dot" id="h-dot"></span><span id="h-name">connecting…</span></span>
   <span class="spacer"></span>
   <span class="pill" id="h-link">link —</span>
@@ -159,7 +229,8 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
   <span class="pill" id="h-temp">— °C</span>
 </header>
 
-<div class="layout">
+<div class="banner" id="offline" hidden style="margin:14px 20px 0">Lost contact with the probe. Retrying…</div>
+<div class="layout view" id="v-probe">
 <aside>
   <section class="card">
     <h2>Speed test</h2>
@@ -212,7 +283,6 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
 </aside>
 
 <main>
-  <div class="banner" id="offline" hidden>Lost contact with the probe. Retrying…</div>
 
   <section class="card deck">
     <h2>Port <span class="spacer"></span><span class="lamp" id="nb-via"></span></h2>
@@ -277,6 +347,220 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
 </main>
 </div>
 
+
+<!-- ================= CONSOLE ================= -->
+<div class="layout r view" id="v-console" hidden>
+<main>
+  <section class="card deck">
+    <h2>Console <span class="spacer"></span><span class="lamp" id="con-lamp"></span></h2>
+    <div class="wells">
+      <div class="well wide" id="cw-port"><span class="k">Serial port</span><div class="big-port" id="con-port">—</div><div class="wsub" id="con-adapter"></div></div>
+      <div class="well" id="cw-baud"><span class="k">Baud</span><div id="con-baud"></div><span class="un">8N1 · no flow control</span></div>
+      <div class="well" id="cw-view"><span class="k">Attached</span><div id="con-viewers"></div><span class="un" id="con-viewers2">—</span></div>
+      <div class="well" id="cw-up"><span class="k">Session</span><div class="big-port" id="con-up" style="font-size:22px">—</div><span class="un" id="con-log">no log</span></div>
+    </div>
+  </section>
+
+  <div class="note crit" id="con-nopw" hidden>No console password is set, so anyone who can open this page can type into the switch console. Set one under <b>Password</b>.</div>
+
+  <section class="card">
+    <div class="toolbar" style="margin-bottom:12px">
+      <button class="key hot" id="c-break" title="Send a serial Break: Cisco password recovery and ROMMON need one in the first 60 s of boot">Break</button>
+      <button class="key" id="c-paste" title="Send a config one line at a time, waiting for the switch each line">Paste config…</button>
+      <button class="key" id="c-stoppaste" hidden>Stop paste</button>
+      <span class="sub" id="c-pastest"></span>
+      <span class="spacer"></span>
+      <span class="keys" id="c-ph" role="group" aria-label="Screen colour">
+        <button class="key" data-ph="amber" title="Amber phosphor">Amb</button><button class="key" data-ph="green" title="Green phosphor">Grn</button><button class="key" data-ph="white" title="White phosphor">Wht</button>
+      </span>
+      <button class="key" id="c-fminus" title="Smaller text">A−</button><button class="key" id="c-fplus" title="Bigger text">A+</button>
+      <button class="key" id="c-clear" title="Clear the screen and the saved scrollback">Clear</button>
+      <button class="key" id="c-full" title="Full screen">Full</button>
+    </div>
+    <div class="screen" id="screen">
+      <div class="term" id="term"></div>
+      <div class="lock" id="c-lock" hidden>
+        <form id="f-login">
+          <div class="big-port">CONSOLE LOCKED</div>
+          <span class="sub">Enter the console password to use the switch console.</span>
+          <input type="password" id="c-pw" autocomplete="current-password" placeholder="Console password">
+          <button class="btn primary" type="submit">Unlock</button>
+          <div class="msg" id="c-loginerr" hidden></div>
+        </form>
+      </div>
+    </div>
+    <div class="keys" id="c-macros" style="margin-top:12px"></div>
+  </section>
+</main>
+<aside>
+  <section class="card" id="c-setcard">
+    <h2>Console settings</h2>
+    <form class="form" id="f-con">
+      <div class="row">
+        <label class="f">Port <select id="cs-port"></select></label>
+        <label class="f">Baud <select id="cs-baud"></select></label>
+      </div>
+      <label class="f">Paste: least wait per line (ms) <span class="sub">Each line also waits for the switch's echo, up to 1.5 s.</span>
+        <input type="number" id="cs-delay" min="0" max="2000"></label>
+      <label class="chk"><input type="checkbox" id="cs-telnet"><span>Telnet port, like ser2net<small>PuTTY / SecureCRT / telnet to the probe reach the same console. Asks for the console password.</small></span></label>
+      <label class="f">Telnet port <input type="number" id="cs-tport" min="1024" max="65535"></label>
+      <label class="f">Macro keys <span class="sub">One per line: Label = command</span>
+        <textarea id="cs-macros" rows="9" spellcheck="false"></textarea></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="cs-msg"></span></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Password</h2>
+    <form class="form" id="f-pw">
+      <label class="f" id="pw-cur-l">Current password <input type="password" id="pw-cur" autocomplete="current-password"></label>
+      <label class="f">New password <input type="password" id="pw-new" autocomplete="new-password" placeholder="6 characters or more"></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none" id="pw-go">Set password</button>
+        <button class="btn ghost" type="button" id="pw-remove" style="flex:none">Remove</button><button class="btn ghost" type="button" id="pw-logout" style="flex:none">Lock</button></div>
+      <span id="pw-msg"></span>
+    </form>
+  </section>
+  <section class="card" id="c-logcard">
+    <h2>Session logs <span class="spacer"></span><button class="btn ghost" id="c-logclear">Clear</button></h2>
+    <div class="tablewrap"><table><tbody id="c-logs"></tbody></table></div>
+  </section>
+</aside>
+</div>
+
+<dialog id="d-paste">
+  <form method="dialog" class="form" id="f-paste">
+    <h3>Paste config</h3>
+    <span class="sub">Lines go out one at a time. Each waits for the switch to echo it, so a 3560 at 9600 baud doesn't drop characters.</span>
+    <textarea id="pa-text" rows="14" spellcheck="false" placeholder="conf t&#10;interface Gi0/5&#10; description Seat 12&#10;end"></textarea>
+    <div class="row" style="align-items:center"><span class="sub" id="pa-count"></span>
+      <button class="btn" value="cancel" style="flex:none">Cancel</button><button class="btn primary" id="pa-go" value="send" style="flex:none">Send</button></div>
+  </form>
+</dialog>
+
+<!-- ================= WATCHDOG ================= -->
+<div class="layout view" id="v-watch" hidden>
+<aside>
+  <section class="card">
+    <h2>Watchdog settings</h2>
+    <form class="form" id="f-watch">
+      <label class="chk"><input type="checkbox" id="ws-on"><span>Watch the network<small>Listens to broadcast and multicast traffic on the port.</small></span></label>
+      <div class="row">
+        <label class="f">DHCP scan every (s) <input type="number" id="ws-scan" min="0" max="3600"></label>
+        <label class="f">Storm at (bcast/s) <input type="number" id="ws-storm" min="50" max="100000"></label>
+      </div>
+      <span class="sub">The scan sends a DHCP Discover and never takes the lease. 0 = only listen.</span>
+      <label class="f">Trusted <span class="sub">DHCP servers or IPv6 routers that are fine: IPs or MACs, comma separated. The probe's own lease server is always trusted.</span>
+        <input type="text" id="ws-trusted" spellcheck="false"></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="ws-msg"></span></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Spanning tree</h2>
+    <dl class="kv" id="w-stp"></dl>
+  </section>
+  <section class="card">
+    <h2>Broadcast talkers <span class="spacer"></span><span class="sub">last minute</span></h2>
+    <div class="tablewrap"><table><thead><tr><th>MAC</th><th class="l">IP</th><th>Per s</th></tr></thead><tbody id="w-talk"></tbody></table></div>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2>Watchdog <span class="spacer"></span><span class="lamp" id="w-lamp"></span></h2>
+    <div class="wells">
+      <div class="well" id="ww-dhcp"><span class="k">DHCP servers</span><div id="w-ndhcp"></div><span class="un" id="w-ndhcp2">—</span></div>
+      <div class="well" id="ww-dup"><span class="k">IP conflicts</span><div id="w-ndup"></div><span class="un">last 15 min</span></div>
+      <div class="well" id="ww-bc"><span class="k">Broadcasts / s</span><div id="w-bc"></div><span class="un" id="w-bc2">—</span></div>
+      <div class="well" id="ww-stp"><span class="k">STP changes</span><div id="w-ntc"></div><span class="un" id="w-ntc2">—</span></div>
+      <div class="well" id="ww-ra"><span class="k">IPv6 routers</span><div id="w-nra"></div><span class="un">RA senders</span></div>
+    </div>
+  </section>
+  <div class="note" id="w-err" hidden></div>
+
+  <section class="card">
+    <h2>DHCP servers <span class="spacer"></span><span class="sub" id="w-scan"></span><button class="btn ghost" id="w-scannow">Scan now</button></h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Server</th><th class="l">MAC</th><th class="l">Offers</th><th class="l">Router</th><th class="l">DNS</th><th>Last heard</th><th class="l">Status</th><th></th></tr></thead>
+      <tbody id="wd-dhcp"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card"><h2>Broadcast and multicast <span class="spacer"></span><span class="sub">packets per second, last 2½ min</span></h2><div class="legend" id="lg-bc"></div><div class="chart" id="c-bc"></div></section>
+
+  <section class="card" id="w-dupcard">
+    <h2>IP conflicts <span class="spacer"></span><span class="sub">last hour</span></h2>
+    <div class="tablewrap"><table><thead><tr><th>IP</th><th class="l">MACs claiming it</th><th>Times</th><th>Last</th></tr></thead><tbody id="w-dups"></tbody></table></div>
+  </section>
+
+  <section class="card" id="w-racard" hidden>
+    <h2>IPv6 router advertisements</h2>
+    <div class="tablewrap"><table><thead><tr><th>Router</th><th class="l">MAC</th><th class="l">Prefix</th><th>Last heard</th><th class="l">Status</th><th></th></tr></thead><tbody id="w-ra"></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Events <span class="spacer"></span><button class="btn ghost" id="w-clear">Clear</button></h2>
+    <div class="evlist" id="w-events"></div>
+  </section>
+</main>
+</div>
+
+<!-- ================= WAKE ================= -->
+<div class="layout view" id="v-wake" hidden>
+<aside>
+  <section class="card">
+    <h2 id="m-title">Add a machine</h2>
+    <form class="form" id="f-mach">
+      <input type="hidden" id="m-id">
+      <div class="row"><label class="f">Name <input type="text" id="m-name" maxlength="32" placeholder="Seat 12"></label>
+        <label class="f">Group <input type="text" id="m-group" maxlength="20" placeholder="Row A"></label></div>
+      <label class="f">MAC address <input type="text" id="m-mac" spellcheck="false" placeholder="aa:bb:cc:dd:ee:ff"></label>
+      <label class="f">IP <span class="sub">Optional: for the up/down light. Without it, the Watchdog's ARP table fills it in.</span><input type="text" id="m-ip" spellcheck="false"></label>
+      <label class="f">Broadcast to <span class="sub">Optional: another subnet's broadcast, e.g. 10.2.2.255 (needs ip directed-broadcast there).</span><input type="text" id="m-bcast" spellcheck="false"></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none" id="m-go">Add</button>
+        <button class="btn ghost" type="button" id="m-cancel" style="flex:none" hidden>Cancel</button><span id="m-msg"></span></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Import</h2>
+    <form class="form" id="f-imp">
+      <span class="sub">One per line: <code>name, MAC, IP, group</code> (IP and group optional). A CSV export works too.</span>
+      <textarea id="imp-text" rows="5" spellcheck="false" placeholder="Seat 1, 2c:f0:5d:11:22:33, 192.168.1.51, Row A"></textarea>
+      <div class="row" style="align-items:center"><button class="btn" type="submit" style="flex:none">Import</button><span id="imp-msg" class="sub"></span></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Wake any MAC</h2>
+    <form class="row" id="f-adhoc"><input type="text" id="ah-mac" spellcheck="false" placeholder="aa:bb:cc:dd:ee:ff"><button class="btn" type="submit" style="flex:none">Wake</button></form>
+    <span id="ah-msg"></span>
+  </section>
+  <section class="card">
+    <h2>Seen on the network <span class="spacer"></span><span class="sub" id="seen-n"></span></h2>
+    <span class="sub">From ARP the Watchdog hears. Not saved yet.</span>
+    <div class="tablewrap" style="max-height:320px;overflow:auto;margin-top:8px"><table><tbody id="seen"></tbody></table></div>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2>Wake-on-LAN <span class="spacer"></span><span class="lamp" id="wk-lamp"></span></h2>
+    <div class="wells">
+      <div class="well" id="wkw-n"><span class="k">Machines</span><div id="wk-n"></div><span class="un">saved</span></div>
+      <div class="well" id="wkw-up"><span class="k">Up now</span><div id="wk-up"></div><span class="un">answer ping</span></div>
+      <div class="well" id="wkw-wake"><span class="k">Waking</span><div id="wk-wake"></div><span class="un" id="wk-wake2">—</span></div>
+      <div class="well" id="wkw-boot"><span class="k">Last boot</span><div id="wk-boot"></div><span class="un">seconds to ping</span></div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="toolbar" style="margin-bottom:12px">
+      <button class="btn primary" id="wk-all">Wake all</button>
+      <button class="btn" id="wk-sel" disabled>Wake selected</button>
+      <button class="btn danger" id="wk-stop" hidden>Stop</button>
+      <span class="keys" id="wk-groups"></span>
+      <span class="spacer"></span>
+      <label class="sub" style="display:flex;gap:8px;align-items:center">Stagger <input type="number" id="wk-stagger" min="0" max="60" step="0.5" style="width:70px"> s apart</label>
+    </div>
+    <div class="sub" id="wk-note" style="margin-bottom:10px"></div>
+    <div class="stlist" id="wk-list"></div>
+  </section>
+</main>
+</div>
 <script>
 'use strict';
 const $ = (s, r = document) => r.querySelector(s);
@@ -497,6 +781,12 @@ function render() {
 
   renderStations();
   if (!formsFilled) fillForms();
+  const cs = s.console;
+  $('#t-con').className = 'dot ' + (cs && cs.open ? 'on' : '');
+  $('#t-con').title = cs && cs.open ? 'Console cable plugged in' : 'No console cable';
+  renderWatch();
+  renderWake();
+  if (view === 'console' && !CON.st) renderConDeck();
 }
 
 // ---------- stations + sweep ----------
@@ -593,6 +883,345 @@ $('#b-recheck').onclick = () => api('/api/recheck').then(poll);
 $('#b-renew').onclick = () => { if (confirm('Drop the address and ask DHCP for a new one? The page loses contact for a few seconds, and the address may change.')) api('/api/renew'); };
 $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) api('/api/history/clear').then(poll); };
 
+
+// ---------- views (tabs) ----------
+const VIEWS = ['probe', 'console', 'watch', 'wake'];
+let view = 'probe';
+function showView() {
+  const v = location.hash.slice(1);
+  view = VIEWS.includes(v) ? v : 'probe';
+  for (const n of VIEWS) $('#v-' + n).hidden = n !== view;
+  for (const a of document.querySelectorAll('.tabs a')) a.classList.toggle('on', a.dataset.view === view);
+  if (view === 'console') conInit().then(fitTerm);
+  if (S) render();
+}
+addEventListener('hashchange', showView);
+const lsGet = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+const ago = t => t ? fmtDur(Date.now() / 1000 - t) + ' ago' : '—';
+const setHTML = (id, h) => { const el = $(id); if (el._h !== h) { el.innerHTML = h; el._h = h; } };
+const flash = (el, text, ok) => { el.className = ok ? 'ok-msg' : 'msg'; el.textContent = text; clearTimeout(el._t); el._t = setTimeout(() => { el.textContent = ''; el.className = ''; }, 5000); };
+const shortMac = m => m || '—';
+
+// ---------- console ----------
+const CON = { info: null, st: null, term: null, fit: null, ws: null, retry: 0, started: false };
+const PH = { amber: '#ffb000', green: '#3dff7a', white: '#e9e7dd' };
+function phTheme(name) {
+  const fg = PH[name] || PH.amber;
+  return { background: '#0b0b0a', foreground: fg, cursor: fg, cursorAccent: '#0b0b0a', selectionBackground: 'rgba(255,255,255,.22)',
+    black: '#1b1b1a', brightBlack: '#6b6a65', white: '#c3c2b7', brightWhite: '#f0efec' };
+}
+function loadScript(src) { return new Promise((ok, bad) => { const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = bad; document.head.append(el); }); }
+function fitTerm() { if (CON.fit && view === 'console') try { CON.fit.fit(); } catch {} }
+async function conInit() {
+  if (CON.started) return;
+  CON.started = true;
+  const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/vendor/xterm.css'; document.head.append(l);
+  try { await loadScript('/vendor/xterm.js'); await loadScript('/vendor/addon-fit.js'); }
+  catch { $('#term').textContent = 'Could not load the terminal (vendor/xterm.js missing on the probe).'; return; }
+  const ph = lsGet('pd-ph', 'amber');
+  setPhosphor(ph);
+  const term = new Terminal({ fontFamily: '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace', fontSize: +lsGet('pd-font', 14),
+    cursorBlink: true, scrollback: 10000, theme: phTheme(ph), allowTransparency: true });
+  const fit = new FitAddon.FitAddon();
+  term.loadAddon(fit); term.open($('#term'));
+  CON.term = term; CON.fit = fit;
+  new ResizeObserver(fitTerm).observe($('#term'));
+  // A multi-line paste (Ctrl+Shift+V, right-click) goes out paced, like the Paste config button.
+  term.onData(d => { if (d.length > 24 && /[\r\n]/.test(d.slice(0, -1))) conSend({ t: 'paste', d }); else conSend({ t: 'in', d }); });
+  term.writeln('\x1b[2mProbe Deck console\x1b[0m');
+  await conRefresh();
+}
+function conSend(m) { if (CON.ws && CON.ws.readyState === 1) CON.ws.send(JSON.stringify(m)); }
+async function conRefresh() {
+  try { CON.info = await (await fetch('/api/console', { cache: 'no-store' })).json(); } catch { return; }
+  renderConsole();
+  if (CON.info.authed && !CON.ws && CON.term) conConnect();
+  if (!CON.info.authed && CON.ws) CON.ws.close();
+}
+function conConnect() {
+  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/console');
+  ws.binaryType = 'arraybuffer';
+  CON.ws = ws;
+  ws.onopen = () => { CON.retry = 0; };
+  ws.onmessage = e => {
+    if (typeof e.data !== 'string') { CON.term.write(new Uint8Array(e.data)); return; }
+    let m; try { m = JSON.parse(e.data); } catch { return; }
+    if (m.t === 'hello') { CON.term.reset(); CON.st = m; renderConDeck(); }
+    else if (m.t === 'status') { CON.st = m; renderConDeck(); }
+    else if (m.t === 'error') CON.term.writeln(`\r\n\x1b[31m[probe-deck] ${m.error}\x1b[0m`);
+  };
+  ws.onclose = () => {
+    if (CON.ws === ws) CON.ws = null;
+    CON.st = null; renderConDeck();
+    setTimeout(conRefresh, Math.min(10000, 800 * 2 ** CON.retry++));
+  };
+}
+function setPhosphor(name) {
+  $('#screen').classList.remove('amber', 'green', 'white'); $('#screen').classList.add(name);
+  for (const b of document.querySelectorAll('#c-ph [data-ph]')) b.classList.toggle('sel', b.dataset.ph === name);
+  if (CON.term) CON.term.options.theme = phTheme(name);
+  lsSet('pd-ph', name);
+}
+function renderConDeck() {
+  const st = CON.st || (S && S.console) || CON.info || {}, info = CON.info || {};
+  const live = !!(CON.ws && CON.ws.readyState === 1);
+  $('#cw-port').classList.toggle('off', !st.open);
+  $('#con-port').textContent = st.open ? (st.port || '').replace('/dev/', '') : 'NO CABLE';
+  const ad = (info.ports || []).find(p => p.path === st.port);
+  $('#con-adapter').textContent = st.open ? (ad && ad.name ? ad.name : 'USB serial adapter') : (st.error && st.error !== 'no cable' ? st.error : 'Plug a USB console cable into the probe');
+  $('#cw-baud').classList.toggle('off', !st.open);
+  setSeg('#con-baud', st.baud || '----', 6);
+  const n = st.clients || 0;
+  $('#cw-view').classList.toggle('off', !n);
+  setSeg('#con-viewers', n, 2);
+  $('#con-viewers2').textContent = `${st.n_web || 0} web · ${st.n_telnet || 0} telnet`;
+  $('#cw-up').classList.toggle('off', !st.open);
+  $('#con-up').textContent = st.open && st.opened ? fmtDur(Date.now() / 1000 - st.opened) : '—';
+  $('#con-log').textContent = st.log ? 'logging' : 'no log';
+  $('#con-lamp').innerHTML = !info.authed && info.need_auth ? '<span class="dot warn"></span>locked'
+    : live ? `<span class="dot ${st.open ? 'on' : 'warn'}"></span>${st.open ? 'live' : 'waiting for cable'}` : '<span class="dot err"></span>not connected';
+  const pj = st.paste, pasting = pj && !pj.done_at;
+  $('#c-stoppaste').hidden = !pasting;
+  $('#c-pastest').textContent = pasting ? `Pasting line ${pj.done} of ${pj.total}…` : pj && pj.done_at && Date.now() / 1000 - pj.done_at < 8 ? `Pasted ${pj.done} of ${pj.total} lines` : '';
+  for (const id of ['#c-break', '#c-paste']) $(id).disabled = !live || !st.open;
+  for (const b of document.querySelectorAll('#c-macros button')) b.disabled = !live || !st.open;
+}
+function renderConsole() {
+  const i = CON.info;
+  if (!i) return;
+  $('#c-lock').hidden = !(i.need_auth && !i.authed);
+  $('#con-nopw').hidden = i.need_auth;
+  $('#c-setcard').hidden = $('#c-logcard').hidden = !i.authed;
+  $('#pw-cur-l').hidden = !i.need_auth || i.authed;
+  $('#pw-go').textContent = i.need_auth ? 'Change password' : 'Set password';
+  $('#pw-remove').hidden = $('#pw-logout').hidden = !(i.need_auth && i.authed);
+  if (i.authed) {
+    setHTML('#c-macros', (i.macros || []).map(m => `<button class="key" data-cmd="${esc(m.cmd)}" title="${esc(m.cmd)}">${esc(m.label)}</button>`).join(''));
+    const ports = [['auto', 'Auto (first USB cable)'], ...i.ports.map(p => [p.path, p.path.replace('/dev/', '') + (p.name ? ' · ' + p.name : '')])];
+    if (i.want !== 'auto' && !i.ports.some(p => p.path === i.want)) ports.push([i.want, i.want.replace('/dev/', '') + ' (not plugged in)']);
+    setHTML('#cs-port', ports.map(([v, t]) => `<option value="${esc(v)}"${v === i.want ? ' selected' : ''}>${esc(t)}</option>`).join(''));
+    setHTML('#cs-baud', i.bauds.map(b => `<option${b === i.baud ? ' selected' : ''}>${b}</option>`).join(''));
+    if (!$('#f-con')._filled) {
+      $('#cs-delay').value = i.line_delay; $('#cs-telnet').checked = i.telnet; $('#cs-tport').value = i.telnet_port; $('#cs-macros').value = i.macros_text;
+      $('#f-con')._filled = true;
+    }
+    setHTML('#c-logs', (i.logs || []).map(l => `<tr><td class="l"><a href="/api/console/log/${encodeURIComponent(l.name)}" download style="color:var(--text)">${esc(l.name.replace(/\.log$/, ''))}</a>${l.live ? ' <span class="chip ok">live</span>' : ''}</td><td>${l.size < 1024 ? l.size + ' B' : (l.size / 1024).toFixed(l.size < 10240 ? 1 : 0) + ' KB'}</td></tr>`).join('')
+      || '<tr><td class="sub">No logs yet. One is written for each time the cable is plugged in.</td></tr>');
+  }
+  if (i.telnet && i.telnet_up) $('#con-viewers2').title = `telnet ${location.hostname} ${i.telnet_port}`;
+  renderConDeck();
+}
+$('#c-ph').onclick = e => { const b = e.target.closest('[data-ph]'); if (b) setPhosphor(b.dataset.ph); };
+const setFont = d => { if (!CON.term) return; const f = Math.max(9, Math.min(28, CON.term.options.fontSize + d)); CON.term.options.fontSize = f; lsSet('pd-font', f); fitTerm(); };
+$('#c-fminus').onclick = () => setFont(-1);
+$('#c-fplus').onclick = () => setFont(1);
+$('#c-full').onclick = () => { const el = $('#screen'); document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen && el.requestFullscreen().then(() => setTimeout(fitTerm, 100)); };
+document.addEventListener('fullscreenchange', () => setTimeout(fitTerm, 100));
+$('#c-clear').onclick = () => { if (CON.term) CON.term.clear(); conSend({ t: 'clear' }); CON.term && CON.term.focus(); };
+$('#c-break').onclick = () => { conSend({ t: 'break' }); CON.term && CON.term.focus(); };
+$('#c-stoppaste').onclick = () => conSend({ t: 'paste_stop' });
+$('#c-macros').onclick = e => { const b = e.target.closest('[data-cmd]'); if (b && !b.disabled) { conSend({ t: 'macro', d: b.dataset.cmd }); CON.term && CON.term.focus(); } };
+$('#c-paste').onclick = () => { $('#pa-text').value = ''; $('#pa-count').textContent = ''; $('#d-paste').showModal(); $('#pa-text').focus(); };
+$('#pa-text').oninput = () => { const n = $('#pa-text').value.split(/\r\n|\r|\n/).filter((l, i, a) => l || i < a.length - 1).length; $('#pa-count').textContent = n ? `${n} line${n === 1 ? '' : 's'}` : ''; };
+$('#d-paste').onclose = () => { if ($('#d-paste').returnValue === 'send' && $('#pa-text').value.trim()) conSend({ t: 'paste', d: $('#pa-text').value }); CON.term && CON.term.focus(); };
+$('#f-login').onsubmit = async e => {
+  e.preventDefault();
+  try { await api('/api/console/login', { password: $('#c-pw').value }); $('#c-pw').value = ''; $('#c-loginerr').hidden = true; $('#f-con')._filled = false; await conRefresh(); CON.term && CON.term.focus(); }
+  catch (err) { $('#c-loginerr').textContent = err.message; $('#c-loginerr').hidden = false; }
+};
+$('#f-con').onsubmit = async e => {
+  e.preventDefault();
+  try {
+    await api('/api/console/settings', { console_port: $('#cs-port').value, console_baud: +$('#cs-baud').value, console_line_delay: +$('#cs-delay').value,
+      console_telnet: $('#cs-telnet').checked, console_telnet_port: +$('#cs-tport').value, console_macros: $('#cs-macros').value });
+    flash($('#cs-msg'), 'Saved', true);
+  } catch (err) { flash($('#cs-msg'), err.message); }
+  conRefresh();
+};
+$('#f-pw').onsubmit = async e => {
+  e.preventDefault();
+  if (!$('#pw-new').value) return flash($('#pw-msg'), 'Type a new password');
+  try { await api('/api/console/password', { current: $('#pw-cur').value, new: $('#pw-new').value }); flash($('#pw-msg'), 'Password saved. Other open consoles must unlock again.', true); $('#pw-cur').value = $('#pw-new').value = ''; }
+  catch (err) { flash($('#pw-msg'), err.message); }
+  conRefresh();
+};
+$('#pw-remove').onclick = async () => {
+  if (!confirm('Remove the console password? Anyone who can open this page could then use the switch console, and the telnet port turns off.')) return;
+  try { await api('/api/console/password', { new: '' }); flash($('#pw-msg'), 'Password removed', true); } catch (err) { flash($('#pw-msg'), err.message); }
+  conRefresh();
+};
+$('#pw-logout').onclick = async () => { await api('/api/console/logout').catch(() => {}); if (CON.ws) CON.ws.close(); conRefresh(); };
+$('#c-logclear').onclick = async () => { if (confirm('Delete all saved console logs (except the one being written)?')) { await api('/api/console/logs/clear').catch(() => {}); conRefresh(); } };
+setInterval(() => { if (view === 'console' && CON.info) { renderConDeck(); } }, 1000);
+setInterval(() => { if (view === 'console' && CON.started) conRefresh(); }, 15000);
+
+// ---------- watchdog ----------
+const cBc = new Chart('#c-bc', { ago: true, minTop: 20, axis: v => parseFloat(v.toPrecision(3)) + '' });
+const SEV = { crit: 'err', warn: 'warn', info: 'on' };
+function renderWatch() {
+  const w = S.watch;
+  if (!w) return;
+  const a = w.active, now = w.now;
+  const badge = $('#t-watch');
+  badge.hidden = !a.total; badge.textContent = a.total;
+  if (view !== 'watch') return;
+  $('#w-lamp').className = 'lamp ' + (a.total ? 'alarm' : 'clear');
+  $('#w-lamp').innerHTML = !w.on ? '<span class="dot"></span>off' : !w.listening ? '<span class="dot err"></span>not listening'
+    : a.total ? `<span class="dot err live" style="background:var(--crit)"></span>${a.total} problem${a.total === 1 ? '' : 's'}` : '<span class="dot on"></span>all clear';
+  $('#w-err').hidden = !w.error; $('#w-err').textContent = w.error || '';
+  const rogue = w.dhcp.filter(d => !d.lease && !d.trusted).length;
+  $('#ww-dhcp').classList.toggle('alarm', a.rogue > 0); $('#ww-dhcp').classList.toggle('off', !w.dhcp.length);
+  setSeg('#w-ndhcp', w.dhcp.length, 2);
+  $('#w-ndhcp2').textContent = w.dhcp.length ? (rogue ? `${rogue} rogue` : 'all trusted') : 'none heard';
+  $('#ww-dup').classList.toggle('alarm', a.conflicts > 0); $('#ww-dup').classList.toggle('off', !a.conflicts);
+  setSeg('#w-ndup', a.conflicts, 2);
+  const last = w.rates.at(-1) || [0, 0, 0];
+  $('#ww-bc').classList.toggle('alarm', !!w.storm);
+  setSeg('#w-bc', w.listening ? last[1] : '----', 5);
+  $('#w-bc2').textContent = w.storm ? `STORM · peak ${w.storm.peak}` : `storm at ${w.limit}`;
+  const st = w.stp;
+  $('#ww-stp').classList.toggle('off', !st.seen); $('#ww-stp').classList.toggle('alarm', !!(st.last_tc && now - st.last_tc < 300));
+  setSeg('#w-ntc', st.tc, 3);
+  $('#w-ntc2').textContent = st.last_tc ? 'last ' + fmtDur(now - st.last_tc) + ' ago' : st.seen ? 'none since start' : 'no BPDUs heard';
+  $('#ww-ra').classList.toggle('off', !w.ra.length); $('#ww-ra').classList.toggle('alarm', a.ra > 0);
+  setSeg('#w-nra', w.ra.length, 2);
+
+  const sc = w.scan;
+  $('#w-scan').textContent = !sc.every ? 'scan off, listening only' : sc.last ? `scan every ${sc.every} s · last ${fmtDur(now - sc.last.t)} ago: ${sc.last.answers} answer${sc.last.answers === 1 ? '' : 's'}` : `scan every ${sc.every} s`;
+  setHTML('#wd-dhcp', w.dhcp.map(d => {
+    const status = d.lease ? '<span class="chip ok">lease server</span>' : d.trusted ? '<span class="chip ok">trusted</span>' : '<span class="chip bad">rogue</span>';
+    const btn = d.lease ? '' : `<button class="btn ghost" data-trust="${esc(d.id)}" data-remove="${d.trusted ? 1 : ''}">${d.trusted ? 'Untrust' : 'Trust'}</button>`;
+    return `<tr><td class="mono">${esc(d.id)}${d.relay ? `<div class="sub">via relay ${esc(d.relay)}</div>` : ''}</td><td class="l mono">${esc(d.mac)}</td>
+      <td class="l mono">${esc(d.offered || '—')}${d.prefix != null ? '/' + d.prefix : ''}</td><td class="l mono">${esc(d.router || '—')}</td>
+      <td class="l mono">${esc((d.dns || []).join(', ') || '—')}</td><td>${ago(d.last)}</td><td class="l">${status}</td><td>${btn}</td></tr>`;
+  }).join('') || `<tr><td colspan="8" class="sub">${w.listening ? 'No DHCP server has answered yet.' : 'Not listening.'}</td></tr>`);
+
+  const bc = [{ name: 'Broadcast', color: C.s[1], pts: w.rates.map(r => [now - r[0], r[1]]) }, { name: 'Multicast', color: C.s[0], pts: w.rates.map(r => [now - r[0], r[2]]) }];
+  legend('#lg-bc', bc); cBc.set(bc, 150);
+  setHTML('#w-talk', w.talkers.map(t => `<tr><td class="mono">${esc(t.mac)}</td><td class="l mono">${esc(t.ip || '—')}</td><td>${t.pps < 0.1 ? '&lt;0.1' : t.pps}</td></tr>`).join('') ||'<tr><td colspan="3" class="sub">Quiet.</td></tr>');
+  setHTML('#w-dups', w.conflicts.map(c => `<tr><td class="mono">${esc(c.ip)}</td><td class="l mono">${c.macs.map(esc).join('<br>')}</td><td>${c.n}</td><td>${ago(c.t)}</td></tr>`).join('') || '<tr><td colspan="4" class="sub">None.</td></tr>');
+  $('#w-racard').hidden = !w.ra.length;
+  setHTML('#w-ra', w.ra.map(r => `<tr><td class="mono">${esc(r.ip)}</td><td class="l mono">${esc(r.mac)}</td><td class="l mono">${esc((r.prefixes || []).join(', ') || '—')}</td><td>${ago(r.last)}</td>
+    <td class="l">${r.trusted ? '<span class="chip ok">trusted</span>' : '<span class="chip warn">unknown</span>'}</td><td><button class="btn ghost" data-trust="${esc(r.mac)}" data-remove="${r.trusted ? 1 : ''}">${r.trusted ? 'Untrust' : 'Trust'}</button></td></tr>`).join(''));
+  setHTML('#w-stp', [['Root bridge', st.root], ['Heard from', st.bridge], ['Root path cost', st.cost], ['Protocol', st.proto], ['Topology changes', st.tc], ['Root changes', st.roots],
+    ['Last BPDU', st.seen ? ago(st.seen) : null], ['Gateway MAC', w.gw_mac]]
+    .map(([k, v]) => `<div><dt>${k}</dt><dd title="${esc(v ?? '')}">${esc(v ?? '—')}</dd></div>`).join(''));
+  setHTML('#w-events', w.events.slice(0, 150).map(e => `<div class="ev"><span class="k" title="${esc(new Date(e.t * 1000).toLocaleString())}">${esc(fmtWhen(e.t))}</span><span class="dot ${SEV[e.sev] || ''}"></span><span>${esc(e.msg)}</span></div>`).join('')
+    || '<div class="empty">Nothing yet. Problems show here and go out to the displays and PorkChopCheck on UDP 47474.</div>');
+  if (!$('#f-watch')._filled) {
+    const c = S.conf;
+    $('#ws-on').checked = c.watch; $('#ws-scan').value = c.watch_scan; $('#ws-storm').value = c.watch_storm; $('#ws-trusted').value = c.watch_trusted;
+    $('#f-watch')._filled = true;
+  }
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-trust]');
+  if (!b) return;
+  try { await api('/api/watch/trust', { value: b.dataset.trust, remove: !!b.dataset.remove }); $('#f-watch')._filled = false; } catch (err) { alert(err.message); }
+  poll();
+});
+$('#w-scannow').onclick = () => api('/api/watch/scan').catch(err => alert(err.message)).then(() => setTimeout(poll, 4500));
+$('#w-clear').onclick = () => { if (confirm('Clear the event list?')) api('/api/watch/clear').then(poll); };
+$('#f-watch').onsubmit = async e => {
+  e.preventDefault();
+  try { await api('/api/settings', { watch: $('#ws-on').checked, watch_scan: +$('#ws-scan').value, watch_storm: +$('#ws-storm').value, watch_trusted: $('#ws-trusted').value }); flash($('#ws-msg'), 'Saved', true); $('#f-watch')._filled = false; }
+  catch (err) { flash($('#ws-msg'), err.message); }
+  poll();
+};
+
+// ---------- wake ----------
+const selected = new Set();
+let wkGroup = null;
+function renderWake() {
+  const w = S.wol;
+  if (!w || view !== 'wake') return;
+  const hosts = w.hosts, up = hosts.filter(h => h.up).length, waking = hosts.filter(h => h.waking && h.waking.up_in == null && !h.up);
+  setSeg('#wk-n', hosts.length, 3); $('#wkw-n').classList.toggle('off', !hosts.length);
+  setSeg('#wk-up', up, 3); $('#wkw-up').classList.toggle('off', !up);
+  setSeg('#wk-wake', waking.length, 3); $('#wkw-wake').classList.toggle('off', !waking.length);
+  $('#wk-wake2').textContent = waking.length ? 'waiting for ping' : 'none';
+  const boots = hosts.filter(h => h.waking && h.waking.up_in != null).sort((a, b) => a.waking.ago - b.waking.ago);
+  setSeg('#wk-boot', boots.length ? boots[0].waking.up_in : '---', 3); $('#wkw-boot').classList.toggle('off', !boots.length);
+  const job = w.job, running = job && !job.done_at;
+  $('#wk-lamp').innerHTML = running ? `<span class="dot live"></span>waking ${job.done} of ${job.total}` : `<span class="dot ${up ? 'on' : ''}"></span>${up} of ${hosts.length} up`;
+  $('#wk-stop').hidden = !running;
+  $('#wk-all').disabled = running || !hosts.length;
+  const groups = [...new Set(hosts.map(h => h.group).filter(Boolean))].sort();
+  if (wkGroup && !groups.includes(wkGroup)) wkGroup = null;
+  setHTML('#wk-groups', groups.length ? ['<span class="sub">Group</span>', `<button class="key${wkGroup ? '' : ' sel'}" data-g="">All</button>`, ...groups.map(g => `<button class="key${g === wkGroup ? ' sel' : ''}" data-g="${esc(g)}">${esc(g)}</button>`)].join('') : '');
+  const shown = hosts.filter(h => !wkGroup || h.group === wkGroup);
+  $('#wk-all').textContent = wkGroup ? `Wake ${wkGroup}` : 'Wake all';
+  for (const id of [...selected]) if (!hosts.some(h => h.id === id)) selected.delete(id);
+  $('#wk-sel').disabled = running || !selected.size;
+  $('#wk-sel').textContent = selected.size ? `Wake selected (${selected.size})` : 'Wake selected';
+  const n = wkGroup ? shown.length : hosts.length;
+  $('#wk-note').textContent = running ? `One magic packet every ${job.stagger} s, so the machines don't all draw power at once.`
+    : n > 1 ? `Wakes ${n} machines ${w.stagger} s apart: about ${fmtDur(Math.max(0, n - 1) * w.stagger)}.` : '';
+  if (document.activeElement !== $('#wk-stagger')) $('#wk-stagger').value = w.stagger;
+  setHTML('#wk-list', shown.map(h => {
+    const wk = h.waking, wakingNow = wk && wk.up_in == null && !h.up;
+    const state = wakingNow ? 'waking' : h.up ? 'ready' : h.up === false ? 'off' : '';
+    const word = wakingNow ? `waking · ${wk.ago} s` : h.up ? (wk && wk.up_in != null ? `up · booted in ${wk.up_in} s` : 'up') : h.up === false ? 'down' : h.cur_ip ? 'checking' : 'no IP yet';
+    return `<div class="mrow"><input type="checkbox" data-sel="${h.id}"${selected.has(h.id) ? ' checked' : ''} aria-label="Select ${esc(h.name)}">
+      <span class="sled ${state}"></span>
+      <div class="who"><b>${esc(h.name)}</b><span class="k">${esc(word)}</span></div>
+      <span class="k grp">${esc(h.group || '')}</span>
+      <span class="k macc mono">${esc(h.mac)}</span>
+      <div class="ipc mono" style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis">${esc(h.cur_ip || '—')}${h.learned ? '<small class="sub" style="display:block">from ARP</small>' : ''}</div>
+      <div class="num ping">${h.ms != null ? (h.ms < 10 ? h.ms.toFixed(2) : h.ms.toFixed(0)) : '—'}<small>ms</small></div>
+      <div class="keys"><button class="key" data-wake="${h.id}"${running ? ' disabled' : ''}>Wake</button><button class="key" data-edit="${h.id}">Edit</button><button class="key" data-del="${h.id}" title="Delete">✕</button></div></div>`;
+  }).join('') || '<div class="empty">No machines saved. Add one on the left, import a list, or pick from "Seen on the network".</div>');
+  $('#seen-n').textContent = w.seen.length ? w.seen.length : '';
+  setHTML('#seen', w.seen.map(x => `<tr><td class="mono">${esc(x.mac)}</td><td class="l mono">${esc(x.ip)}</td><td><button class="btn ghost" data-add="${esc(x.mac)}" data-ip="${esc(x.ip)}">Add</button></td></tr>`).join('')
+    || `<tr><td class="sub">${S.watch && S.watch.listening ? 'Nothing new heard yet.' : 'Turn on the Watchdog to fill this in.'}</td></tr>`);
+}
+function editMachine(h) {
+  $('#m-id').value = h ? h.id : ''; $('#m-name').value = h ? h.name : ''; $('#m-mac').value = h ? h.mac : ''; $('#m-ip').value = h ? h.ip || '' : '';
+  $('#m-group').value = h ? h.group || '' : ''; $('#m-bcast').value = h ? h.bcast || '' : '';
+  $('#m-title').textContent = h ? 'Edit machine' : 'Add a machine'; $('#m-go').textContent = h ? 'Save' : 'Add'; $('#m-cancel').hidden = !h;
+}
+$('#wk-list').onclick = async e => {
+  const t = e.target.closest('[data-wake],[data-edit],[data-del]');
+  if (!t) return;
+  const h = S.wol.hosts.find(x => x.id === (t.dataset.wake || t.dataset.edit || t.dataset.del));
+  if (!h) return;
+  if (t.dataset.edit) { editMachine(h); $('#m-name').focus(); return; }
+  if (t.dataset.del) { if (confirm(`Delete ${h.name}?`)) { await api('/api/wol/delete', { id: h.id }).catch(err => alert(err.message)); selected.delete(h.id); } return poll(); }
+  await api('/api/wol/wake', { ids: [h.id] }).catch(err => alert(err.message));
+  poll();
+};
+$('#wk-list').onchange = e => { const c = e.target.closest('[data-sel]'); if (c) { c.checked ? selected.add(c.dataset.sel) : selected.delete(c.dataset.sel); renderWake(); } };
+$('#wk-groups').onclick = e => { const b = e.target.closest('[data-g]'); if (b) { wkGroup = b.dataset.g || null; renderWake(); } };
+$('#wk-all').onclick = async () => {
+  const ids = wkGroup ? S.wol.hosts.filter(h => h.group === wkGroup).map(h => h.id) : null;
+  await api('/api/wol/wake', ids ? { ids } : {}).catch(err => alert(err.message));
+  poll();
+};
+$('#wk-sel').onclick = async () => { await api('/api/wol/wake', { ids: [...selected] }).catch(err => alert(err.message)); selected.clear(); poll(); };
+$('#wk-stop').onclick = () => api('/api/wol/stop').then(poll);
+$('#wk-stagger').onchange = () => api('/api/settings', { wol_stagger: +$('#wk-stagger').value }).catch(err => alert(err.message)).then(poll);
+$('#f-mach').onsubmit = async e => {
+  e.preventDefault();
+  try {
+    await api('/api/wol/save', { id: $('#m-id').value, name: $('#m-name').value, mac: $('#m-mac').value, ip: $('#m-ip').value, group: $('#m-group').value, bcast: $('#m-bcast').value });
+    flash($('#m-msg'), $('#m-id').value ? 'Saved' : 'Added', true); editMachine(null);
+  } catch (err) { flash($('#m-msg'), err.message); }
+  poll();
+};
+$('#m-cancel').onclick = () => editMachine(null);
+$('#f-imp').onsubmit = async e => {
+  e.preventDefault();
+  try { const r = await api('/api/wol/import', { text: $('#imp-text').value }); $('#imp-msg').textContent = `Added or updated ${r.added}.` + (r.errors.length ? ' ' + r.errors.join('; ') : ''); if (!r.errors.length) $('#imp-text').value = ''; }
+  catch (err) { $('#imp-msg').textContent = err.message; }
+  poll();
+};
+$('#f-adhoc').onsubmit = async e => {
+  e.preventDefault();
+  try { await api('/api/wol/wake', { mac: $('#ah-mac').value }); flash($('#ah-msg'), 'Magic packet sent', true); } catch (err) { flash($('#ah-msg'), err.message); }
+};
+$('#seen').onclick = e => { const b = e.target.closest('[data-add]'); if (b) { editMachine(null); $('#m-mac').value = b.dataset.add; $('#m-ip').value = b.dataset.ip; $('#m-name').focus(); } };
+
 // ---------- polling ----------
 let timer = null;
 async function poll() {
@@ -601,13 +1230,14 @@ async function poll() {
     const r = await fetch('/api/state', { cache: 'no-store' });
     S = await r.json();
     $('#offline').hidden = true;
-    render();
   } catch (err) {
     $('#offline').hidden = false;
     $('#h-dot').className = 'dot err';
   }
+  if (S) try { render(); } catch (err) { console.error(err, err.stack); }
   timer = setTimeout(poll, S && S.speed.running ? 500 : 1000);
 }
+showView();
 poll();
 </script>
 </body>

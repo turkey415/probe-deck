@@ -2,6 +2,11 @@
 
 A pocket gigabit **network probe** with its own web page. Plug it into any switch port and it is powered by PoE. Within a few seconds the page shows what is on the other end of the cable: which switch and port, which VLAN, whether DHCP, DNS and the internet work, and how fast the port really is.
 
+It also does three other jobs, each on its own tab:
+- **Console**: plug a USB console cable into a switch and use its console from the web page (or over telnet).
+- **Watchdog**: catches rogue DHCP servers, IP conflicts, gateway spoofing, broadcast storms, spanning tree changes and rogue IPv6 routers.
+- **Wake**: Wake-on-LAN for every machine in the room, with a staggered "wake all".
+
 It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same look as [iPerf Deck](https://github.com/turkey415/Perf-Deck). The probe joins Perf-Deck's network of stations, so the two can test each other.
 
 ![Probe Deck](docs/screenshot.png)
@@ -43,7 +48,33 @@ It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same l
 - CPU temperature, load, memory and uptime, plus **Check now** and **Renew DHCP** buttons.
 - Works on a phone: the layout stacks to one column.
 
-**No login.** Like Perf-Deck, the page has no password. Only use it on networks you trust.
+### Console (USB serial cable to a switch)
+- A **web terminal** (xterm.js, served by the probe, so no internet is needed) on any USB serial adapter: FTDI, Prolific, CH340, CP210x. Amber, green or white phosphor; full screen; text size.
+- **Break** button, for Cisco password recovery and ROMMON (send it in the first 60 s of boot).
+- **Paced paste**: a pasted config goes out one line at a time, and each line waits for the switch's echo, so a 3560 at 9600 baud doesn't drop characters. A multi-line paste into the terminal is paced the same way.
+- **Macro keys**: one click for `show interfaces status`, `show vlan brief`, `write memory`… Edit the list on the page.
+- **Session logs**: everything the switch prints is saved, one file per time the cable is plugged in, and can be downloaded from the page.
+- Several people can watch the same console. The last 128 KB of output is replayed to anyone who opens it.
+- **Telnet port** (off by default, port 2001): what ser2net does. PuTTY, SecureCRT or `telnet probe-01 2001` reach the same console. In telnet, `Ctrl-]` then `send brk` sends a Break.
+- **Console password.** The console, its settings and the logs sit behind a password (the telnet port asks for it too). Until you set one, the page warns that anyone can use it. The telnet port can't be turned on without one.
+
+### Watchdog (what is wrong with this LAN?)
+A kernel filter passes only broadcast and multicast frames to the watchdog, so speed tests don't load it.
+- **Rogue DHCP**: every 60 s it sends a DHCP Discover (with the broadcast flag, and it never takes the lease) and lists every server that answers, with the address, router and DNS it offers. Servers other than the probe's own lease server are **rogue** until you press **Trust**. Offers heard on the wire count too.
+- **IP conflicts** from ARP: one IP claimed by two MACs, someone else using the probe's address, and anyone **claiming to be the gateway** (ARP spoofing).
+- **Broadcast storms**: broadcasts per second with a chart, an alarm over a limit (1000/s by default) for 3 s, and the **top broadcast senders**, to find the loop or the chatty PC.
+- **Spanning tree**: root bridge, protocol, **topology changes** and root changes, from the BPDUs the switch sends.
+- **IPv6 router advertisements**: a PC sharing its connection (Windows ICS) or a rogue router.
+- **DTP**: says when the port could be talked into a trunk.
+- An **event list** of everything above. Warnings also go out at once on UDP 47474 as an `app: "probe-alert"` message (the displays ignore it; PorkChopCheck can use it), and the probe message gets an `alerts` count.
+
+### Wake (Wake-on-LAN)
+- Save machines with a name, MAC, optional IP and a **group** (a row of seats). Add them by hand, **import** a list (`name, MAC, IP, group` or a CSV), or pick from **Seen on the network** (MACs the watchdog heard in ARP).
+- **Wake all**, wake a group, or wake the ones you tick. Machines wake **2 s apart** by default, so 30 PCs don't all draw power in the same second.
+- An **up/down light** for each machine (ping), and the **boot time**: seconds from the magic packet to the first ping reply. With no IP saved, the watchdog's ARP table supplies one.
+- Magic packets go to 255.255.255.255 and the subnet broadcast on UDP 9 and 7. For another VLAN, give the machine that VLAN's broadcast address (the switch needs `ip directed-broadcast` on that VLAN's interface).
+
+**Login.** Only the console has a password. The rest of the page has none, like Perf-Deck, so only use it on networks you trust.
 
 ## Hardware
 
@@ -90,20 +121,23 @@ DietPi swaps its temporary SSH server for OpenSSH during setup, so SSH warns onc
 ./install.sh root@probe-02.local
 ```
 
-This copies `server.py` and `index.html` to `/opt/probe-deck` and installs and starts the `probe-deck` systemd service. It also turns on CDP in lldpd (Cisco switches send CDP, not LLDP, by default). Run it again after any change to update the probe.
+This copies the Python files, `index.html` and `vendor/` (xterm.js) to `/opt/probe-deck` and installs and starts the `probe-deck` systemd service. It also turns on CDP in lldpd (Cisco switches send CDP, not LLDP, by default). Run it again after any change to update the probe.
 
 Open **http://probe-02.local/**.
 
 ## How it works
 
-- **`server.py`**: one Python 3 file, standard library only. It runs as root because it reads CDP via `lldpcli`, renews DHCP with `ifdown`/`ifup`, and serves on port 80. Background threads:
+- **`server.py`**: Python 3, standard library only (plus `python3-serial` for the console). It runs as root because it reads CDP via `lldpcli`, renews DHCP with `ifdown`/`ifup`, and serves on port 80. Background threads:
   - a link watcher (every 1 s)
   - pings (every 2 s)
   - DNS, internet and neighbour checks (every 30 s, and right after a link change)
   - an iperf3 server keeper
   - Perf-Deck discovery and the probe broadcast (every 3 s)
-- **`index.html`**: one file with no libraries. It polls `/api/state` every second (twice a second during a test).
-- **Files on the probe:** settings in `/etc/probe-deck/config.json`, test history in `/var/lib/probe-deck/history.json`.
+- **`console.py`**: one reader owns the serial port. Output goes to a scrollback buffer, the session log and every attached web terminal or telnet client. **`ws.py`** is a small WebSocket server for the web terminal.
+- **`watchdog.py`**: a raw packet socket with a BPF filter (broadcast/multicast only), plus the DHCP scan.
+- **`wake.py`**: saved machines, magic packets and the ping checks.
+- **`index.html`**: one file. It polls `/api/state` every second (twice a second during a test). The console loads `vendor/xterm.js` the first time you open it.
+- **Files on the probe:** settings in `/etc/probe-deck/config.json`; in `/var/lib/probe-deck`: test history `history.json`, watchdog events `events.json`, saved machines `wol.json`, console logs `console/`.
 
 ### API
 
@@ -118,8 +152,19 @@ Open **http://probe-02.local/**.
 | POST | `/api/recheck` | Run the checks now |
 | POST | `/api/renew` | Drop the address and renew DHCP |
 | POST | `/api/history/clear` | Clear the speed test history |
+| GET | `/api/console` | Console status, ports, and (when logged in) macros and logs |
+| WS | `/ws/console` | The terminal: binary frames are serial output; JSON `{t: in\|paste\|paste_stop\|break\|macro\|clear}` |
+| POST | `/api/console/login`, `/logout`, `/password` | Console password (a cookie, 12 h) |
+| POST | `/api/console/settings` | Port, baud, paste delay, telnet, macros (logged in) |
+| GET | `/api/console/log/<name>` | Download a session log (logged in) |
+| POST | `/api/watch/trust` | `{value: IP or MAC, remove?}` |
+| POST | `/api/watch/scan`, `/api/watch/clear` | DHCP scan now; clear the events |
+| POST | `/api/wol/save`, `/delete`, `/import` | Saved machines |
+| POST | `/api/wol/wake` | `{ids?: [...]}` (none = all), or `{mac}` for a one-off; `/api/wol/stop` |
 
-Cross-site POSTs are refused (an `Origin` header must match `Host`).
+Cross-site POSTs and WebSockets are refused (an `Origin` header must match `Host`).
+
+To try it on a PC without a cable or root: `socat -d pty,raw,echo=0,link=/tmp/ttyPD pty,raw,echo=0,link=/tmp/ttySW`, then `PROBE_DECK_TEST_SERIAL=/tmp/ttyPD python3 server.py --port 8580 --iface <your NIC> --data /tmp/pd --conf /tmp/pd/config.json` and talk to `/tmp/ttySW`. The watchdog needs root.
 
 ### Ports
 
@@ -128,7 +173,10 @@ Cross-site POSTs are refused (an `Origin` header must match `Host`).
 | TCP 80 | The page |
 | TCP 5201 | iperf3 server |
 | UDP 52010 | Perf-Deck discovery (broadcast hello, plus ping/pong for station latency) |
-| UDP 47474 | Probe message broadcast |
+| UDP 47474 | Probe message and `probe-alert` broadcasts |
+| TCP 2001 | Console over telnet (off by default) |
+| UDP 9, 7 | Wake-on-LAN magic packets (sent) |
+| UDP 67/68 | DHCP scan (sent: a Discover every 60 s) |
 | UDP 5353 | mDNS: `<host>.local` and `_probe-deck._tcp` (avahi) |
 
 ## Related

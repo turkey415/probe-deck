@@ -8,6 +8,9 @@ Standard library only. Runs as root (it reads CDP/LLDP, renews DHCP and listens 
   iperf3 server so Perf-Deck can test the probe.
 - Shows up in Perf-Deck: answers its discovery (UDP 52010) like a Perf-Deck station does.
 - Probe message: broadcasts its results on UDP 47474 for the T-Displays and PorkChopCheck.
+- Console: a web terminal (and optional telnet port) on a USB serial cable to a switch console.
+- Watchdog: rogue DHCP, IP conflicts, broadcast storms, spanning tree changes, IPv6 RAs.
+- Wake: Wake-on-LAN for saved machines, with a staggered "wake all".
 """
 import argparse
 import collections
@@ -20,10 +23,16 @@ import threading
 import time
 import urllib.request
 import uuid
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-__version__ = "0.3.0"
+import console as console_mod
+import wake as wake_mod
+import watchdog as watch_mod
+import ws as ws_mod
+
+__version__ = "0.4.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -50,7 +59,11 @@ DEFAULTS = {
     "perfdeck": True,
     "broadcast": True,
     "renew_on_link": True,
+    **console_mod.DEFAULTS,
+    **watch_mod.DEFAULTS,
+    **wake_mod.DEFAULTS,
 }
+VENDOR = {"xterm.js": "text/javascript", "xterm.css": "text/css", "addon-fit.js": "text/javascript"}
 
 HOST_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.\-:]{0,252}")
 
@@ -113,7 +126,8 @@ class Probe:
         self.renewing = False
         self.iperf_srv = None
         self.speed_proc = None
-        self.wake = threading.Event()
+        self.wake_ev = threading.Event()
+        self.watch = self.wake = self.console = None
         DATA.mkdir(parents=True, exist_ok=True)
         try:
             self.history = json.loads((DATA / "history.json").read_text())[-HISTORY_MAX:]
@@ -127,8 +141,28 @@ class Probe:
         except ValueError:
             return parse_targets(DEFAULTS["targets"])
 
-    def save_conf(self, new):
+    def save_conf(self, new, internal=False):
+        """internal=True is for the console module, whose settings sit behind the console password."""
         c = dict(self.conf)
+        if internal:
+            c.update({k: v for k, v in new.items() if k.startswith("console_")})
+            new = {}
+        for k in ("watch_scan", "watch_storm"):
+            if k in new:
+                v = int(new[k])
+                lo, hi = (0, 3600) if k == "watch_scan" else (50, 100000)
+                if not lo <= v <= hi:
+                    raise ValueError(f"{k} must be {lo}-{hi}")
+                if k == "watch_scan" and 0 < v < 10:
+                    raise ValueError("DHCP scan: 0 (off) or at least 10 s")
+                c[k] = v
+        if "watch_trusted" in new:
+            c["watch_trusted"] = ", ".join(watch_mod.norm_trusted(new["watch_trusted"]))
+        if "wol_stagger" in new:
+            v = float(new["wol_stagger"])
+            if not 0 <= v <= 60:
+                raise ValueError("Stagger must be 0-60 s")
+            c["wol_stagger"] = v
         if "name" in new:
             name = re.sub(r"[^\w .\-]", "", str(new["name"]))[:32].strip()
             if not name:
@@ -156,7 +190,7 @@ class Probe:
             if v and not HOST_RE.fullmatch(v):
                 raise ValueError("Bad iperf3 server")
             c["iperf_server"] = v
-        for k in ("iperf_listen", "perfdeck", "broadcast", "renew_on_link"):
+        for k in ("iperf_listen", "perfdeck", "broadcast", "renew_on_link", "watch"):
             if k in new:
                 c[k] = bool(new[k])
         with self.lock:
@@ -165,7 +199,7 @@ class Probe:
         CONF.write_text(json.dumps(c, indent=2))
         with self.lock:
             self.pings = {k: v for k, v in self.pings.items() if k in {t["label"] for t in self.targets()}}
-        self.wake.set()
+        self.wake_ev.set()
 
     # ---------- link + traffic ----------
     def link_loop(self):
@@ -183,7 +217,7 @@ class Probe:
                         self.link["flaps"] = (self.link["flaps"] + [now])[-50:]
                     if up and self.conf["renew_on_link"] and self.started < now - 20:
                         threading.Thread(target=self.renew, daemon=True).start()
-                    self.wake.set()
+                    self.wake_ev.set()
                 elif self.link["since"] is None:
                     self.link["since"] = now
                 if last:
@@ -203,7 +237,7 @@ class Probe:
         finally:
             self.renewing = False
             self.read_net()
-            self.wake.set()
+            self.wake_ev.set()
 
     # ---------- addresses, lease, neighbor ----------
     def read_net(self):
@@ -330,8 +364,8 @@ class Probe:
             self.read_neighbor()
             if self.link["up"]:
                 self.run_checks()
-            self.wake.wait(self.conf["interval"])
-            self.wake.clear()
+            self.wake_ev.wait(self.conf["interval"])
+            self.wake_ev.clear()
             time.sleep(2)  # let a fresh link settle
 
     def run_checks(self):
@@ -643,7 +677,16 @@ class Probe:
             "dns": all(d["ok"] for d in self.checks["dns"]) if self.checks["dns"] else None,
             "inet": (self.checks["http"] or {}).get("ok"),
             "speed": {"down": (last.get("down") or {}).get("bps"), "up": (last.get("up") or {}).get("bps")} if last else None,
+            "alerts": self.watch.active()["total"] if self.watch else None,
         }
+
+    def on_alert(self, ev):
+        """Watchdog problems go out at once, as their own message (the displays ignore apps they don't know)."""
+        bc = self.net.get("broadcast")
+        if bc and self.conf["broadcast"] and self.link["up"]:
+            msg = {"app": "probe-alert", "v": 1, "id": self.id, "name": self.conf["name"], "ip": self.net.get("ip"),
+                   "sev": ev["sev"], "kind": ev["kind"], "msg": ev["msg"][:200], "t": ev["t"]}
+            self.send(self.dsock, msg, bc, PROBE_PORT)
 
     # ---------- state for the page ----------
     def system(self):
@@ -666,7 +709,8 @@ class Probe:
         wait = self.sweep_wait()
         with self.lock:
             return {
-                "id": self.id, "now": time.time(), "started": self.started, "conf": self.conf, "system": self.system(),
+                "id": self.id, "now": time.time(), "started": self.started, "system": self.system(),
+                "conf": {k: v for k, v in self.conf.items() if not k.startswith("console_")},
                 "link": {**self.link, "flaps": len(self.link["flaps"]), "last_flap": self.link["flaps"][-1] if self.link["flaps"] else None,
                          "renewing": self.renewing},
                 "net": self.net, "neighbor": self.neighbor, "pings": pings, "checks": self.checks,
@@ -676,6 +720,9 @@ class Probe:
                                 key=lambda p: (p["name"].lower(), p["ip"])),
                 "sweep": {**{k: v for k, v in self.sweep.items() if k != "cancel"}, "wait": wait, "secs": SWEEP_SECS},
                 "iperf_server": bool(self.iperf_srv and self.iperf_srv.poll() is None),
+                "watch": self.watch.snapshot() if self.watch else None,
+                "wol": self.wake.snapshot() if self.wake else None,
+                "console": self.console.status() if self.console else None,
             }
 
 
@@ -686,35 +733,69 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
-    def send_body(self, code, body, ctype="application/json"):
+    def send_body(self, code, body, ctype="application/json", headers=()):
         if not isinstance(body, bytes):
             body = json.dumps(body).encode()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        for k, v in headers:
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
 
+    def same_origin(self):
+        origin = self.headers.get("Origin")
+        return not origin or re.sub(r"^https?://", "", origin) == self.headers.get("Host")
+
     def do_GET(self):
         path = self.path.split("?")[0]
+        p = self.probe
         if path in ("/", "/index.html"):
             return self.send_body(200, (ROOT / "index.html").read_bytes(), "text/html; charset=utf-8")
         if path == "/api/state":
-            return self.send_body(200, self.probe.snapshot())
+            return self.send_body(200, p.snapshot())
         if path == "/api/probe":
-            return self.send_body(200, self.probe.probe_message())
+            return self.send_body(200, p.probe_message())
+        if path.startswith("/vendor/") and path[8:] in VENDOR:
+            return self.send_body(200, (ROOT / "vendor" / path[8:]).read_bytes(), VENDOR[path[8:]])
+        if path == "/api/console":
+            return self.send_body(200, p.console.info(p.console.authed(self.headers)))
+        if path.startswith("/api/console/log/"):
+            if not p.console.authed(self.headers):
+                return self.send_body(401, {"error": "log in to the console first"})
+            f = p.console.log_path(path.rsplit("/", 1)[1])
+            if not f:
+                return self.send_body(404, {"error": "no such log"})
+            return self.send_body(200, f.read_bytes(), "text/plain; charset=utf-8",
+                                  [("Content-Disposition", f'attachment; filename="{f.name}"')])
+        if path == "/ws/console":
+            # A WebSocket has no CORS: without these checks any web page could type into the switch.
+            if not self.same_origin():
+                return self.send_body(403, {"error": "cross-site request"})
+            if not p.console.authed(self.headers):
+                return self.send_body(401, {"error": "log in to the console first"})
+            self.protocol_version = "HTTP/1.1"
+            sock = ws_mod.WebSocket.accept(self)
+            if sock:
+                p.console.serve_ws(sock)
+            return
         self.send_body(404, {"error": "not found"})
 
     def do_POST(self):
-        origin = self.headers.get("Origin")
-        if origin and re.sub(r"^https?://", "", origin) != self.headers.get("Host"):
+        if not self.same_origin():
             return self.send_body(403, {"error": "cross-site request"})
+        headers = []
         try:
             n = int(self.headers.get("Content-Length") or 0)
-            body = json.loads(self.rfile.read(min(n, 65536)) or b"{}") if n else {}
+            body = json.loads(self.rfile.read(min(n, 2 << 20)) or b"{}") if n else {}
+            if not isinstance(body, dict):
+                raise ValueError("Expected a JSON object")
             path = self.path.split("?")[0]
             p = self.probe
+            con = p.console
+            reply = {"ok": True}
             if path == "/api/settings":
                 p.save_conf(body)
             elif path == "/api/speed/start":
@@ -726,31 +807,90 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/sweep/stop":
                 p.sweep["cancel"] = True
             elif path == "/api/recheck":
-                p.wake.set()
+                p.wake_ev.set()
             elif path == "/api/renew":
                 threading.Thread(target=p.renew, daemon=True).start()
             elif path == "/api/history/clear":
                 with p.lock:
                     p.history = []
                 (DATA / "history.json").write_text("[]")
+            # ----- console -----
+            elif path == "/api/console/login":
+                tok = con.login(body.get("password", ""))
+                if tok:
+                    headers.append(("Set-Cookie", con.cookie(tok)))
+            elif path == "/api/console/logout":
+                tok = SimpleCookie(self.headers.get("Cookie") or "").get(console_mod.COOKIE)
+                if tok:
+                    con.tokens.pop(tok.value, None)
+                headers.append(("Set-Cookie", con.cookie(None)))
+            elif path == "/api/console/password":
+                tok = con.set_password(body.get("current"), body.get("new"), con.authed(self.headers) and con.need_auth())
+                headers.append(("Set-Cookie", con.cookie(tok)))
+            elif path in ("/api/console/settings", "/api/console/logs/clear"):
+                if not con.authed(self.headers):
+                    return self.send_body(401, {"error": "log in to the console first"})
+                if path.endswith("clear"):
+                    con.clear_logs()
+                else:
+                    con.save(body)
+            # ----- watchdog -----
+            elif path == "/api/watch/clear":
+                p.watch.clear_events()
+            elif path == "/api/watch/trust":
+                v = str(body.get("value", "")).strip().lower()
+                watch_mod.norm_trusted(v)
+                cur = watch_mod.norm_trusted(p.conf.get("watch_trusted", ""))
+                if body.get("remove"):
+                    cur = [x for x in cur if x != v]
+                elif v not in cur:
+                    cur.append(v)
+                p.save_conf({"watch_trusted": ", ".join(cur)})
+            elif path == "/api/watch/scan":
+                if not p.watch.sock:
+                    raise ValueError("The watchdog isn't listening")
+                p.watch.send_discover()
+            # ----- wake -----
+            elif path == "/api/wol/save":
+                reply["id"] = p.wake.upsert(body)
+            elif path == "/api/wol/delete":
+                p.wake.delete(str(body.get("id")))
+            elif path == "/api/wol/import":
+                reply.update(p.wake.import_text(body.get("text", "")))
+            elif path == "/api/wol/wake":
+                ids = body.get("ids")
+                if ids is not None and not (isinstance(ids, list) and all(isinstance(x, str) for x in ids)):
+                    raise ValueError("Bad ids")
+                p.wake.wake(ids=ids, mac=body.get("mac"))
+            elif path == "/api/wol/stop":
+                p.wake.stop()
             else:
                 return self.send_body(404, {"error": "not found"})
         except (ValueError, TypeError) as e:
-            return self.send_body(400, {"error": str(e)})
-        self.send_body(200, {"ok": True})
+            return self.send_body(400, {"error": str(e)}, headers=headers)
+        self.send_body(200, reply, headers=headers)
 
 
 def main():
+    global IFACE, DATA, CONF
     ap = argparse.ArgumentParser(description="Probe Deck")
     ap.add_argument("--port", type=int, default=80)
     ap.add_argument("--listen", default="0.0.0.0")
+    ap.add_argument("--iface", default=IFACE, help="wired interface (default eth0)")
+    ap.add_argument("--data", default=str(DATA), help="history, logs and saved machines")
+    ap.add_argument("--conf", default=str(CONF), help="settings file")
     a = ap.parse_args()
+    IFACE, DATA, CONF = a.iface, Path(a.data), Path(a.conf)
     probe = Probe()
     Handler.probe = probe
     probe.read_net()
+    probe.watch = watch_mod.Watchdog(probe, IFACE, DATA, on_alert=probe.on_alert)
+    probe.wake = wake_mod.Wake(probe, IFACE, DATA, watchdog=probe.watch)
+    probe.console = console_mod.Console(probe, DATA)
     for fn in (probe.link_loop, probe.ping_loop, probe.check_loop, probe.iperf_server_loop):
         threading.Thread(target=fn, daemon=True).start()
     probe.start_udp()
+    probe.watch.start()
     srv = ThreadingHTTPServer((a.listen, a.port), Handler)
     srv.daemon_threads = True
     print(f"Probe Deck {__version__} on http://{a.listen}:{a.port}", flush=True)
