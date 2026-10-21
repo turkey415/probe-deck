@@ -1,0 +1,12 @@
+[Unit]
+Description=Probe Deck (network probe web page and tests)
+After=network-online.target lldpd.service
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 -u /opt/probe-deck/server.py --port 80
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
