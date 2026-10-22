@@ -96,7 +96,7 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
   - **admin**: everything, including users, the certificate, the console and the telnet console.
   - **viewer**: every tab, live. Can watch the console and download its logs, and change their own password. Buttons that change things are hidden, and the server refuses them anyway.
 - **Users tab:** add users, change roles, reset passwords, delete. The last admin can't be demoted or deleted, and you can't delete yourself.
-- Passwords are salted PBKDF2 hashes in `/etc/probe-deck/users.json`. Logins last 12 hours and survive a restart. 10 wrong passwords from one address in 5 minutes lock that address out for 5 minutes.
+- Passwords are salted PBKDF2 hashes in `/etc/probe-deck/users.json`. Logins last 30 days and survive a restart. 10 wrong passwords from one address in 5 minutes lock that address out for 5 minutes.
 - **Locked out?** Over SSH on the probe: `python3 /opt/probe-deck/auth.py passwd <name>`, `add <name> admin`, `del <name>` or `list`. The running page picks the change up by itself, and a reset logs that user out. The rest of the page has none, like Perf-Deck, so only use it on networks you trust.
 
 ## Hardware

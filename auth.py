@@ -19,7 +19,7 @@ from http.cookies import SimpleCookie
 from pathlib import Path
 
 COOKIE = "pd_session"
-SESSION_SECS = 12 * 3600
+SESSION_SECS = 30 * 86400   # a login lasts a month
 ROLES = ("admin", "viewer")
 NAME_RE = re.compile(r"[a-z0-9][a-z0-9._\-]{0,31}")
 FAIL_WINDOW, FAIL_MAX, LOCK_SECS = 300, 10, 300
