@@ -58,8 +58,9 @@ SHOTS = [
         ("POE12 / POE36 HOLES", "PoE power flows through", 30, 470, [(103, 835), (300, 1108)], RED, "dot"),
         ("", "the standoffs here", 30, 0, [], RED, "none"),
     ]),
-    (5, "04-hat-under", "04 // STANDOFFS ON THE HAT", [(618, 972, 788, 1094)], [
-        ("4 STANDOFFS", "screw them tight:", 600, 40, [(455, 205), (140, 290)], RED, "dot"),
+    (5, "04-hat-under", "04 // STANDOFFS (IF NEEDED)", [(618, 972, 788, 1094)], [
+        ("4 STANDOFFS", "often already fitted.", 600, 40, [(455, 205), (140, 290)], RED, "dot"),
+        ("", "If not: screw them tight,", 600, 0, [], RED, "none"),
         ("", "they carry the PoE power", 600, 0, [], RED, "none"),
         ("40-PIN SOCKET", "onto the board", 760, 420, [(700, 560)], AMBER, "dot"),
         ("20 MM FAN", "optional, on the", 20, 880, [(440, 690), (190, 530)], AMBER, "dot"),

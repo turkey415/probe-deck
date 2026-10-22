@@ -106,7 +106,7 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 | Part | Notes |
 | --- | --- |
 | **Radxa ZERO 3E** (2 GB is plenty) | RK3566, gigabit Ethernet, 65 × 30 mm. The **3E** has Ethernet; the 3W does not. |
-| **Radxa ZERO 3E PoE HAT** | IEEE 802.3af. Comes with 4 standoffs and 8 screws. **The standoffs and screws carry the power**: PoE does not work without them, so tighten them, and keep metal away from them. |
+| **Radxa ZERO 3E PoE HAT** | IEEE 802.3af. Comes with 4 standoffs and 8 screws, and usually arrives with the standoffs **already screwed onto the HAT**. **The standoffs and screws carry the power**: PoE does not work without them, so tighten them, and keep metal away from them. |
 | **microSD card**, 16–32 GB | The board has no built-in storage. A high-endurance card lasts longer. |
 | Fan (optional) | A 20 mm 5 V fan under the HAT, on the HAT's fan plug (as in the photos). Worth it in a closed case. |
 | **USB console cable** (for the Console tab) | USB-C on the probe to the switch's RJ45 console port. Any FTDI, Prolific, CH340 or CP210x cable works. |
@@ -114,7 +114,7 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 
 ### Putting it together
 
-Radxa's [ZERO 3E PoE HAT guide](https://docs.radxa.com/en/zero/zero3/accessories/3e-poe-hat) has official diagrams. These are photos of probe-01 being built.
+Radxa's [ZERO 3E PoE HAT guide](https://docs.radxa.com/en/zero/zero3/accessories/3e-poe-hat) has official diagrams. These are photos of probe-01 being built. Steps 1–3 show the parts; step 4 is the first thing you might do, and most HATs arrive with it already done.
 
 <table>
 <tr>
@@ -131,7 +131,7 @@ Radxa's [ZERO 3E PoE HAT guide](https://docs.radxa.com/en/zero/zero3/accessories
 </tr>
 <tr>
 <td><b>3. The HAT.</b> The holes marked <b>POE12</b> and <b>POE36</b> are how the power reaches the HAT: through the standoffs. That's why they must be tight.</td>
-<td><b>4. Standoffs on the HAT.</b> Screw the four standoffs into the underside of the HAT. Fit the fan here now if you're using one, and plug it into the HAT's fan connector.</td>
+<td><b>4. Standoffs on the HAT (if needed).</b> The HAT usually arrives with these already on: if yours did, skip to step 5. If not, screw the four standoffs into the underside of the HAT. Fit the fan here now if you're using one, and plug it into the HAT's fan connector.</td>
 </tr>
 <tr>
 <td><img src="docs/hardware/05-stack.jpg" alt="The HAT stacked on the board with the standoffs between them, sitting in the case bottom"></td>
