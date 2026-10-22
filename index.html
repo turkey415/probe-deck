@@ -486,6 +486,20 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 .pc.bad { border-color: #7a2b2b; background: #1d1212; } .pc.bad .v { color: #ff7b7b; } .pc.off { opacity: .5; }
 .cnhead { margin: 6px 2px -6px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--amber); display: flex; align-items: center; gap: 10px; }
 .cnhead .sub { letter-spacing: normal; text-transform: none; }
+/* ---------- Tailscale map ---------- */
+.tsmap { padding: 0; overflow: hidden; background: #03080d; border-color: #10384d; }
+.tsm-wrap { position: relative; aspect-ratio: 975 / 610; width: 100%; background: radial-gradient(ellipse at 50% 40%, #071a26 0%, #02060a 75%); }
+.tsm-wrap svg, .tsm-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tsm-wrap::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px); }
+.tsm-hud { position: absolute; z-index: 2; font: 600 10.5px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .12em; color: #7fdcff; text-transform: uppercase; display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
+.tsm-hud b { color: #21e6ff; font-size: 12px; letter-spacing: .2em; text-shadow: 0 0 8px rgba(33, 230, 255, .6); }
+.tsm-hud.tl { top: 12px; left: 14px; } .tsm-hud.tr { top: 12px; right: 14px; text-align: right; color: #ffb22e; text-shadow: 0 0 6px rgba(255, 178, 46, .5); }
+.tsm-hud.bl { bottom: 10px; left: 14px; flex-direction: row; flex-wrap: wrap; gap: 4px 14px; color: #6aa9c2; letter-spacing: .06em; }
+.tsm-hud.bl i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; box-shadow: 0 0 6px currentColor; }
+.tsm-hud.bl i.dm { width: 7px; height: 7px; background: none; border: 1.5px solid #ff3df2; transform: rotate(45deg); border-radius: 0; box-shadow: none; }
+.tsm-hud.br { bottom: 10px; right: 14px; text-align: right; color: #6aa9c2; letter-spacing: .06em; max-width: 40%; }
+.tsm-foot { padding: 8px 14px 10px; border-top: 1px solid #10384d; line-height: 1.5; }
+@media (max-width: 700px) { .tsm-hud.bl, .tsm-hud.br { display: none; } }
 tr.dim { opacity: .55; }
 .plist { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 14px; font-size: 12.5px; }
 .plist div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed #2a2a27; padding: 2px 0; }
@@ -1004,12 +1018,34 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
       <label class="chk"><input type="checkbox" id="tsx-ssh"><span>Tailscale SSH<small>SSH to the probe with tailnet logins, under your tailnet's SSH rules.</small></span></label>
       <label class="chk"><input type="checkbox" id="tsx-shields"><span>Shields up<small>Block all incoming tailnet connections, this page included.</small></span></label>
       <label class="chk"><input type="checkbox" id="tsx-auto"><span>Update Tailscale automatically</span></label>
+      <label class="chk"><input type="checkbox" id="tsx-geo"><span>City-level map locations<small>Looks up public IPs (the probe's, and devices with a direct connection) at ip-api.com. Off: devices sit at their nearest Tailscale relay city.</small></span></label>
       <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="tsx-smsg"></span></div>
     </form>
   </section>
 </aside>
 <main>
   <div class="note" id="ts-locked" hidden>You're a viewer: only admins can change Tailscale.</div>
+  <section class="card tsmap" aria-label="Tailnet map">
+    <div class="tsm-wrap" id="tsm-wrap">
+      <svg id="tsm-svg" viewBox="0 0 975 610" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+        <defs>
+          <pattern id="tsm-grid" width="24.375" height="24.4" patternUnits="userSpaceOnUse"><path d="M24.375 0H0V24.4" fill="none" stroke="#0f3346" stroke-width=".6"/></pattern>
+          <radialGradient id="tsm-vig" cx="50%" cy="45%" r="70%"><stop offset="60%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity=".75"/></radialGradient>
+          <filter id="tsm-glow" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="975" height="610" fill="url(#tsm-grid)"/>
+        <path id="tsm-nation" fill="#071622" stroke="#19c8ff" stroke-width="1.1" stroke-opacity=".85" filter="url(#tsm-glow)"/>
+        <path id="tsm-states" fill="none" stroke="#19c8ff" stroke-width=".45" stroke-opacity=".28"/>
+        <rect width="975" height="610" fill="url(#tsm-vig)"/>
+      </svg>
+      <canvas id="tsm-cv"></canvas>
+      <div class="tsm-hud tl"><b>TAILNET · LIVE TRAFFIC</b><span id="tsm-stat">—</span></div>
+      <div class="tsm-hud tr" id="tsm-clock"></div>
+      <div class="tsm-hud bl"><span><i style="background:#39ff88"></i>direct</span><span><i style="background:#ff3df2"></i>through a relay</span><span><i style="background:#ffb22e"></i>probe sends</span><span><i style="background:#21e6ff"></i>probe receives</span><span><i class="dm"></i>relay city</span></div>
+      <div class="tsm-hud br" id="tsm-away"></div>
+    </div>
+    <div class="sub tsm-foot" id="tsm-foot"></div>
+  </section>
   <div class="note crit" id="ts-note" hidden></div>
   <div class="note" id="ts-health" hidden></div>
   <section class="card deck">
@@ -2664,9 +2700,9 @@ $('#f-cs').onsubmit = async e => {
 let TS = null;
 async function tsRefresh() {
   try { const r = await fetch('/api/tailscale', { cache: 'no-store' }); if (r.status === 401) return showGate(); TS = await r.json(); } catch { return; }
-  renderTS();
+  renderTS(); tsmUpdate();
 }
-setInterval(() => { if (ME && view === 'ts') tsRefresh(); }, 5000);
+setInterval(() => { if (ME && view === 'ts') tsRefresh(); }, 2000);
 setInterval(() => { if (ME && view !== 'ts') tsRefresh(); }, 60000);
 const fmtB = v => v >= 1e9 ? (v / 1e9).toFixed(1) + ' GB' : v >= 1e6 ? (v / 1e6).toFixed(1) + ' MB' : v >= 1e3 ? (v / 1e3).toFixed(0) + ' kB' : v + ' B';
 function renderTS() {
@@ -2721,7 +2757,7 @@ function renderTS() {
   if (!$('#f-ts')._filled && t.prefs) {
     $('#tsx-host').value = pr.hostname || ''; $('#tsx-dns').checked = !!pr.corp_dns; $('#tsx-routeall').checked = !!pr.route_all;
     $('#tsx-routes').value = (pr.routes || []).join(', '); $('#tsx-exit').checked = !!pr.exit_node; $('#tsx-ssh').checked = !!pr.run_ssh;
-    $('#tsx-shields').checked = !!pr.shields_up; $('#tsx-auto').checked = !!pr.auto_update; $('#f-ts')._filled = true;
+    $('#tsx-shields').checked = !!pr.shields_up; $('#tsx-auto').checked = !!pr.auto_update; $('#tsx-geo').checked = !!t.geoip; $('#f-ts')._filled = true;
   }
 }
 const viaTailnet = () => TS && TS.client_tailnet && !confirm('You are on this page through Tailscale. This cuts your connection to it. Go ahead?');
@@ -2756,9 +2792,159 @@ $('#f-ts').onsubmit = async e => {
   e.preventDefault();
   if ($('#tsx-shields').checked && !TS.prefs.shields_up && viaTailnet()) return;
   await tsDo({ action: 'settings', hostname: $('#tsx-host').value, corp_dns: $('#tsx-dns').checked, route_all: $('#tsx-routeall').checked, routes: $('#tsx-routes').value,
-    exit_node: $('#tsx-exit').checked, run_ssh: $('#tsx-ssh').checked, shields_up: $('#tsx-shields').checked, auto_update: $('#tsx-auto').checked }, 'Saved', '#tsx-smsg');
+    exit_node: $('#tsx-exit').checked, run_ssh: $('#tsx-ssh').checked, shields_up: $('#tsx-shields').checked, auto_update: $('#tsx-auto').checked, geoip: $('#tsx-geo').checked }, 'Saved', '#tsx-smsg');
   $('#f-ts')._filled = false;
 };
+
+// ---------- Tailscale map: devices at their relay city (or looked-up city), arcs to the probe, a pulse per burst of traffic ----------
+const usProj = (() => {   // d3's Albers USA (lower 48 part), the projection the map outline was drawn with
+  const R = Math.PI / 180, y0 = 29.5 * R, y1 = 45.5 * R, s0 = Math.sin(y0), n = (s0 + Math.sin(y1)) / 2, c = 1 + s0 * (2 * n - s0), r0 = Math.sqrt(c) / n;
+  const raw = (l, p) => { const r = Math.sqrt(c - 2 * n * Math.sin(p)) / n; return [r * Math.sin(l * n), r0 - r * Math.cos(l * n)]; };
+  const k = 1300, ctr = raw(-0.6 * R, 38.7 * R);
+  return (lon, lat) => {
+    if (lat < 30 && lon < -150) return [266.92 + (lon + 157.86) * 9, 549.12 - (lat - 21.31) * 9];   // Hawaii inset
+    if (lat > 50 && lon < -128) return [112.29 + (lon + 149.9) * 3.2, 544.42 - (lat - 61.2) * 5.5]; // Alaska inset
+    const [x, y] = raw((lon + 96) * R, lat * R); const p = [487.5 + k * (x - ctr[0]), 305 - k * (y - ctr[1])];
+    return p[0] < -10 || p[0] > 985 || p[1] < -10 || p[1] > 620 || lat < 15 || lon > -50 ? null : p;
+  };
+})();
+const TSM = { prev: {}, pulses: [], last: {}, nodes: [], relays: {}, probe: null, map: false, raf: 0, cv: null, scale: 1 };
+const tsmHash = s => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return (h >>> 0) / 4294967296; };
+async function tsmLoad() {
+  if (TSM.map) return; TSM.map = true;
+  try { const m = await (await fetch('/vendor/us-map.json')).json(); $('#tsm-nation').setAttribute('d', m.nation); $('#tsm-states').setAttribute('d', m.states); } catch { TSM.map = false; }
+}
+function tsmUpdate() {
+  const t = TS;
+  if (!t || view !== 'ts') return;
+  tsmLoad();
+  const run = t.state === 'Running', now = performance.now();
+  const where = (geo, home) => geo && geo.lat != null ? { p: usProj(geo.lon, geo.lat), city: geo.city + (geo.region ? ', ' + geo.region : ''), exact: true }
+    : home && home.lat != null ? { p: usProj(home.lon, home.lat), city: home.name, exact: false } : { p: null, city: home ? home.name : null };
+  const me = where(t.geo, t.home);
+  TSM.probe = run && me.p ? { x: me.p[0], y: me.p[1], name: (t.dns || 'probe').split('.')[0], city: me.city } : null;
+  const groups = {}, away = [], relays = {};
+  const peers = run ? (t.peers || []) : [];
+  for (const p of peers) {
+    const w = where(p.geo, p.home);
+    if (p.home && p.home.lat != null) { const rp = usProj(p.home.lon, p.home.lat); if (rp) relays[p.home.code] = { x: rp[0], y: rp[1], code: p.home.code }; }
+    if (!w.p) { if (p.online) away.push(`${p.name} · ${w.city || 'unknown'}`); continue; }
+    const key = w.p.map(Math.round).join(',');
+    (groups[key] = groups[key] || []).push({ ...p, bx: w.p[0], by: w.p[1], city: w.city, exact: w.exact });
+  }
+  if (t.home && t.home.lat != null) { const rp = usProj(t.home.lon, t.home.lat); if (rp) relays[t.home.code] = { x: rp[0], y: rp[1], code: t.home.code }; }
+  // devices that share a city sit on a small ring around it, in a stable order
+  const nodes = [];
+  for (const g of Object.values(groups)) {
+    g.sort((a, b) => tsmHash(a.id) - tsmHash(b.id));
+    g.forEach((p, i) => {
+      const withProbe = TSM.probe && Math.hypot(p.bx - TSM.probe.x, p.by - TSM.probe.y) < 4;
+      const r = g.length === 1 && !withProbe ? 0 : Math.min(40, 20 + 2.5 * g.length) + 9 * Math.floor(i / 10);
+      const a = -Math.PI / 2 + ((i % 10) + .5) / Math.min(10, g.length) * Math.PI * 2;
+      nodes.push({ ...p, x: p.bx + r * Math.cos(a), y: p.by + r * Math.sin(a), ang: r ? a : null, crowd: g.length });
+    });
+  }
+  // traffic since the last poll: pulses out (probe sends) and in (probe receives)
+  let up = 0, down = 0, links = 0;
+  for (const n of nodes) {
+    const pv = TSM.prev[n.id];
+    if (pv) {
+      const dtx = Math.max(0, n.tx - pv.tx), drx = Math.max(0, n.rx - pv.rx);
+      up += dtx; down += drx;
+      if (dtx || drx) TSM.last[n.id] = now;
+      for (const [bytes, dir] of [[dtx, 1], [drx, -1]]) {
+        const count = bytes ? Math.min(7, 1 + Math.floor(Math.log10(Math.max(1, bytes / 200)))) : 0;
+        for (let i = 0; i < count; i++) TSM.pulses.push({ id: n.id, dir, t0: now + i * (1800 / count), dur: 1300 + Math.random() * 300 });
+      }
+    }
+    if (now - (TSM.last[n.id] || -1e9) < 12000) links++;
+  }
+  TSM.prev = Object.fromEntries(peers.map(p => [p.id, { rx: p.rx, tx: p.tx }]));
+  TSM.nodes = nodes; TSM.relays = relays;
+  const rate = v => v >= 1e6 ? (v / 1e6 / 2).toFixed(1) + ' MB/s' : (v / 1e3 / 2).toFixed(1) + ' kB/s';
+  $('#tsm-stat').textContent = run ? `${peers.filter(p => p.online).length} of ${peers.length} online · ${links} talking · ↑ ${rate(up)} ↓ ${rate(down)}` : 'not connected';
+  setHTML('#tsm-away', away.length ? 'Off the map: ' + away.map(esc).join(' · ') : '');
+  $('#tsm-foot').textContent = !run ? 'Connect Tailscale to see the map.' : t.geoip
+    ? 'Places: the city of each public IP the probe knows (its own, and devices with a direct connection); the rest sit at their nearest Tailscale relay city. Lines show only the probe’s own traffic with each device.'
+    : 'Places: each device sits at its nearest Tailscale relay city (Tailscale doesn’t share devices’ addresses unless they connect directly). Turn on city-level locations in the settings for more. Lines show only the probe’s own traffic with each device.';
+  if (!TSM.raf) TSM.raf = requestAnimationFrame(tsmDraw);
+}
+function tsmArc(a, b, lift = .22) {
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, d = Math.hypot(b.x - a.x, b.y - a.y);
+  return { a, b, c: { x: mx, y: my - d * lift } };
+}
+const tsmAt = (q, u) => ({ x: (1 - u) * (1 - u) * q.a.x + 2 * (1 - u) * u * q.c.x + u * u * q.b.x, y: (1 - u) * (1 - u) * q.a.y + 2 * (1 - u) * u * q.c.y + u * u * q.b.y });
+function tsmRoute(n) {   // the probe to a device: straight when direct, through its relay city when relayed
+  const P = TSM.probe, rl = n.home && TSM.relays[n.home.code];
+  if (n.direct || !rl || Math.hypot(rl.x - n.x, rl.y - n.y) < 3) return { segs: [tsmArc(P, n)], color: n.direct ? '#39ff88' : '#ff3df2' };
+  return { segs: [tsmArc(P, rl, .18), tsmArc(rl, n, .1)], color: '#ff3df2' };
+}
+function tsmDraw(ts) {
+  TSM.raf = 0;
+  if (view !== 'ts' || document.hidden) return;
+  TSM.raf = requestAnimationFrame(tsmDraw);
+  const cv = $('#tsm-cv'), wrap = $('#tsm-wrap'), dpr = devicePixelRatio || 1;
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const g = cv.getContext('2d'), sc = Math.min(W / 975, H / 610), ox = (W - 975 * sc) / 2, oy = (H - 610 * sc) / 2;
+  g.setTransform(dpr * sc, 0, 0, dpr * sc, dpr * ox, dpr * oy);
+  g.clearRect(-ox / sc, -oy / sc, W / sc, H / sc);
+  const now = performance.now(), P = TSM.probe;
+  $('#tsm-clock').textContent = new Date().toLocaleTimeString([], { hour12: false }) + ' · ' + Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop().replace('_', ' ');
+  // a slow sweep across the map
+  const sx = (now / 28 % 1100) - 60, sw = g.createLinearGradient(sx - 60, 0, sx, 0);
+  sw.addColorStop(0, 'rgba(33,230,255,0)'); sw.addColorStop(1, 'rgba(33,230,255,.07)');
+  g.fillStyle = sw; g.fillRect(sx - 60, 0, 60, 610);
+  // relay cities
+  for (const r of Object.values(TSM.relays)) {
+    g.save(); g.translate(r.x, r.y); g.rotate(Math.PI / 4); g.strokeStyle = 'rgba(255,61,242,.75)'; g.lineWidth = 1.3; g.strokeRect(-4, -4, 8, 8); g.restore();
+    g.fillStyle = 'rgba(255,61,242,.75)'; g.font = '600 9px ui-monospace, Menlo, monospace'; g.fillText(r.code.toUpperCase(), r.x + 8, r.y + 12);
+  }
+  // links: faint when idle, bright for a while after traffic
+  const routes = {};
+  if (P) for (const n of TSM.nodes) {
+    if (!n.online) continue;
+    const rt = routes[n.id] = tsmRoute(n), hot = Math.max(0, 1 - (now - (TSM.last[n.id] || -1e9)) / 12000);
+    g.strokeStyle = rt.color; g.lineWidth = 1 + hot * 1.4; g.globalAlpha = .16 + hot * .6;
+    g.setLineDash(hot ? [] : [3, 5]); g.shadowColor = rt.color; g.shadowBlur = hot * 10;
+    for (const q of rt.segs) { g.beginPath(); g.moveTo(q.a.x, q.a.y); g.quadraticCurveTo(q.c.x, q.c.y, q.b.x, q.b.y); g.stroke(); }
+    g.setLineDash([]); g.shadowBlur = 0; g.globalAlpha = 1;
+  }
+  // pulses travel along the route: amber out from the probe, cyan in to it
+  TSM.pulses = TSM.pulses.filter(p => now - p.t0 < p.dur);
+  for (const p of TSM.pulses) {
+    const rt = routes[p.id]; if (!rt || now < p.t0) continue;
+    let u = (now - p.t0) / p.dur; if (p.dir < 0) u = 1 - u;
+    const segs = rt.segs, k = Math.min(segs.length - 1, Math.floor(u * segs.length)), uu = u * segs.length - k;
+    const col = p.dir > 0 ? '#ffb22e' : '#21e6ff';
+    for (let tail = 0; tail < 6; tail++) {
+      const v = Math.max(0, Math.min(1, uu - tail * .018 * p.dir)), pt = tsmAt(segs[k], v);
+      g.globalAlpha = 1 - tail / 6; g.fillStyle = col; g.shadowColor = col; g.shadowBlur = 12;
+      g.beginPath(); g.arc(pt.x, pt.y, 2.8 - tail * .35, 0, Math.PI * 2); g.fill();
+    }
+    g.globalAlpha = 1; g.shadowBlur = 0;
+  }
+  // devices
+  g.font = '600 10px ui-monospace, Menlo, monospace';
+  for (const n of TSM.nodes) {
+    const col = n.online ? '#21e6ff' : '#3c5563', hot = Math.max(0, 1 - (now - (TSM.last[n.id] || -1e9)) / 12000);
+    g.fillStyle = col; g.shadowColor = col; g.shadowBlur = n.online ? 8 + hot * 10 : 0;
+    g.beginPath(); g.arc(n.x, n.y, n.online ? 3.6 : 2.6, 0, Math.PI * 2); g.fill(); g.shadowBlur = 0;
+    if (n.online || n.crowd <= 3) {   // labels point away from the city they ring
+      const left = n.ang != null && Math.cos(n.ang) < -.2, dy = n.ang == null ? -5 : Math.sin(n.ang) * 6 + 3.5;
+      g.textAlign = left ? 'right' : 'left'; g.fillStyle = n.online ? 'rgba(190,240,255,.92)' : 'rgba(110,140,155,.6)';
+      g.fillText(n.name.slice(0, 18), n.x + (left ? -7 : 7), n.y + dy); g.textAlign = 'left';
+    }
+  }
+  // the probe: an amber beacon
+  if (P) {
+    const ph = (now % 2000) / 2000;
+    g.strokeStyle = `rgba(255,178,46,${1 - ph})`; g.lineWidth = 1.5; g.beginPath(); g.arc(P.x, P.y, 5 + ph * 22, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#ffb22e'; g.shadowColor = '#ffb22e'; g.shadowBlur = 16; g.beginPath(); g.arc(P.x, P.y, 5, 0, Math.PI * 2); g.fill(); g.shadowBlur = 0;
+    g.font = '700 11px ui-monospace, Menlo, monospace'; g.fillStyle = '#ffd27a'; g.textAlign = 'center'; g.fillText(P.name.toUpperCase(), P.x, P.y + 19); g.textAlign = 'left';
+  }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && view === 'ts' && !TSM.raf) TSM.raf = requestAnimationFrame(tsmDraw); });
 
 // ---------- polling ----------
 let timer = null;

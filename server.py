@@ -38,7 +38,7 @@ import wake as wake_mod
 import watchdog as watch_mod
 import ws as ws_mod
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -71,13 +71,14 @@ DEFAULTS = {
     **tls_mod.DEFAULTS,
     **netmap_mod.DEFAULTS,
     **cs_mod.DEFAULTS,
+    "ts_geoip": False,
 }
 HTTPS_PORT = 443
 PLAIN_OK = ("/api/probe",)
 OPEN_GET = ("/", "/index.html", "/api/probe", "/api/auth")      # no login needed (the page shell, the displays, login state)
 OPEN_POST = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
 ANY_USER_POST = ("/api/auth/password", "/api/trace", "/api/cs/scan")          # viewers may change their own password and run traces  # the displays poll this over plain HTTP (an ESP32 can't check a self-signed cert)
-VENDOR = {"xterm.js": "text/javascript", "xterm.css": "text/css", "addon-fit.js": "text/javascript"}
+VENDOR = {"xterm.js": "text/javascript", "xterm.css": "text/css", "addon-fit.js": "text/javascript", "us-map.json": "application/json"}
 
 HOST_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.\-:]{0,252}")
 
@@ -215,7 +216,7 @@ class Probe:
             if v and not HOST_RE.fullmatch(v):
                 raise ValueError("Bad iperf3 server")
             c["iperf_server"] = v
-        for k in ("iperf_listen", "perfdeck", "broadcast", "renew_on_link", "watch", "cs_nodes"):
+        for k in ("iperf_listen", "perfdeck", "broadcast", "renew_on_link", "watch", "cs_nodes", "ts_geoip"):
             if k in new:
                 c[k] = bool(new[k])
         with self.lock:
