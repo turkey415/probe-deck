@@ -16,10 +16,11 @@ It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same l
 ![Probe Deck](docs/screenshot.png)
 
 <table>
-<tr><td><b>Console</b><br><img src="docs/console.png" alt="Console tab: a green CRT-style web terminal on a Cisco 3560 console"></td>
-<td><b>Watchdog</b><br><img src="docs/watchdog.png" alt="Watchdog tab: DHCP servers, broadcasts per second, spanning tree"></td></tr>
-<tr><td><b>Wake</b><br><img src="docs/wake.png" alt="Wake tab: saved machines with up/down lights and Wake buttons"></td>
-<td><b>HTTPS</b><br><img src="docs/https.png" alt="HTTPS tab: the probe's certificate, expiry and fingerprint"></td></tr>
+<tr><td width="50%"><b>Switches</b><br><img src="docs/switches.png" alt="Switches tab: hall gauges, firewall and LAN cache monitors, bandwidth monitor and network stats"></td><td width="50%"><b>Ports</b><br><img src="docs/ports.png" alt="The Ports drill-down: environment needles, front panel and the CDP neighbor table"></td></tr>
+<tr><td width="50%"><b>Trace</b><br><img src="docs/trace.png" alt="A host trace: the path from probe-01 through four switches to an access point"></td><td width="50%"><b>Console</b><br><img src="docs/console.png" alt="The green CRT-style web console on a Cisco 3560"></td></tr>
+<tr><td width="50%"><b>Watchdog</b><br><img src="docs/watchdog.png" alt="Watchdog: DHCP servers, broadcasts per second, spanning tree"></td><td width="50%"><b>Wake</b><br><img src="docs/wake.png" alt="Wake-on-LAN: saved machines with up/down lights"></td></tr>
+<tr><td width="50%"><b>HTTPS</b><br><img src="docs/https.png" alt="The HTTPS tab: the certificate, its expiry and fingerprint"></td><td width="50%"><b>Users</b><br><img src="docs/users.png" alt="The Users tab: accounts and roles"></td></tr>
+<tr><td width="50%"><b>Log in</b><br><img src="docs/login.png" alt="The login screen"></td><td></td></tr>
 </table>
 
 ## Features
