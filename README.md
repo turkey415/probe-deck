@@ -12,6 +12,13 @@ It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same l
 
 ![Probe Deck](docs/screenshot.png)
 
+<table>
+<tr><td><b>Console</b><br><img src="docs/console.png" alt="Console tab: a green CRT-style web terminal on a Cisco 3560 console"></td>
+<td><b>Watchdog</b><br><img src="docs/watchdog.png" alt="Watchdog tab: DHCP servers, broadcasts per second, spanning tree"></td></tr>
+<tr><td><b>Wake</b><br><img src="docs/wake.png" alt="Wake tab: saved machines with up/down lights and Wake buttons"></td>
+<td><b>HTTPS</b><br><img src="docs/https.png" alt="HTTPS tab: the probe's certificate, expiry and fingerprint"></td></tr>
+</table>
+
 ## Features
 
 ### Port: what is this jack?
