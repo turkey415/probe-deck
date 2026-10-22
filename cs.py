@@ -6,12 +6,15 @@
   scores. Stats over 1 and 10 minutes: average, min, p95, p99, max, jitter, loss, spikes; latency while a
   speed test runs (bufferbloat); an MTU check (full-size packets without fragmenting); and the switch path
   to the server (Trace) with each port's health.
+- Perf-Deck nodes: every station Perf-Deck discovery finds (UDP 52010) gets the same stats, using ICMP plus
+  Perf-Deck's own UDP ping/pong as the "app reply", so two spots on the LAN can be checked without a game server.
 - Player PCs: the machines saved on the Wake tab (one group, or all), pinged every 2 seconds.
 - Lag events: spanning tree changes, broadcast storms, IP conflicts, link drops, latency spikes and loss.
 - Steam: a TCP connect time to Steam's API, since online-auth servers need it.
 """
 import collections
 import errno
+import json
 import os
 import re
 import socket
@@ -23,7 +26,10 @@ import time
 from gamelan import scan as gscan
 from gamelan import source as gsource
 
-DEFAULTS = {"cs_servers": "", "cs_group": ""}
+DEFAULTS = {"cs_servers": "", "cs_group": "", "cs_nodes": True}
+PERFDECK_TAG = "perf-deck"
+MAX_NODES = 16
+NODE_KEEP = 600            # seconds a node that left stays on the page
 KEEP = 600                 # samples per target: 10 minutes at 1 a second
 TICK_MS = 1000 / 64        # one CS2 server tick
 # what a LAN match wants (milliseconds, percent)
@@ -155,6 +161,10 @@ class Target:
         self.mtu = None
         self.path = None
         self.ip = None
+        self.name = None           # nodes only
+        self.meta = {}
+        self.seen = None
+        self.gone = False
 
 
 class CS:
@@ -169,8 +179,13 @@ class CS:
         self.quiet = set()
         self.found = []
         self.scan_at = None
+        self.started = time.time()
         self.steam = collections.deque(maxlen=120)
-        for fn in (self.icmp_loop, self.a2s_loop, self.slow_loop, self.pc_loop):
+        self.nodes = {}            # Perf-Deck station id -> Target
+        self.nsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.nsock.bind(("", 0))
+        self.npend = {}            # nonce -> (node id, sent, done)
+        for fn in (self.icmp_loop, self.a2s_loop, self.slow_loop, self.pc_loop, self.node_loop, self.node_rx):
             threading.Thread(target=fn, daemon=True).start()
 
     @property
@@ -302,10 +317,92 @@ class CS:
                 self.pcs.pop(k, None)
             time.sleep(max(.1, 2 - (time.time() - t0)))
 
+    # ---------- Perf-Deck nodes ----------
+    def peers(self):
+        if not self.conf.get("cs_nodes", True):
+            return []
+        with self.p.lock:
+            ps = [dict(p) for p in getattr(self.p, "peers", {}).values()]
+        return sorted(ps, key=lambda p: p["name"].lower())[:MAX_NODES]
+
+    def node_loop(self):
+        """Once a second to each Perf-Deck station: ICMP, and Perf-Deck's UDP ping (answered by its app)."""
+        while True:
+            t0 = time.time()
+            self.node_expire()
+            load = self.loaded()
+            live = set()
+            for p in self.peers():
+                live.add(p["id"])
+                with self.lock:
+                    t = self.nodes.get(p["id"])
+                    if not t:
+                        t = self.nodes[p["id"]] = Target()
+                        threading.Thread(target=self.node_first, args=(t, p["ip"]), daemon=True).start()
+                        if t0 - self.started > 30:  # not the ones already there at start-up
+                            self.event("info", "node", f"Perf-Deck node {p['name']} ({p['ip']}) found")
+                    elif t.gone:
+                        self.event("info", "node", f"Perf-Deck node {p['name']} is back")
+                t.name, t.ip, t.seen, t.gone = p["name"], p["ip"], t0, False
+                t.meta = {"version": p.get("version"), "os": p.get("os"), "iperf": p.get("running"), "busy": p.get("busy") or p.get("sweeping")}
+                name = p["name"]
+                self.pinger.send(p["ip"], "node:" + p["id"], lambda ms, t=t, t0=t0, load=load, name=name: self.got(t.icmp, t0, ms, load, name, "ping"))
+                nonce = os.urandom(8).hex()
+                with self.lock:
+                    self.npend[nonce] = (p["id"], time.perf_counter(), lambda ms, t=t, t0=t0, load=load, name=name: self.got(t.a2s, t0, ms, load, name, "app reply"))
+                try:
+                    self.nsock.sendto(json.dumps({"app": PERFDECK_TAG, "t": "ping", "n": nonce}).encode(), (p["ip"], p["ping_port"]))
+                except OSError:
+                    pass
+            with self.lock:
+                for k, t in list(self.nodes.items()):
+                    if k not in live and not t.gone:
+                        t.gone = True
+                        self.event("warn", "node", f"Perf-Deck node {t.name} stopped answering discovery")
+                    if t.gone and t0 - (t.seen or 0) > NODE_KEEP:
+                        self.nodes.pop(k)
+            time.sleep(max(.05, 1 - (time.time() - t0)))
+
+    def node_first(self, t, ip):
+        """A new node gets its MTU and path at once, not at the next minute."""
+        time.sleep(2)
+        t.mtu = self.mtu(ip)
+        t.path = self.path(ip, None)
+
+    def node_rx(self):
+        while True:
+            try:
+                data, addr = self.nsock.recvfrom(2048)
+                t = time.perf_counter()
+                m = json.loads(data)
+            except (OSError, ValueError):
+                continue
+            if not (isinstance(m, dict) and m.get("app") == PERFDECK_TAG and m.get("t") == "pong" and isinstance(m.get("n"), str)):
+                continue
+            with self.lock:
+                p = self.npend.pop(m["n"], None)
+                node = p and self.nodes.get(p[0])
+            if p and node and node.ip == addr[0]:
+                p[2](round((t - p[1]) * 1000, 3))
+
+    def node_expire(self, older=1.0):
+        now = time.perf_counter()
+        with self.lock:
+            dead = [self.npend.pop(k) for k, v in list(self.npend.items()) if now - v[1] > older]
+        for _, _, done in dead:
+            done(None)
+
     def slow_loop(self):
-        """Every minute: MTU, the path to each server, Steam, and the LAN server scan."""
+        """Every minute: MTU, the path to each server and node, Steam, and the LAN server scan."""
         n = 0
         while True:
+            with self.lock:
+                nodes = [t for t in self.nodes.values() if not t.gone and t.ip]
+            for t in nodes:
+                if n % 5 == 0 or t.mtu is None:
+                    t.mtu = self.mtu(t.ip)
+                if n % 2 == 0 or t.path is None:
+                    t.path = self.path(t.ip, t.path)
             for s in self.servers():
                 key, t = self.target(s)
                 ip = self.resolve(t, s["host"])
@@ -396,13 +493,13 @@ class CS:
                 out.append({"t": f, "sev": "bad", "kind": "link", "msg": "The probe's own link dropped"})
         return sorted(out, key=lambda e: -e["t"])[:60]
 
-    def verdict(self, sv, pcs, steam):
+    def verdict(self, sv, pcs, steam, nodes=()):
         reasons = []
         worst = "ok"
         bump = lambda lv: "bad" if "bad" in (lv, worst) else "warn" if "warn" in (lv, worst) else "ok"
-        if not sv:
-            return {"level": None, "reasons": ["Add your game server in the settings (or pick one the scan found)."]}
-        for s in sv:
+        if not sv and not nodes:
+            return {"level": None, "reasons": ["Add your game server in the settings (or pick one the scan found), or start Perf-Deck on a PC to test to it."]}
+        for s in list(sv) + [n for n in nodes if not n["gone"]]:
             st = s["icmp"]["1m"] or s["a2s"]["1m"]
             if not st or st["avg"] is None:
                 worst = "bad"
@@ -420,7 +517,7 @@ class CS:
             if s["mtu"] and not s["mtu"]["ok"]:
                 worst = bump("warn")
                 reasons.append(f"{s['name']}: full-size packets don't get through unfragmented")
-            if s["a2s"]["1m"] and s["a2s"]["1m"]["avg"] is None and s["icmp"]["1m"] and s["icmp"]["1m"]["avg"] is not None:
+            if s.get("kind") != "node" and s["a2s"]["1m"] and s["a2s"]["1m"]["avg"] is None and s["icmp"]["1m"] and s["icmp"]["1m"]["avg"] is not None:
                 worst = bump("warn")
                 reasons.append(f"{s['name']}: answers ping but not the game query: is the server running?")
             for h in (s.get("path") or {}).get("hops") or []:
@@ -465,12 +562,22 @@ class CS:
                 last = d[-1][1] if d else None
                 pcs.append({"id": h["id"], "name": h["name"], "group": h.get("group"), "ip": wake.ip_of(h)[0], "st": st,
                             "up": None if not d else last is not None, "last": last})
+        nodes = []
+        with self.lock:
+            nl = sorted(self.nodes.items(), key=lambda kv: (kv[1].name or "").lower())
+        for nid, t in nl:
+            icmp, rep = list(t.icmp), list(t.a2s)
+            nodes.append({"kind": "node", "key": "node:" + nid, "name": t.name, "host": t.ip, "ip": t.ip, "gone": t.gone,
+                          "seen": t.seen, **t.meta, "mtu": t.mtu, "path": t.path,
+                          "icmp": {"1m": stats(icmp, now, 60), "10m": stats(icmp, now, 600)},
+                          "a2s": {"1m": stats(rep, now, 60), "10m": stats(rep, now, 600)},
+                          "series": {"icmp": [[round(x[0], 1), x[1]] for x in icmp[-300:]], "a2s": [[round(x[0], 1), x[1]] for x in rep[-300:]]}})
         groups = sorted({h.get("group") for h in (wake.hosts if wake else []) if h.get("group")})
         steam = [x[1] for x in self.steam]
         ok = [x for x in steam if x is not None]
-        return {"now": now, "servers": sv, "pcs": pcs, "groups": groups, "group": self.conf.get("cs_group") or "",
+        return {"now": now, "servers": sv, "nodes": nodes, "nodes_on": bool(self.conf.get("cs_nodes", True)), "pcs": pcs, "groups": groups, "group": self.conf.get("cs_group") or "",
                 "servers_text": self.conf.get("cs_servers", ""), "events": self.lag_events(now),
                 "found": self.found, "scan_at": self.scan_at, "loaded": self.loaded(),
                 "steam": {"last": steam[-1] if steam else None, "avg": round(sum(ok) / len(ok), 1) if ok else None, "checks": len(steam)},
-                "verdict": self.verdict(sv, pcs, steam),
+                "verdict": self.verdict(sv, pcs, steam, nodes),
                 "limits": {"ping": [PING_WARN, PING_BAD], "jitter": [JIT_WARN, JIT_BAD], "loss": [LOSS_WARN, LOSS_BAD], "tick_ms": TICK_MS}}

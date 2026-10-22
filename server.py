@@ -37,7 +37,7 @@ import wake as wake_mod
 import watchdog as watch_mod
 import ws as ws_mod
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -214,7 +214,7 @@ class Probe:
             if v and not HOST_RE.fullmatch(v):
                 raise ValueError("Bad iperf3 server")
             c["iperf_server"] = v
-        for k in ("iperf_listen", "perfdeck", "broadcast", "renew_on_link", "watch"):
+        for k in ("iperf_listen", "perfdeck", "broadcast", "renew_on_link", "watch", "cs_nodes"):
             if k in new:
                 c[k] = bool(new[k])
         with self.lock:

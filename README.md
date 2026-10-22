@@ -100,6 +100,7 @@ The Switches tab is the same page as GXL-LANapp's Switches tab (ported from its 
 ### CS2 (is this network fit for a match?)
 Everything about the network that decides a Counter-Strike match, measured from the probe's switch port:
 - **Game servers**: list them (`Name = host:port`) or pick one the **LAN scan** found (the same broadcast the game's server browser sends). For each: **ping** (ICMP, once a second) and **server reply** (the game's own A2S query over UDP, once a second, so it includes the server answering), as needle meters and a 5-minute chart; the server's game, **map** (split-flap), player count and the **players' names and scores**.
+- **Perf-Deck nodes**: every PC running Perf-Deck (found by the same discovery as the Stations list, UDP 52010) gets the same tests and its own card below the servers, probe ↔ node: **ping** (ICMP) and **app reply** (Perf-Deck's UDP ping/pong, answered by the app), once a second, plus MTU and the switch path. No game server needed, so you can check the LAN at each table before the match. They count toward the verdict; switch them off in the settings.
 - **Stats** over 1 and 10 minutes: average, best, p95, p99, worst, **jitter** (also in CS2 ticks: 15.6 ms at 64 tick), **loss**, **spikes**, and **latency during a speed test** (bufferbloat: run a test on the Probe tab and watch it).
 - **MTU**: whether full-size packets reach the server without fragmenting.
 - **Switch path** to the server (from Trace), with each port's load, errors and health.
@@ -275,7 +276,7 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 | POST | `/api/net/add`, `/remove`, `/scan`, `/refresh` | `{host, name?, community?}`, `{id}` (admin) |
 | POST | `/api/net/order`, `/api/net/role` | `{ids}`; `{id, port, role: firewall\|cache\|null}` (admin) |
 | POST | `/api/trace` | `{q: IP, MAC or name}` → `{id}` (any user) |
-| GET | `/api/cs` | The CS2 tab: servers, stats, path, player PCs, lag events, verdict |
+| GET | `/api/cs` | The CS2 tab: servers, Perf-Deck nodes, stats, path, player PCs, lag events, verdict |
 | POST | `/api/cs/scan` | Scan the LAN for game servers now (any user) |
 | GET | `/api/trace/<id>`, `/api/traces` | A trace's steps and result; recent traces |
 | GET | `/api/tls`, `/api/tls/cert.pem` | Certificate details; download the certificate |

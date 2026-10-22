@@ -484,6 +484,8 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 .pc .k { letter-spacing: .04em; text-transform: none; font-size: 10px; }
 .pc.ok { border-color: #2c7a3f; } .pc.ok .v { color: #3dff7a; } .pc.warn { border-color: #6a5320; } .pc.warn .v { color: var(--warn); }
 .pc.bad { border-color: #7a2b2b; background: #1d1212; } .pc.bad .v { color: #ff7b7b; } .pc.off { opacity: .5; }
+.cnhead { margin: 6px 2px -6px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--amber); display: flex; align-items: center; gap: 10px; }
+.cnhead .sub { letter-spacing: normal; text-transform: none; }
 .plist { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 14px; font-size: 12.5px; }
 .plist div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed #2a2a27; padding: 2px 0; }
 /* ---------- login + roles ---------- */
@@ -938,6 +940,7 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
       <label class="f">Servers <span class="sub">One per line: Name = host:port (port 27015 if left out). Up to 8.</span>
         <textarea id="cs-servers" rows="5" spellcheck="false" placeholder="Match 1 = 192.168.1.20:27015&#10;Match 2 = 192.168.1.21:27015"></textarea></label>
       <label class="f">Player PCs <span class="sub">The machines saved on the Wake tab, all or one group.</span><select id="cs-group"></select></label>
+      <label class="chk"><input type="checkbox" id="cs-nodes"><span>Test Perf-Deck nodes<small>Every PC running Perf-Deck on the LAN gets the same stats, probe ↔ node, no game server needed.</small></span></label>
       <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="csx-msg"></span></div>
     </form>
   </section>
@@ -948,7 +951,7 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
   </section>
   <section class="card">
     <h2>What good looks like</h2>
-    <div class="sub" style="line-height:1.7">On a tournament LAN, the probe to the server should see: ping under <b>2 ms</b> (amber up to 5), jitter under <b>1 ms</b>, <b>no</b> loss, no spikes, and full-size packets passing. One CS2 tick is 15.6 ms (64 tick), so jitter is also shown in ticks. "Server reply" is the game's own query (A2S over UDP): it includes the time the server takes to answer, so it runs a little above ping.</div>
+    <div class="sub" style="line-height:1.7">On a tournament LAN, the probe to the server should see: ping under <b>2 ms</b> (amber up to 5), jitter under <b>1 ms</b>, <b>no</b> loss, no spikes, and full-size packets passing. One CS2 tick is 15.6 ms (64 tick), so jitter is also shown in ticks. "Server reply" is the game's own query (A2S over UDP): it includes the time the server takes to answer, so it runs a little above ping. <b>Perf-Deck nodes</b> get the same tests without a game server: "App reply" is Perf-Deck's own UDP ping, answered by the app on that PC, the closest stand-in for a game client's packets.</div>
   </section>
 </aside>
 <main class="gx">
@@ -957,6 +960,8 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
     <div class="wells" id="cs-wells"></div>
   </section>
   <div id="cs-cards" style="display:flex;flex-direction:column;gap:18px"></div>
+  <h2 class="cnhead">Perf-Deck nodes <span class="spacer"></span><span class="sub" id="cn-sub"></span></h2>
+  <div id="cn-cards" style="display:flex;flex-direction:column;gap:18px"></div>
   <section class="card"><h2>Player PCs <span class="spacer"></span><span class="sub" id="cs-pcsub"></span></h2><div class="pcs" id="cs-pcs"></div></section>
   <section class="card"><h2>Lag events <span class="spacer"></span><span class="sub">last 2 hours</span></h2><div class="evlist" id="cs-events"></div></section>
 </main>
@@ -2464,7 +2469,7 @@ function renderTrace() {
 
 
 // ---------- CS2 ----------
-let CSD = null, csCharts = {}, csKeys = '';
+let CSD = null, csCharts = {}, csKeys = null, cnKeys = null;
 const CSLV = { ok: 'var(--good)', warn: 'var(--warn)', bad: 'var(--crit)' };
 const csLv = (v, [w, b]) => v == null ? null : v >= b ? 'bad' : v >= w ? 'warn' : 'ok';
 async function csRefresh() {
@@ -2477,6 +2482,44 @@ const fms = v => v == null ? '—' : v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFix
 function csWell(label, value, sub, lv, cells = 4) {
   return `<div class="well${lv === 'bad' ? ' alarm' : ''}${value == null ? ' off' : ''}"><span class="k">${label}</span>${gSeg(value == null ? '----' : String(value), cells, lv ? (lv === 'ok' ? '#3dff7a' : lv === 'warn' ? '#fab219' : '#ff5a4d') : undefined)}<span class="un">${esc(sub)}</span></div>`;
 }
+const csShell = (p, i) => `<section class="card gx"><div class="cshead" id="${p}h-${i}"></div>
+  <div class="vus" id="${p}n-${i}" style="margin-bottom:14px"></div>
+  <div class="grid2"><div><div class="legend" id="${p}l-${i}"></div><div class="chart" id="${p}c-${i}"></div></div><div class="tablewrap" id="${p}t-${i}"></div></div>
+  <div id="${p}p-${i}" style="margin-top:14px"></div><div id="${p}q-${i}" style="margin-top:12px"></div></section>`;
+const csChart = (p, i) => new Chart(`#${p}c-${i}`, { ago: true, minTop: 2, axis: v => parseFloat(v.toPrecision(3)) + '' });
+function csCard(pre, i, s, d) {
+  const L = d.limits, node = s.kind === 'node';
+  const RP = node ? { title: 'APP REPLY', unit: 'ms · UDP · log', name: 'App reply (Perf-Deck UDP)', col: 'Reply' } : { title: 'SERVER REPLY', unit: 'ms · A2S · log', name: 'Server reply (A2S)', col: 'Reply' };
+  const a = s.icmp['1m'] || {}, g = s.a2s['1m'] || {}, info = s.info;
+  if (node) morph($(`#${pre}h-${i}`), `<span class="sled ${s.gone ? '' : a.avg == null ? 'testing' : csLv(a.avg, L.ping) === 'ok' && !a.loss ? 'ready' : 'busy'}"></span><b>${esc(s.name)}</b>
+    <span class="k" style="text-transform:none">${esc(s.ip || '')}</span><span class="chip ok">Perf-Deck${s.version ? ' ' + esc(s.version) : ''}</span>${s.os ? `<span class="chip">${esc(s.os)}</span>` : ''}
+    ${s.gone ? `<span class="chip warn">gone · last seen ${ago(s.seen)}</span>` : ''}${s.busy ? '<span class="chip warn" title="A speed test is running on this node, so latency is under load">testing</span>' : ''}
+    <span class="spacer"></span>${s.mtu ? `<span class="chip ${s.mtu.ok ? 'ok' : 'warn'}" title="Largest packet that passes without fragmenting">MTU ${s.mtu.mtu ?? '?'}${s.mtu.ok ? ' OK' : ''}</span>` : ''}`);
+  else morph($(`#${pre}h-${i}`), `<span class="sled ${a.avg == null ? 'testing' : csLv(a.avg, L.ping) === 'ok' && !a.loss ? 'ready' : 'busy'}"></span><b>${esc(s.name)}</b>
+    <span class="k" style="text-transform:none">${esc(s.host)}:${s.port}${s.ip && s.ip !== s.host ? ' · ' + esc(s.ip) : ''}</span>
+    ${info ? `<span class="chip ok">${esc(info.game || info.folder)}</span><span class="chip">${info.players}/${info.max_players} players${info.bots ? ` · ${info.bots} bots` : ''}</span>${info.password ? '<span class="chip">password</span>' : ''}${info.vac ? '<span class="chip">VAC</span>' : ''}` : '<span class="chip warn">no game reply</span>'}
+    <span class="spacer"></span>${s.mtu ? `<span class="chip ${s.mtu.ok ? 'ok' : 'warn'}" title="Largest packet that passes without fragmenting">MTU ${s.mtu.mtu ?? '?'}${s.mtu.ok ? ' OK' : ''}</span>` : ''}
+    ${info ? gFlap(pre + 'map' + i, info.map) : ''}`);
+  morph($(`#${pre}n-${i}`), [gNeedle({ title: 'PING', value: a.avg ?? null, max: 100, log: true, unit: 'ms · 1 min · log', readout: fms(a.avg), warn: L.ping[0], crit: L.ping[1], color: CSLV[csLv(a.avg, L.ping) || 'ok'], peak: a.max }),
+    gNeedle({ title: 'JITTER', value: a.jitter ?? null, max: 10, unit: 'ms', readout: fms(a.jitter), warn: L.jitter[0], crit: L.jitter[1], color: CSLV[csLv(a.jitter, L.jitter) || 'ok'] }),
+    gNeedle({ title: 'LOSS', value: a.loss ?? null, max: 10, unit: '% · 1 min', readout: fms(a.loss), warn: L.loss[0], crit: L.loss[1], color: CSLV[csLv(a.loss, L.loss) || 'ok'] }),
+    gNeedle({ title: RP.title, value: g.avg ?? null, max: 100, log: true, unit: RP.unit, readout: fms(g.avg), warn: L.ping[0] * 2, crit: L.ping[1] * 2, color: '#3dd6ff', peak: g.max })].join(''));
+  const now = d.now, series = [{ name: 'Ping (ICMP)', color: C.s[3], pts: s.series.icmp.map(p => [now - p[0], p[1]]) }, { name: RP.name, color: C.s[0], pts: s.series.a2s.map(p => [now - p[0], p[1]]) }];
+  legend(`#${pre}l-${i}`, series); csCharts[pre + i] && csCharts[pre + i].set(series, 300);
+  const row = (label, k, unit, lim) => `<tr><td>${label}</td>${[s.icmp['1m'], s.icmp['10m'], s.a2s['1m'], s.a2s['10m']].map(x => { const val = x ? x[k] : null; const lv = lim ? csLv(val, lim) : null; return `<td class="${lv ? 'lv-' + lv : ''}">${val == null ? '—' : (k === 'spikes' ? String(val) : fms(val)) + unit}</td>`; }).join('')}</tr>`;
+  morph($(`#${pre}t-${i}`), `<table class="cstbl"><thead><tr><th></th><th>Ping 1m</th><th>Ping 10m</th><th>Reply 1m</th><th>Reply 10m</th></tr></thead><tbody>
+    ${row('Average', 'avg', ' ms', L.ping)}${row('Best', 'min', ' ms')}${row('p95', 'p95', ' ms')}${row('p99', 'p99', ' ms', [L.ping[1], 15])}${row('Worst', 'max', ' ms', [10, 30])}
+    ${row('Jitter', 'jitter', ' ms', L.jitter)}${row('Loss', 'loss', '%', L.loss)}${row('Spikes', 'spikes', '', [1, 5])}${row('During a speed test', 'loaded_avg', ' ms', L.ping)}
+    <tr><td>Jitter in ticks</td>${[s.icmp['1m'], s.icmp['10m'], s.a2s['1m'], s.a2s['10m']].map(x => `<td>${x && x.jitter != null ? (x.jitter / L.tick_ms).toFixed(3) : '—'}</td>`).join('')}</tr></tbody></table>`);
+  const pth = s.path;
+  const hp = p => p ? `<span class="${p.level === 'crit' ? 'bad' : p.level === 'warn' ? 'meh' : ''}" title="${esc((p.reasons || []).join('; '))}">${esc(p.port)}${p.busy != null ? ` ${p.busy}%` : ''}${p.errors ? ` · ${p.errors} err` : ''}</span>` : '';
+  morph($(`#${pre}p-${i}`), !pth ? '<span class="sub">The switch path shows here once your switches are added on the Switches tab.</span>' : pth.error ? `<span class="sub">Path: ${esc(pth.error)}</span>` :
+    `<span class="k">Switch path · checked ${ago(pth.at)}</span><div class="hops" style="margin-top:6px"><span class="hop">probe</span>${pth.hops.map(h => {
+      const lvls = [h.in, h.out].filter(Boolean).map(p => p.level);
+      return `<span class="arr">→</span><span class="hop ${lvls.includes('crit') ? 'crit' : lvls.includes('warn') ? 'warn' : ''}">${hp(h.in)}<b>${esc(h.name)}</b>${hp(h.out)}</span>`;
+    }).join('')}<span class="arr">→</span><span class="hop ${pth.end && pth.end.level === 'crit' ? 'crit' : pth.end && pth.end.level === 'warn' ? 'warn' : ''}">${hp(pth.end) || esc(pth.end_port || '')}<b>${esc(s.name)}</b></span></div>`);
+  morph($(`#${pre}q-${i}`), s.players && s.players.length ? `<span class="k">On the server</span><div class="plist" style="margin-top:6px">${s.players.map(p => `<div><span>${esc(p.name || '(connecting)')}</span><span class="k">${p.score} · ${Math.floor(p.seconds / 60)}m</span></div>`).join('')}</div>` : '');
+}
 function renderCS() {
   const d = CSD;
   if (!d) return;
@@ -2485,55 +2528,35 @@ function renderCS() {
   if (view !== 'cs') return;
   $('#cs-big').textContent = v.level === 'ok' ? 'MATCH READY' : v.level === 'warn' ? 'CHECK' : v.level === 'bad' ? 'NOT READY' : 'NO SERVER';
   $('#cs-big').className = 'big ' + (v.level || '');
-  setHTML('#cs-why', v.reasons.slice(0, 6).map(r => `<li>${esc(r)}</li>`).join('') || '<li>Ping, jitter and loss to every server are within LAN limits.</li>');
-  const st = d.servers.map(s => s.icmp['1m']).filter(x => x && x.avg != null);
+  setHTML('#cs-why', v.reasons.slice(0, 6).map(r => `<li>${esc(r)}</li>`).join('') || '<li>Ping, jitter and loss to every server and node are within LAN limits.</li>');
+  const st = [...d.servers, ...(d.nodes || []).filter(n => !n.gone)].map(s => s.icmp['1m']).filter(x => x && x.avg != null);
   const best = st.length ? Math.max(...st.map(x => x.avg)) : null, jit = st.length ? Math.max(...st.map(x => x.jitter ?? 0)) : null;
   const loss = st.length ? Math.max(...st.map(x => x.loss)) : null, p99 = st.length ? Math.max(...st.map(x => x.p99 ?? 0)) : null;
   const up = d.pcs.filter(p => p.up).length;
-  morph($('#cs-wells'), [csWell('Server ping', best == null ? null : fms(best), 'ms · worst · 1 min', csLv(best, L.ping)),
+  morph($('#cs-wells'), [csWell(d.servers.length ? 'Ping' : 'Node ping', best == null ? null : fms(best), 'ms · worst · 1 min', csLv(best, L.ping)),
     csWell('Jitter', jit == null ? null : fms(jit), jit == null ? 'ms' : `ms · ${(jit / L.tick_ms).toFixed(2)} ticks`, csLv(jit, L.jitter)),
     csWell('Loss', loss == null ? null : fms(loss), '% · 1 min', csLv(loss, L.loss)),
     csWell('p99 ping', p99 == null ? null : fms(p99), 'ms · 1 min', csLv(p99, [L.ping[1], 15])),
     csWell('Player PCs', d.pcs.length ? `${up}` : null, d.pcs.length ? `of ${d.pcs.length} answer` : 'none saved', d.pcs.length ? (up === d.pcs.length ? 'ok' : 'warn') : null, 3),
     csWell('Steam', d.steam.last == null ? null : fms(d.steam.last), d.steam.checks ? (d.steam.last == null ? 'unreachable' : 'ms · connect') : 'checking…', d.steam.checks ? (d.steam.last == null ? 'bad' : 'ok') : null)].join(''));
-  // a card per server: built once per list of servers, so the charts keep their canvases
+  // a card per server and per Perf-Deck node: built once per list, so the charts keep their canvases
   const keys = d.servers.map(s => s.key).join('|');
   if (keys !== csKeys) {
-    csKeys = keys; csCharts = {};
-    $('#cs-cards').innerHTML = d.servers.map((s, i) => `<section class="card gx" data-cs="${i}"><div class="cshead" id="csh-${i}"></div>
-      <div class="vus" id="csn-${i}" style="margin-bottom:14px"></div>
-      <div class="grid2"><div><div class="legend" id="csl-${i}"></div><div class="chart" id="csc-${i}"></div></div><div class="tablewrap" id="cst-${i}"></div></div>
-      <div id="csp-${i}" style="margin-top:14px"></div><div id="csq-${i}" style="margin-top:12px"></div></section>`).join('')
-      || '<section class="card"><div class="empty">No game servers yet. Add one under Game servers, or press Scan and pick one.</div></section>';
-    d.servers.forEach((s, i) => { csCharts[i] = new Chart(`#csc-${i}`, { ago: true, minTop: 2, axis: v => parseFloat(v.toPrecision(3)) + '' }); });
+    csKeys = keys;
+    $('#cs-cards').innerHTML = d.servers.map((s, i) => csShell('cs', i)).join('')
+      || '<section class="card"><div class="empty">No game servers yet. Add one under Game servers, or press Scan and pick one. The Perf-Deck nodes below are tested either way.</div></section>';
+    d.servers.forEach((s, i) => { csCharts['cs' + i] = csChart('cs', i); });
   }
-  d.servers.forEach((s, i) => {
-    const a = s.icmp['1m'] || {}, g = s.a2s['1m'] || {}, info = s.info;
-    morph($(`#csh-${i}`), `<span class="sled ${a.avg == null ? 'testing' : csLv(a.avg, L.ping) === 'ok' && !a.loss ? 'ready' : 'busy'}"></span><b>${esc(s.name)}</b>
-      <span class="k" style="text-transform:none">${esc(s.host)}:${s.port}${s.ip && s.ip !== s.host ? ' · ' + esc(s.ip) : ''}</span>
-      ${info ? `<span class="chip ok">${esc(info.game || info.folder)}</span><span class="chip">${info.players}/${info.max_players} players${info.bots ? ` · ${info.bots} bots` : ''}</span>${info.password ? '<span class="chip">password</span>' : ''}${info.vac ? '<span class="chip">VAC</span>' : ''}` : '<span class="chip warn">no game reply</span>'}
-      <span class="spacer"></span>${s.mtu ? `<span class="chip ${s.mtu.ok ? 'ok' : 'warn'}" title="Largest packet that passes without fragmenting">MTU ${s.mtu.mtu ?? '?'}${s.mtu.ok ? ' OK' : ''}</span>` : ''}
-      ${info ? gFlap('csmap' + i, info.map) : ''}`);
-    morph($(`#csn-${i}`), [gNeedle({ title: 'PING', value: a.avg ?? null, max: 100, log: true, unit: 'ms · 1 min · log', readout: fms(a.avg), warn: L.ping[0], crit: L.ping[1], color: CSLV[csLv(a.avg, L.ping) || 'ok'], peak: a.max }),
-      gNeedle({ title: 'JITTER', value: a.jitter ?? null, max: 10, unit: 'ms', readout: fms(a.jitter), warn: L.jitter[0], crit: L.jitter[1], color: CSLV[csLv(a.jitter, L.jitter) || 'ok'] }),
-      gNeedle({ title: 'LOSS', value: a.loss ?? null, max: 10, unit: '% · 1 min', readout: fms(a.loss), warn: L.loss[0], crit: L.loss[1], color: CSLV[csLv(a.loss, L.loss) || 'ok'] }),
-      gNeedle({ title: 'SERVER REPLY', value: g.avg ?? null, max: 100, log: true, unit: 'ms · A2S · log', readout: fms(g.avg), warn: L.ping[0] * 2, crit: L.ping[1] * 2, color: '#3dd6ff', peak: g.max })].join(''));
-    const now = d.now, series = [{ name: 'Ping (ICMP)', color: C.s[3], pts: s.series.icmp.map(p => [now - p[0], p[1]]) }, { name: 'Server reply (A2S)', color: C.s[0], pts: s.series.a2s.map(p => [now - p[0], p[1]]) }];
-    legend(`#csl-${i}`, series); csCharts[i] && csCharts[i].set(series, 300);
-    const row = (label, k, unit, lim) => `<tr><td>${label}</td>${[s.icmp['1m'], s.icmp['10m'], s.a2s['1m'], s.a2s['10m']].map(x => { const val = x ? x[k] : null; const lv = lim ? csLv(val, lim) : null; return `<td class="${lv ? 'lv-' + lv : ''}">${val == null ? '—' : (k === 'spikes' ? String(val) : fms(val)) + unit}</td>`; }).join('')}</tr>`;
-    morph($(`#cst-${i}`), `<table class="cstbl"><thead><tr><th></th><th>Ping 1m</th><th>Ping 10m</th><th>Reply 1m</th><th>Reply 10m</th></tr></thead><tbody>
-      ${row('Average', 'avg', ' ms', L.ping)}${row('Best', 'min', ' ms')}${row('p95', 'p95', ' ms')}${row('p99', 'p99', ' ms', [L.ping[1], 15])}${row('Worst', 'max', ' ms', [10, 30])}
-      ${row('Jitter', 'jitter', ' ms', L.jitter)}${row('Loss', 'loss', '%', L.loss)}${row('Spikes', 'spikes', '', [1, 5])}${row('During a speed test', 'loaded_avg', ' ms', L.ping)}
-      <tr><td>Jitter in ticks</td>${[s.icmp['1m'], s.icmp['10m'], s.a2s['1m'], s.a2s['10m']].map(x => `<td>${x && x.jitter != null ? (x.jitter / L.tick_ms).toFixed(3) : '—'}</td>`).join('')}</tr></tbody></table>`);
-    const pth = s.path;
-    const hp = p => p ? `<span class="${p.level === 'crit' ? 'bad' : p.level === 'warn' ? 'meh' : ''}" title="${esc((p.reasons || []).join('; '))}">${esc(p.port)}${p.busy != null ? ` ${p.busy}%` : ''}${p.errors ? ` · ${p.errors} err` : ''}</span>` : '';
-    morph($(`#csp-${i}`), !pth ? '<span class="sub">The switch path shows here once your switches are added on the Switches tab.</span>' : pth.error ? `<span class="sub">Path: ${esc(pth.error)}</span>` :
-      `<span class="k">Switch path · checked ${ago(pth.at)}</span><div class="hops" style="margin-top:6px"><span class="hop">probe</span>${pth.hops.map(h => {
-        const lvls = [h.in, h.out].filter(Boolean).map(p => p.level);
-        return `<span class="arr">→</span><span class="hop ${lvls.includes('crit') ? 'crit' : lvls.includes('warn') ? 'warn' : ''}">${hp(h.in)}<b>${esc(h.name)}</b>${hp(h.out)}</span>`;
-      }).join('')}<span class="arr">→</span><span class="hop ${pth.end && pth.end.level === 'crit' ? 'crit' : pth.end && pth.end.level === 'warn' ? 'warn' : ''}">${hp(pth.end) || esc(pth.end_port || '')}<b>${esc(s.name)}</b></span></div>`);
-    morph($(`#csq-${i}`), s.players && s.players.length ? `<span class="k">On the server</span><div class="plist" style="margin-top:6px">${s.players.map(p => `<div><span>${esc(p.name || '(connecting)')}</span><span class="k">${p.score} · ${Math.floor(p.seconds / 60)}m</span></div>`).join('')}</div>` : '');
-  });
+  d.servers.forEach((s, i) => csCard('cs', i, s, d));
+  const nodes = d.nodes || [], nkeys = nodes.map(s => s.key).join('|');
+  if (nkeys !== cnKeys) {
+    cnKeys = nkeys;
+    $('#cn-cards').innerHTML = nodes.map((s, i) => csShell('cn', i)).join('')
+      || `<section class="card"><div class="empty">${d.nodes_on ? 'No Perf-Deck nodes found. Start Perf-Deck on a PC on this LAN and it shows up here within a few seconds (the same discovery as the Stations list on the Probe tab).' : 'Node tests are off in the settings.'}</div></section>`;
+    nodes.forEach((s, i) => { csCharts['cn' + i] = csChart('cn', i); });
+  }
+  nodes.forEach((s, i) => csCard('cn', i, s, d));
+  $('#cn-sub').textContent = nodes.length ? `${nodes.filter(n => !n.gone).length} found by Perf-Deck discovery · probe ↔ node, once a second` : '';
   flapMeasure();
   $('#cs-pcsub').textContent = d.pcs.length ? `${d.group ? 'group ' + d.group : 'all saved machines'} · ping every 2 s · last minute` : '';
   morph($('#cs-pcs'), d.pcs.map(p => {
@@ -2547,7 +2570,7 @@ function renderCS() {
     <td>${f.cs ? '<span class="chip ok">CS</span>' : `<span class="chip">${esc(f.folder)}</span>`}</td><td><button class="btn ghost admin-only" data-csadd="${esc(f.name.replace(/[=\n]/g, ' ').slice(0, 32))} = ${esc(f.host)}:${f.port}">Add</button></td></tr>`).join('') || '<tr><td class="sub">None found yet.</td></tr>');
   $('#cs-scanat').textContent = d.scan_at ? `Last scan ${ago(d.scan_at)} (every 2 minutes).` : 'Asks the LAN for game servers, like the game’s own server browser.';
   if (!$('#f-cs')._filled) {
-    $('#cs-servers').value = d.servers_text;
+    $('#cs-servers').value = d.servers_text; $('#cs-nodes').checked = d.nodes_on;
     setHTML('#cs-group', ['<option value="">All saved machines</option>', ...d.groups.map(g => `<option${g === d.group ? ' selected' : ''}>${esc(g)}</option>`)].join(''));
     $('#f-cs')._filled = true;
   }
@@ -2562,7 +2585,7 @@ $('#cs-found').onclick = async e => {
 $('#cs-scan').onclick = async () => { await api('/api/cs/scan').catch(() => {}); setTimeout(csRefresh, 2000); };
 $('#f-cs').onsubmit = async e => {
   e.preventDefault();
-  try { await api('/api/settings', { cs_servers: $('#cs-servers').value, cs_group: $('#cs-group').value }); flash($('#csx-msg'), 'Saved', true); $('#f-cs')._filled = false; }
+  try { await api('/api/settings', { cs_servers: $('#cs-servers').value, cs_group: $('#cs-group').value, cs_nodes: $('#cs-nodes').checked }); flash($('#csx-msg'), 'Saved', true); $('#f-cs')._filled = false; }
   catch (err) { flash($('#csx-msg'), err.message); }
   csRefresh();
 };
