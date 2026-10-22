@@ -108,6 +108,14 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 | **microSD card**, 16–32 GB | The board has no built-in storage. |
 | Case (optional) | [Case for Radxa 3E with PoE HAT](https://www.printables.com/model/848702-case-for-radxa-3e-with-poe-hat) on Printables. It wants a 40 mm fan, and there is a [taller lid](https://www.printables.com/model/1572977-lid-case-radxa-3e-with-poe-hat) for v1.2 of the HAT. |
 
+**Putting it together:** follow Radxa's [ZERO 3E PoE HAT guide](https://docs.radxa.com/en/zero/zero3/accessories/3e-poe-hat), which has diagrams for each step:
+1. Screw the copper standoffs onto the ZERO 3E.
+2. Seat the PoE HAT on top.
+3. Screw the HAT down from above. Tighten every screw: the standoffs carry the PoE power.
+4. Plug in an Ethernet cable from a PoE (802.3af) switch port.
+
+If it doesn't power up, check that the switch port gives PoE and that the screws are tight.
+
 At idle the board sits around 45 °C with no case. Gigabit tests load the CPU, so add a small fan if it goes in a closed case.
 
 ## Build one
