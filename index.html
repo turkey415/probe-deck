@@ -486,6 +486,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 .pc.bad { border-color: #7a2b2b; background: #1d1212; } .pc.bad .v { color: #ff7b7b; } .pc.off { opacity: .5; }
 .cnhead { margin: 6px 2px -6px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--amber); display: flex; align-items: center; gap: 10px; }
 .cnhead .sub { letter-spacing: normal; text-transform: none; }
+tr.dim { opacity: .55; }
 .plist { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 14px; font-size: 12.5px; }
 .plist div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed #2a2a27; padding: 2px 0; }
 /* ---------- login + roles ---------- */
@@ -541,6 +542,7 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
     <a href="#net" data-view="net">Switches <span class="badge" id="t-net" hidden></span></a>
     <a href="#trace" data-view="trace">Trace</a>
     <a href="#cs" data-view="cs">CS2 <span class="dot" id="t-cs"></span></a>
+    <a href="#ts" data-view="ts">Tailscale <span class="dot" id="t-ts"></span></a>
     <a href="#https" data-view="https">HTTPS <span class="dot" id="t-https"></span></a>
     <a href="#users" data-view="users">Users</a>
   </nav>
@@ -966,6 +968,59 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
   <section class="card"><h2>Lag events <span class="spacer"></span><span class="sub">last 2 hours</span></h2><div class="evlist" id="cs-events"></div></section>
 </main>
 </div>
+<!-- ================= Tailscale ================= -->
+<div class="layout view" id="v-ts" hidden>
+<aside>
+  <section class="card admin-only">
+    <h2>On / off</h2>
+    <div class="form">
+      <div class="row"><button class="btn primary" id="tsx-up">Turn on</button><button class="btn ghost" id="tsx-down">Turn off</button></div>
+      <span class="sub">Off = disconnected from the tailnet but still logged in (like <code>tailscale down</code>). On reconnects without a new login.</span>
+      <label class="chk"><input type="checkbox" id="tsx-svc"><span>Tailscale service running and started at boot<small>Unticked stops tailscaled completely and keeps it off after a reboot.</small></span></label>
+      <div class="row"><button class="btn ghost" id="tsx-login">Log in</button><button class="btn ghost" id="tsx-logout">Log out</button></div>
+      <span id="tsx-msg"></span>
+    </div>
+  </section>
+  <section class="card admin-only">
+    <h2>Settings</h2>
+    <form class="form" id="f-ts">
+      <label class="f">Name on the tailnet <span class="sub">The device name, and the start of its MagicDNS name.</span><input type="text" id="tsx-host" spellcheck="false"></label>
+      <label class="chk"><input type="checkbox" id="tsx-dns"><span>Use the tailnet's DNS<small>MagicDNS names and the DNS servers set in the admin console.</small></span></label>
+      <label class="chk"><input type="checkbox" id="tsx-routeall"><span>Accept routes from other devices<small>Reach subnets other subnet routers share.</small></span></label>
+      <label class="f">Share these LAN subnets (subnet router) <span class="sub">So tailnet devices reach PCs and switches on this LAN through the probe. Approve them in the Tailscale admin console.</span>
+        <input type="text" id="tsx-routes" spellcheck="false" placeholder="192.168.1.0/24"></label>
+      <button class="btn ghost" type="button" id="tsx-lan" style="align-self:flex-start">Use this LAN</button>
+      <label class="chk"><input type="checkbox" id="tsx-exit"><span>Offer as an exit node<small>Other devices can send all their internet traffic out through this LAN. Needs approving too.</small></span></label>
+      <label class="chk"><input type="checkbox" id="tsx-ssh"><span>Tailscale SSH<small>SSH to the probe with tailnet logins, under your tailnet's SSH rules.</small></span></label>
+      <label class="chk"><input type="checkbox" id="tsx-shields"><span>Shields up<small>Block all incoming tailnet connections, this page included.</small></span></label>
+      <label class="chk"><input type="checkbox" id="tsx-auto"><span>Update Tailscale automatically</span></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="tsx-smsg"></span></div>
+    </form>
+  </section>
+</aside>
+<main>
+  <div class="note" id="ts-locked" hidden>You're a viewer: only admins can change Tailscale.</div>
+  <div class="note crit" id="ts-note" hidden></div>
+  <div class="note" id="ts-health" hidden></div>
+  <section class="card deck">
+    <h2>Tailscale <span class="spacer"></span><span class="lamp" id="ts-lamp"></span></h2>
+    <div class="wells">
+      <div class="well" id="tsw-state"><span class="k">State</span><div class="big-port" id="ts-state">—</div><span class="un" id="ts-state2">—</span></div>
+      <div class="well" id="tsw-ip"><span class="k">Tailscale IP</span><div class="big-port" id="ts-ip" style="font-size:clamp(15px,1.6vw,22px);white-space:nowrap">—</div><span class="un" id="ts-ip2">—</span></div>
+      <div class="well" id="tsw-peers"><span class="k">Devices online</span><div id="ts-peers"></div><span class="un" id="ts-peers2">—</span></div>
+      <div class="well" id="tsw-relay"><span class="k">Home relay</span><div class="big-port" id="ts-relay">—</div><span class="un">nearest DERP server</span></div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>This probe on the tailnet <span class="spacer"></span><button class="btn ghost admin-only" id="tsx-cert">Add these names to the HTTPS certificate</button></h2>
+    <dl class="kv" id="ts-kv"></dl><span id="tsx-cmsg"></span>
+  </section>
+  <section class="card">
+    <h2>Devices <span class="spacer"></span><span class="sub" id="ts-psub"></span></h2>
+    <div class="tablewrap"><table><thead><tr><th class="l">Device</th><th>Tailscale IP</th><th>OS</th><th>Connection</th><th>Last seen</th><th>Traffic</th></tr></thead><tbody id="ts-list"></tbody></table></div>
+  </section>
+</main>
+</div>
 <!-- ================= HTTPS ================= -->
 <div class="layout view" id="v-https" hidden>
 <aside>
@@ -1383,7 +1438,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 
 // ---------- views (tabs) ----------
-const VIEWS = ['probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'https', 'users'];
+const VIEWS = ['probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -1396,6 +1451,7 @@ function showView() {
   if (view === 'net') netRefresh();
   if (view === 'trace') traceInit();
   if (view === 'cs') csRefresh();
+  if (view === 'ts') tsRefresh();
   if (S) render();
 }
 addEventListener('hashchange', showView);
@@ -2588,6 +2644,88 @@ $('#f-cs').onsubmit = async e => {
   try { await api('/api/settings', { cs_servers: $('#cs-servers').value, cs_group: $('#cs-group').value, cs_nodes: $('#cs-nodes').checked }); flash($('#csx-msg'), 'Saved', true); $('#f-cs')._filled = false; }
   catch (err) { flash($('#csx-msg'), err.message); }
   csRefresh();
+};
+
+// ---------- Tailscale ----------
+let TS = null;
+async function tsRefresh() {
+  try { const r = await fetch('/api/tailscale', { cache: 'no-store' }); if (r.status === 401) return showGate(); TS = await r.json(); } catch { return; }
+  renderTS();
+}
+setInterval(() => { if (ME && view === 'ts') tsRefresh(); }, 5000);
+setInterval(() => { if (ME && view !== 'ts') tsRefresh(); }, 60000);
+const fmtB = v => v >= 1e9 ? (v / 1e9).toFixed(1) + ' GB' : v >= 1e6 ? (v / 1e6).toFixed(1) + ' MB' : v >= 1e3 ? (v / 1e3).toFixed(0) + ' kB' : v + ' B';
+function renderTS() {
+  const t = TS;
+  if (!t) return;
+  const svc = t.service || {}, run = t.state === 'Running', pr = t.prefs || {};
+  $('#t-ts').className = 'dot ' + (run ? 'on' : t.state === 'NeedsLogin' ? 'warn' : '');
+  if (view !== 'ts') return;
+  const locked = ME && ME.role !== 'admin';
+  $('#ts-locked').hidden = !locked;
+  const label = !t.installed ? 'NOT INSTALLED' : !svc.active ? 'SERVICE OFF' : t.error ? 'NO ANSWER' : run ? 'ON' : t.state === 'Stopped' ? 'OFF' : t.state === 'NeedsLogin' ? 'LOG IN' : t.state === 'NeedsMachineAuth' ? 'NEEDS APPROVAL' : (t.state || '—').toUpperCase();
+  $('#ts-state').textContent = label;
+  $('#ts-state2').textContent = t.version ? 'Tailscale ' + t.version : svc.state || '—';
+  $('#tsw-state').classList.toggle('alarm', t.installed && !run);
+  $('#ts-lamp').innerHTML = run ? `<span class="dot on"></span>connected${t.tailnet ? ' · ' + esc(t.tailnet) : ''}` : `<span class="dot ${t.state === 'Stopped' ? '' : 'err'}"></span>${esc(t.error || 'not connected')}`;
+  const v4 = (t.ips || []).find(i => i.includes('.'));
+  $('#ts-ip').textContent = run && v4 ? v4 : '—'; $('#ts-ip2').textContent = run && t.dns ? t.dns.split('.')[0] : '—';
+  $('#tsw-ip').classList.toggle('off', !run);
+  const peers = t.peers || [], on = peers.filter(p => p.online).length;
+  setSeg('#ts-peers', run ? on : '----', 3); $('#ts-peers2').textContent = run ? `of ${peers.length} on the tailnet` : '—';
+  $('#tsw-peers').classList.toggle('off', !run);
+  $('#ts-relay').textContent = run && t.relay ? t.relay.toUpperCase() : '—'; $('#tsw-relay').classList.toggle('off', !run);
+  let note = '';
+  if (!t.installed) note = 'Tailscale isn’t installed on the probe. Over SSH: <code>curl -fsSL https://tailscale.com/install.sh | sh</code>';
+  else if (t.auth_url) note = `Log in to finish: <a href="${esc(t.auth_url)}" target="_blank" rel="noopener">${esc(t.auth_url)}</a>`;
+  else if (t.state === 'NeedsLogin') note = 'Logged out. Press Log in, then open the link that shows here.';
+  else if (t.state === 'NeedsMachineAuth') note = 'Waiting for an admin to approve this device in the Tailscale admin console.';
+  else if ((pr.routes || []).length && !pr.routes.every(r => (t.approved || []).includes(r))) note = 'Subnet routes are shared but not approved yet: approve them under Machines → probe → Edit route settings in the Tailscale admin console.';
+  $('#ts-note').hidden = !note; $('#ts-note').innerHTML = note;
+  const hl = (t.health || []).map(h => 'Tailscale says: ' + esc(h)).join('<br>');
+  $('#ts-health').hidden = !hl; $('#ts-health').innerHTML = hl;
+  setHTML('#ts-kv', run ? [['MagicDNS name', t.dns], ['Addresses', (t.ips || []).join(', ')], ['Tailnet', t.tailnet], ['Open this page', t.dns ? `https://${t.dns}/` : null],
+    ['Subnets shared', (pr.routes || []).join(', ') || 'none'], ['Exit node', pr.exit_node ? 'offered' : 'no'], ['Tailscale SSH', pr.run_ssh ? 'on' : 'off'],
+    ['IP forwarding', t.forwarding ? 'on' : 'off']].map(([k, v]) => `<div><dt>${k}</dt><dd title="${esc(v || '')}">${esc(v || '—')}</dd></div>`).join('')
+    : '<div><dd class="sub">Not connected.</dd></div>');
+  $('#tsx-cert').hidden = !run;
+  $('#ts-psub').textContent = run ? `${on} online` : '';
+  setHTML('#ts-list', run ? peers.map(p => `<tr class="${p.online ? '' : 'dim'}"><td class="l"><span class="dot ${p.online ? 'on' : ''}"></span> <b>${esc(p.name)}</b>${p.exit ? ' <span class="chip">exit node</span>' : ''}<div class="sub mono">${esc(p.dns)}</div></td>
+    <td class="mono">${esc(p.ip || '')}</td><td>${esc(p.os || '')}</td><td>${p.online ? (p.direct ? `direct <span class="sub mono">${esc(p.direct)}</span>` : p.active ? 'relay ' + esc(p.relay) : 'idle') : '—'}</td>
+    <td>${p.online ? 'now' : p.last_seen && !p.last_seen.startsWith('0001') ? esc(fmtWhen(Date.parse(p.last_seen) / 1000)) : '—'}</td><td class="sub">${p.rx || p.tx ? `↓ ${fmtB(p.rx)} · ↑ ${fmtB(p.tx)}` : ''}</td></tr>`).join('')
+    || '<tr><td class="sub" colspan="6">No other devices.</td></tr>' : '<tr><td class="sub" colspan="6">Not connected.</td></tr>');
+  for (const el of document.querySelectorAll('#v-ts aside button, #v-ts aside input')) el.disabled = locked || (!svc.active && el.id !== 'tsx-svc');
+  $('#tsx-svc').checked = !!(svc.active && svc.enabled);
+  $('#tsx-up').disabled ||= run; $('#tsx-down').disabled ||= !run;
+  $('#tsx-logout').disabled ||= !run && t.state !== 'Stopped'; $('#tsx-login').disabled ||= run;
+  if (!$('#f-ts')._filled && t.prefs) {
+    $('#tsx-host').value = pr.hostname || ''; $('#tsx-dns').checked = !!pr.corp_dns; $('#tsx-routeall').checked = !!pr.route_all;
+    $('#tsx-routes').value = (pr.routes || []).join(', '); $('#tsx-exit').checked = !!pr.exit_node; $('#tsx-ssh').checked = !!pr.run_ssh;
+    $('#tsx-shields').checked = !!pr.shields_up; $('#tsx-auto').checked = !!pr.auto_update; $('#f-ts')._filled = true;
+  }
+}
+const viaTailnet = () => TS && TS.client_tailnet && !confirm('You are on this page through Tailscale. This cuts your connection to it. Go ahead?');
+async function tsDo(body, msg, el = '#tsx-msg') {
+  try { await api('/api/tailscale', body); flash($(el), msg, true); } catch (err) { flash($(el), err.message); }
+  setTimeout(tsRefresh, 600); setTimeout(tsRefresh, 2500);
+}
+$('#tsx-up').onclick = () => tsDo({ action: 'up' }, 'Turning on…');
+$('#tsx-down').onclick = () => { if (!viaTailnet()) tsDo({ action: 'down' }, 'Turned off'); };
+$('#tsx-login').onclick = () => tsDo({ action: 'login' }, 'The login link shows at the top in a moment');
+$('#tsx-logout').onclick = () => { if (!viaTailnet() && confirm('Log the probe out of the tailnet? It needs a new login (a link) to come back.')) tsDo({ action: 'logout' }, 'Logged out'); };
+$('#tsx-svc').onchange = e => {
+  const on = e.target.checked;
+  if (!on && (viaTailnet() || !confirm('Stop the Tailscale service, and keep it off after reboots?'))) { e.target.checked = true; return; }
+  tsDo({ action: 'service', on }, on ? 'Service started' : 'Service stopped');
+};
+$('#tsx-lan').onclick = () => { if (TS && TS.lan) $('#tsx-routes').value = TS.lan; };
+$('#tsx-cert').onclick = () => { if (confirm('Make a new self-signed certificate that also covers the Tailscale name and IP? Browsers warn again until you trust the new one.')) tsDo({ action: 'cert' }, 'New certificate in use. Reload the page and accept it.', '#tsx-cmsg'); };
+$('#f-ts').onsubmit = async e => {
+  e.preventDefault();
+  if ($('#tsx-shields').checked && !TS.prefs.shields_up && viaTailnet()) return;
+  await tsDo({ action: 'settings', hostname: $('#tsx-host').value, corp_dns: $('#tsx-dns').checked, route_all: $('#tsx-routeall').checked, routes: $('#tsx-routes').value,
+    exit_node: $('#tsx-exit').checked, run_ssh: $('#tsx-ssh').checked, shields_up: $('#tsx-shields').checked, auto_update: $('#tsx-auto').checked }, 'Saved', '#tsx-smsg');
+  $('#f-ts')._filled = false;
 };
 
 // ---------- polling ----------

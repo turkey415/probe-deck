@@ -118,8 +118,14 @@ Everything about the network that decides a Counter-Strike match, measured from 
 - A live log shows each step. The last 20 traces are kept. Viewers can trace too. On the Wake tab, every machine has a **Trace** button.
 - Limits: a host behind a switch that isn't managed (or doesn't speak CDP) can be traced only to the port that switch is on. The MAC must have been seen in the last ~5 minutes.
 
-### Remote access (optional)
-[Tailscale](https://tailscale.com) works on the probe: `curl -fsSL https://tailscale.com/install.sh | sh`, then `tailscale up --hostname=probe-01` and open the link it prints. The page is then at `https://probe-01.<your-tailnet>.ts.net/` from anywhere (add that name to the certificate on the HTTPS tab).
+### Tailscale (remote access, optional)
+Install it once on the probe: `curl -fsSL https://tailscale.com/install.sh | sh`. The **Tailscale tab** does the rest:
+- **Status**: on/off, the probe's Tailscale IP and MagicDNS name, the tailnet, the home relay, Tailscale's own health warnings, and every device on the tailnet (online, direct or relayed, last seen, traffic).
+- **On / off** (like `tailscale up` / `down`: off keeps the login), **log in** (the login link shows on the page) and **log out**, and a switch that stops the `tailscaled` service and keeps it off after reboots.
+- **Settings**: the device name, use the tailnet's DNS, accept routes, **share LAN subnets** (subnet router, with a "Use this LAN" button), **offer as an exit node** (IP forwarding is turned on for you; approve both in the Tailscale admin console), Tailscale SSH, shields up, automatic updates.
+- **Add the Tailscale name and IP to the HTTPS certificate** with one button, so `https://probe-01.<your-tailnet>.ts.net/` matches the certificate.
+- Viewers can see it; only admins change it. Turning Tailscale off while you're on the page through Tailscale asks first.
+- It talks to `tailscaled`'s local API on its unix socket, the same way the `tailscale` command does.
 
 ### HTTPS
 - The page is on **https://** (port 443). On first start the probe makes a **self-signed** certificate (ECDSA P-256, 10 years) for its host name, `<host>.local` and its IP. Plain **http://** visits move to HTTPS, except `GET /api/probe`, which stays on HTTP because the T-Displays poll it (an ESP32 can't check a self-signed certificate). The redirect can be turned off.
@@ -276,6 +282,8 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 | POST | `/api/net/add`, `/remove`, `/scan`, `/refresh` | `{host, name?, community?}`, `{id}` (admin) |
 | POST | `/api/net/order`, `/api/net/role` | `{ids}`; `{id, port, role: firewall\|cache\|null}` (admin) |
 | POST | `/api/trace` | `{q: IP, MAC or name}` → `{id}` (any user) |
+| GET | `/api/tailscale` | Tailscale status, settings and devices |
+| POST | `/api/tailscale` | `{action: up\|down\|login\|logout\|service\|settings\|cert, ...}` (admin) |
 | GET | `/api/cs` | The CS2 tab: servers, Perf-Deck nodes, stats, path, player PCs, lag events, verdict |
 | POST | `/api/cs/scan` | Scan the LAN for game servers now (any user) |
 | GET | `/api/trace/<id>`, `/api/traces` | A trace's steps and result; recent traces |

@@ -31,13 +31,14 @@ from pathlib import Path
 import auth as auth_mod
 import console as console_mod
 import cs as cs_mod
+import tailscale as ts_mod
 import netmap as netmap_mod
 import tls as tls_mod
 import wake as wake_mod
 import watchdog as watch_mod
 import ws as ws_mod
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -835,6 +836,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(200, p.probe_message())
         if path.startswith("/vendor/") and path[8:] in VENDOR:
             return self.send_body(200, (ROOT / "vendor" / path[8:]).read_bytes(), VENDOR[path[8:]])
+        if path == "/api/tailscale":
+            return self.send_body(200, p.ts.snapshot(self.client_ip()))
         if path == "/api/tls":
             return self.send_body(200, self.tls_info())
         if path == "/api/tls/cert.pem":
@@ -949,6 +952,11 @@ class Handler(BaseHTTPRequestHandler):
                 p.netmap.set_role(str(body.get("id")), str(body.get("port") or ""), body.get("role") or None)
             elif path == "/api/net/refresh":
                 p.netmap.wake.set()
+            elif path == "/api/tailscale":
+                if body.get("action") == "cert":
+                    p.tls.generate(p.ts.cert_names(p.tls))
+                else:
+                    p.ts.action(body)
             elif path == "/api/cs/scan":
                 threading.Thread(target=p.cs.scan, daemon=True).start()
             elif path == "/api/trace":
@@ -1049,6 +1057,7 @@ def main():
     probe.console.auth = probe.auth
     probe.netmap = netmap_mod.NetMap(probe, CONF.parent, DATA)
     probe.cs = cs_mod.CS(probe)
+    probe.ts = ts_mod.Tailscale(probe)
     probe.tls = tls_mod.TLS(probe, CONF.parent)
     if HTTPS_PORT:
         probe.tls.ensure()
