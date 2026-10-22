@@ -458,6 +458,34 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 .layout.folded > aside > .fold .ft { display: none; }
 @media (max-width: 960px) { .layout.folded { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .gx .vu .ndl, .gx .vu .pkd, .gx .blm .needle, .gx .blm svg, .gx .blm .bezel::after { transition: none; } .gx .flap i.flip, .gx .dtag, .gx .vfd .cur, .gx .rec i, .gx .scope .wait, .gx .pt.crit i { animation: none; } }
+
+/* ---------- CS2 ---------- */
+.csverdict { display: flex; flex-direction: column; gap: 6px; min-width: 230px; }
+.csverdict .big { font: 800 26px/1 ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; letter-spacing: .12em; }
+.csverdict .big.ok { color: #3dff7a; text-shadow: 0 0 12px rgba(61, 255, 122, .55); }
+.csverdict .big.warn { color: var(--warn); text-shadow: 0 0 12px color-mix(in srgb, var(--warn) 55%, transparent); }
+.csverdict .big.bad { color: #ff4d4d; text-shadow: 0 0 12px rgba(255, 77, 77, .6); animation: pulse 1.4s ease-in-out infinite; }
+.csverdict ul { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--text-2); }
+.csrig { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; }
+.csrig .wells { flex: 1; min-width: 300px; }
+.cshead { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 12px; }
+.cshead b { font-size: 16px; }
+.cshead .flap { min-width: 220px; max-width: 320px; flex: 1; }
+.cstbl td, .cstbl th { padding: 5px 8px; font-size: 12.5px; }
+.cstbl .lv-ok { color: #3dff7a; } .cstbl .lv-warn { color: var(--warn); } .cstbl .lv-bad { color: #ff7b7b; }
+.hops { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font: 600 11px ui-monospace, Menlo, Consolas, monospace; }
+.hops .hop { padding: 5px 9px; border-radius: 6px; border: 1px solid #3a3a37; background: #131312; display: flex; gap: 6px; align-items: center; }
+.hops .hop.warn { border-color: color-mix(in srgb, var(--warn) 60%, #3a3a37); } .hops .hop.crit { border-color: #ff4d4d; box-shadow: 0 0 8px rgba(255, 77, 77, .35); }
+.hops .arr { color: var(--amber); }
+.pcs { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.pc { background: #131312; border: 1px solid #2f2f2d; border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pc b { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc .v { font: 700 15px ui-monospace, Menlo, Consolas, monospace; }
+.pc .k { letter-spacing: .04em; text-transform: none; font-size: 10px; }
+.pc.ok { border-color: #2c7a3f; } .pc.ok .v { color: #3dff7a; } .pc.warn { border-color: #6a5320; } .pc.warn .v { color: var(--warn); }
+.pc.bad { border-color: #7a2b2b; background: #1d1212; } .pc.bad .v { color: #ff7b7b; } .pc.off { opacity: .5; }
+.plist { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 14px; font-size: 12.5px; }
+.plist div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed #2a2a27; padding: 2px 0; }
 /* ---------- login + roles ---------- */
 .gate { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; overflow: auto;
   background: radial-gradient(ellipse at center, #1a1a19 0%, #0b0b0a 70%); }
@@ -510,6 +538,7 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
     <a href="#wake" data-view="wake">Wake</a>
     <a href="#net" data-view="net">Switches <span class="badge" id="t-net" hidden></span></a>
     <a href="#trace" data-view="trace">Trace</a>
+    <a href="#cs" data-view="cs">CS2 <span class="dot" id="t-cs"></span></a>
     <a href="#https" data-view="https">HTTPS <span class="dot" id="t-https"></span></a>
     <a href="#users" data-view="users">Users</a>
   </nav>
@@ -898,6 +927,39 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
     <section class="card"><h2>End port</h2><dl class="kv" id="tr-port"></dl><div id="tr-warn" style="margin-top:12px"></div></section>
     <section class="card" id="tr-wcard" hidden><h2>Wireless</h2><dl class="kv" id="tr-wifi"></dl></section>
   </div>
+</div>
+
+<!-- ================= CS2 ================= -->
+<div class="layout view" id="v-cs" hidden>
+<aside>
+  <section class="card admin-only">
+    <h2>Game servers</h2>
+    <form class="form" id="f-cs">
+      <label class="f">Servers <span class="sub">One per line: Name = host:port (port 27015 if left out). Up to 8.</span>
+        <textarea id="cs-servers" rows="5" spellcheck="false" placeholder="Match 1 = 192.168.1.20:27015&#10;Match 2 = 192.168.1.21:27015"></textarea></label>
+      <label class="f">Player PCs <span class="sub">The machines saved on the Wake tab, all or one group.</span><select id="cs-group"></select></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="csx-msg"></span></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Found on the LAN <span class="spacer"></span><button class="btn ghost ro-ok" id="cs-scan">Scan</button></h2>
+    <span class="sub" id="cs-scanat">Asks the LAN for game servers, like the game's own server browser.</span>
+    <div class="tablewrap" style="margin-top:8px"><table><tbody id="cs-found"></tbody></table></div>
+  </section>
+  <section class="card">
+    <h2>What good looks like</h2>
+    <div class="sub" style="line-height:1.7">On a tournament LAN, the probe to the server should see: ping under <b>2 ms</b> (amber up to 5), jitter under <b>1 ms</b>, <b>no</b> loss, no spikes, and full-size packets passing. One CS2 tick is 15.6 ms (64 tick), so jitter is also shown in ticks. "Server reply" is the game's own query (A2S over UDP): it includes the time the server takes to answer, so it runs a little above ping.</div>
+  </section>
+</aside>
+<main class="gx">
+  <section class="card gx rig csrig" aria-label="Match readiness">
+    <div class="csverdict"><span class="rigk">MATCH NETWORK</span><span class="big" id="cs-big">—</span><ul id="cs-why"></ul></div>
+    <div class="wells" id="cs-wells"></div>
+  </section>
+  <div id="cs-cards" style="display:flex;flex-direction:column;gap:18px"></div>
+  <section class="card"><h2>Player PCs <span class="spacer"></span><span class="sub" id="cs-pcsub"></span></h2><div class="pcs" id="cs-pcs"></div></section>
+  <section class="card"><h2>Lag events <span class="spacer"></span><span class="sub">last 2 hours</span></h2><div class="evlist" id="cs-events"></div></section>
+</main>
 </div>
 <!-- ================= HTTPS ================= -->
 <div class="layout view" id="v-https" hidden>
@@ -1316,7 +1378,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 
 // ---------- views (tabs) ----------
-const VIEWS = ['probe', 'console', 'watch', 'wake', 'net', 'trace', 'https', 'users'];
+const VIEWS = ['probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'https', 'users'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -1328,6 +1390,7 @@ function showView() {
   if (view === 'users') usersRefresh();
   if (view === 'net') netRefresh();
   if (view === 'trace') traceInit();
+  if (view === 'cs') csRefresh();
   if (S) render();
 }
 addEventListener('hashchange', showView);
@@ -2398,6 +2461,111 @@ function renderTrace() {
     ['SNR', w.snr != null ? w.snr + ' dB' : '—'], ['Client IP', w.ip], ['User', w.user || '—'], ['AP is on', e.role === 'ap' ? `${e.switch} ${e.port}` : 'not found by CDP']]
     .map(([k, v]) => `<div><dt>${k}</dt><dd title="${esc(v ?? '')}">${esc(v ?? '—')}</dd></div>`).join(''));
 }
+
+
+// ---------- CS2 ----------
+let CSD = null, csCharts = {}, csKeys = '';
+const CSLV = { ok: 'var(--good)', warn: 'var(--warn)', bad: 'var(--crit)' };
+const csLv = (v, [w, b]) => v == null ? null : v >= b ? 'bad' : v >= w ? 'warn' : 'ok';
+async function csRefresh() {
+  try { const r = await fetch('/api/cs', { cache: 'no-store' }); if (r.status === 401) return showGate(); CSD = await r.json(); } catch { return; }
+  renderCS();
+}
+setInterval(() => { if (ME && view === 'cs') csRefresh(); }, 1000);
+setInterval(() => { if (ME && view !== 'cs') csRefresh(); }, 15000);
+const fms = v => v == null ? '—' : v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
+function csWell(label, value, sub, lv, cells = 4) {
+  return `<div class="well${lv === 'bad' ? ' alarm' : ''}${value == null ? ' off' : ''}"><span class="k">${label}</span>${gSeg(value == null ? '----' : String(value), cells, lv ? (lv === 'ok' ? '#3dff7a' : lv === 'warn' ? '#fab219' : '#ff5a4d') : undefined)}<span class="un">${esc(sub)}</span></div>`;
+}
+function renderCS() {
+  const d = CSD;
+  if (!d) return;
+  const v = d.verdict, L = d.limits;
+  $('#t-cs').className = 'dot ' + (v.level === 'ok' ? 'on' : v.level === 'warn' ? 'warn' : v.level === 'bad' ? 'err' : '');
+  if (view !== 'cs') return;
+  $('#cs-big').textContent = v.level === 'ok' ? 'MATCH READY' : v.level === 'warn' ? 'CHECK' : v.level === 'bad' ? 'NOT READY' : 'NO SERVER';
+  $('#cs-big').className = 'big ' + (v.level || '');
+  setHTML('#cs-why', v.reasons.slice(0, 6).map(r => `<li>${esc(r)}</li>`).join('') || '<li>Ping, jitter and loss to every server are within LAN limits.</li>');
+  const st = d.servers.map(s => s.icmp['1m']).filter(x => x && x.avg != null);
+  const best = st.length ? Math.max(...st.map(x => x.avg)) : null, jit = st.length ? Math.max(...st.map(x => x.jitter ?? 0)) : null;
+  const loss = st.length ? Math.max(...st.map(x => x.loss)) : null, p99 = st.length ? Math.max(...st.map(x => x.p99 ?? 0)) : null;
+  const up = d.pcs.filter(p => p.up).length;
+  morph($('#cs-wells'), [csWell('Server ping', best == null ? null : fms(best), 'ms · worst · 1 min', csLv(best, L.ping)),
+    csWell('Jitter', jit == null ? null : fms(jit), jit == null ? 'ms' : `ms · ${(jit / L.tick_ms).toFixed(2)} ticks`, csLv(jit, L.jitter)),
+    csWell('Loss', loss == null ? null : fms(loss), '% · 1 min', csLv(loss, L.loss)),
+    csWell('p99 ping', p99 == null ? null : fms(p99), 'ms · 1 min', csLv(p99, [L.ping[1], 15])),
+    csWell('Player PCs', d.pcs.length ? `${up}` : null, d.pcs.length ? `of ${d.pcs.length} answer` : 'none saved', d.pcs.length ? (up === d.pcs.length ? 'ok' : 'warn') : null, 3),
+    csWell('Steam', d.steam.last == null ? null : fms(d.steam.last), d.steam.checks ? (d.steam.last == null ? 'unreachable' : 'ms · connect') : 'checking…', d.steam.checks ? (d.steam.last == null ? 'bad' : 'ok') : null)].join(''));
+  // a card per server: built once per list of servers, so the charts keep their canvases
+  const keys = d.servers.map(s => s.key).join('|');
+  if (keys !== csKeys) {
+    csKeys = keys; csCharts = {};
+    $('#cs-cards').innerHTML = d.servers.map((s, i) => `<section class="card gx" data-cs="${i}"><div class="cshead" id="csh-${i}"></div>
+      <div class="vus" id="csn-${i}" style="margin-bottom:14px"></div>
+      <div class="grid2"><div><div class="legend" id="csl-${i}"></div><div class="chart" id="csc-${i}"></div></div><div class="tablewrap" id="cst-${i}"></div></div>
+      <div id="csp-${i}" style="margin-top:14px"></div><div id="csq-${i}" style="margin-top:12px"></div></section>`).join('')
+      || '<section class="card"><div class="empty">No game servers yet. Add one under Game servers, or press Scan and pick one.</div></section>';
+    d.servers.forEach((s, i) => { csCharts[i] = new Chart(`#csc-${i}`, { ago: true, minTop: 2, axis: v => parseFloat(v.toPrecision(3)) + '' }); });
+  }
+  d.servers.forEach((s, i) => {
+    const a = s.icmp['1m'] || {}, g = s.a2s['1m'] || {}, info = s.info;
+    morph($(`#csh-${i}`), `<span class="sled ${a.avg == null ? 'testing' : csLv(a.avg, L.ping) === 'ok' && !a.loss ? 'ready' : 'busy'}"></span><b>${esc(s.name)}</b>
+      <span class="k" style="text-transform:none">${esc(s.host)}:${s.port}${s.ip && s.ip !== s.host ? ' · ' + esc(s.ip) : ''}</span>
+      ${info ? `<span class="chip ok">${esc(info.game || info.folder)}</span><span class="chip">${info.players}/${info.max_players} players${info.bots ? ` · ${info.bots} bots` : ''}</span>${info.password ? '<span class="chip">password</span>' : ''}${info.vac ? '<span class="chip">VAC</span>' : ''}` : '<span class="chip warn">no game reply</span>'}
+      <span class="spacer"></span>${s.mtu ? `<span class="chip ${s.mtu.ok ? 'ok' : 'warn'}" title="Largest packet that passes without fragmenting">MTU ${s.mtu.mtu ?? '?'}${s.mtu.ok ? ' OK' : ''}</span>` : ''}
+      ${info ? gFlap('csmap' + i, info.map) : ''}`);
+    morph($(`#csn-${i}`), [gNeedle({ title: 'PING', value: a.avg ?? null, max: 100, log: true, unit: 'ms · 1 min · log', readout: fms(a.avg), warn: L.ping[0], crit: L.ping[1], color: CSLV[csLv(a.avg, L.ping) || 'ok'], peak: a.max }),
+      gNeedle({ title: 'JITTER', value: a.jitter ?? null, max: 10, unit: 'ms', readout: fms(a.jitter), warn: L.jitter[0], crit: L.jitter[1], color: CSLV[csLv(a.jitter, L.jitter) || 'ok'] }),
+      gNeedle({ title: 'LOSS', value: a.loss ?? null, max: 10, unit: '% · 1 min', readout: fms(a.loss), warn: L.loss[0], crit: L.loss[1], color: CSLV[csLv(a.loss, L.loss) || 'ok'] }),
+      gNeedle({ title: 'SERVER REPLY', value: g.avg ?? null, max: 100, log: true, unit: 'ms · A2S · log', readout: fms(g.avg), warn: L.ping[0] * 2, crit: L.ping[1] * 2, color: '#3dd6ff', peak: g.max })].join(''));
+    const now = d.now, series = [{ name: 'Ping (ICMP)', color: C.s[3], pts: s.series.icmp.map(p => [now - p[0], p[1]]) }, { name: 'Server reply (A2S)', color: C.s[0], pts: s.series.a2s.map(p => [now - p[0], p[1]]) }];
+    legend(`#csl-${i}`, series); csCharts[i] && csCharts[i].set(series, 300);
+    const row = (label, k, unit, lim) => `<tr><td>${label}</td>${[s.icmp['1m'], s.icmp['10m'], s.a2s['1m'], s.a2s['10m']].map(x => { const val = x ? x[k] : null; const lv = lim ? csLv(val, lim) : null; return `<td class="${lv ? 'lv-' + lv : ''}">${val == null ? '—' : (k === 'spikes' ? String(val) : fms(val)) + unit}</td>`; }).join('')}</tr>`;
+    morph($(`#cst-${i}`), `<table class="cstbl"><thead><tr><th></th><th>Ping 1m</th><th>Ping 10m</th><th>Reply 1m</th><th>Reply 10m</th></tr></thead><tbody>
+      ${row('Average', 'avg', ' ms', L.ping)}${row('Best', 'min', ' ms')}${row('p95', 'p95', ' ms')}${row('p99', 'p99', ' ms', [L.ping[1], 15])}${row('Worst', 'max', ' ms', [10, 30])}
+      ${row('Jitter', 'jitter', ' ms', L.jitter)}${row('Loss', 'loss', '%', L.loss)}${row('Spikes', 'spikes', '', [1, 5])}${row('During a speed test', 'loaded_avg', ' ms', L.ping)}
+      <tr><td>Jitter in ticks</td>${[s.icmp['1m'], s.icmp['10m'], s.a2s['1m'], s.a2s['10m']].map(x => `<td>${x && x.jitter != null ? (x.jitter / L.tick_ms).toFixed(3) : '—'}</td>`).join('')}</tr></tbody></table>`);
+    const pth = s.path;
+    const hp = p => p ? `<span class="${p.level === 'crit' ? 'bad' : p.level === 'warn' ? 'meh' : ''}" title="${esc((p.reasons || []).join('; '))}">${esc(p.port)}${p.busy != null ? ` ${p.busy}%` : ''}${p.errors ? ` · ${p.errors} err` : ''}</span>` : '';
+    morph($(`#csp-${i}`), !pth ? '<span class="sub">The switch path shows here once your switches are added on the Switches tab.</span>' : pth.error ? `<span class="sub">Path: ${esc(pth.error)}</span>` :
+      `<span class="k">Switch path · checked ${ago(pth.at)}</span><div class="hops" style="margin-top:6px"><span class="hop">probe</span>${pth.hops.map(h => {
+        const lvls = [h.in, h.out].filter(Boolean).map(p => p.level);
+        return `<span class="arr">→</span><span class="hop ${lvls.includes('crit') ? 'crit' : lvls.includes('warn') ? 'warn' : ''}">${hp(h.in)}<b>${esc(h.name)}</b>${hp(h.out)}</span>`;
+      }).join('')}<span class="arr">→</span><span class="hop ${pth.end && pth.end.level === 'crit' ? 'crit' : pth.end && pth.end.level === 'warn' ? 'warn' : ''}">${hp(pth.end) || esc(pth.end_port || '')}<b>${esc(s.name)}</b></span></div>`);
+    morph($(`#csq-${i}`), s.players && s.players.length ? `<span class="k">On the server</span><div class="plist" style="margin-top:6px">${s.players.map(p => `<div><span>${esc(p.name || '(connecting)')}</span><span class="k">${p.score} · ${Math.floor(p.seconds / 60)}m</span></div>`).join('')}</div>` : '');
+  });
+  flapMeasure();
+  $('#cs-pcsub').textContent = d.pcs.length ? `${d.group ? 'group ' + d.group : 'all saved machines'} · ping every 2 s · last minute` : '';
+  morph($('#cs-pcs'), d.pcs.map(p => {
+    const st = p.st || {}, lv = p.up === false ? 'bad' : csLv(st.avg, L.ping) === 'bad' || csLv(st.loss, L.loss) === 'bad' ? 'bad' : csLv(st.avg, L.ping) === 'warn' || csLv(st.jitter, L.jitter) === 'warn' || st.loss ? 'warn' : st.avg != null ? 'ok' : 'off';
+    return `<div class="pc ${lv}" title="${esc(p.ip || 'no IP yet')}"><b>${esc(p.name)}</b><span class="v">${p.up === false ? 'DOWN' : st.avg == null ? '—' : fms(st.avg) + ' ms'}</span>
+      <span class="k">${st.jitter != null ? `jit ${fms(st.jitter)}` : ''}${st.loss ? ` · loss ${st.loss}%` : ''}${p.ip ? '' : 'no IP yet'}</span></div>`;
+  }).join('') || '<div class="empty">Save the players’ PCs on the Wake tab (with a group per team, if you like), and they show here.</div>');
+  morph($('#cs-events'), d.events.map(e => `<div class="ev"><span class="k" title="${esc(new Date(e.t * 1000).toLocaleString())}">${esc(fmtWhen(e.t))}</span><span class="dot ${e.sev === 'bad' ? 'err' : e.sev === 'warn' ? 'warn' : 'on'}"></span><span>${esc(e.msg)}</span></div>`).join('')
+    || '<div class="empty">Nothing that would cause lag. Spanning tree changes, storms, IP conflicts, link drops, spikes and loss show here.</div>');
+  setHTML('#cs-found', d.found.map(f => `<tr><td class="l"><b>${esc(f.name)}</b><div class="sub mono">${esc(f.host)}:${f.port} · ${esc(f.map)} · ${f.players}/${f.max}</div></td>
+    <td>${f.cs ? '<span class="chip ok">CS</span>' : `<span class="chip">${esc(f.folder)}</span>`}</td><td><button class="btn ghost admin-only" data-csadd="${esc(f.name.replace(/[=\n]/g, ' ').slice(0, 32))} = ${esc(f.host)}:${f.port}">Add</button></td></tr>`).join('') || '<tr><td class="sub">None found yet.</td></tr>');
+  $('#cs-scanat').textContent = d.scan_at ? `Last scan ${ago(d.scan_at)} (every 2 minutes).` : 'Asks the LAN for game servers, like the game’s own server browser.';
+  if (!$('#f-cs')._filled) {
+    $('#cs-servers').value = d.servers_text;
+    setHTML('#cs-group', ['<option value="">All saved machines</option>', ...d.groups.map(g => `<option${g === d.group ? ' selected' : ''}>${esc(g)}</option>`)].join(''));
+    $('#f-cs')._filled = true;
+  }
+}
+$('#cs-found').onclick = async e => {
+  const b = e.target.closest('[data-csadd]');
+  if (!b) return;
+  const t = $('#cs-servers').value.trim();
+  try { await api('/api/settings', { cs_servers: (t ? t + '\n' : '') + b.dataset.csadd }); $('#f-cs')._filled = false; } catch (err) { alert(err.message); }
+  csRefresh();
+};
+$('#cs-scan').onclick = async () => { await api('/api/cs/scan').catch(() => {}); setTimeout(csRefresh, 2000); };
+$('#f-cs').onsubmit = async e => {
+  e.preventDefault();
+  try { await api('/api/settings', { cs_servers: $('#cs-servers').value, cs_group: $('#cs-group').value }); flash($('#csx-msg'), 'Saved', true); $('#f-cs')._filled = false; }
+  catch (err) { flash($('#csx-msg'), err.message); }
+  csRefresh();
+};
 
 // ---------- polling ----------
 let timer = null;

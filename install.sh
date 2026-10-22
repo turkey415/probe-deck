@@ -5,6 +5,8 @@ HOST=${1:-root@probe-01.local}
 DIR=$(cd "$(dirname "$0")" && pwd)
 ssh "$HOST" 'mkdir -p /opt/probe-deck/vendor'
 scp -q "$DIR"/*.py "$DIR/index.html" "$HOST:/opt/probe-deck/"
+ssh "$HOST" 'mkdir -p /opt/probe-deck/gamelan'
+scp -q "$DIR"/gamelan/*.py "$HOST:/opt/probe-deck/gamelan/"
 # xterm.js for the console, served by the probe so it works on a LAN with no internet.
 scp -q "$DIR"/vendor/* "$HOST:/opt/probe-deck/vendor/"
 scp -q "$DIR/probe-deck.service" "$HOST:/etc/systemd/system/probe-deck.service"

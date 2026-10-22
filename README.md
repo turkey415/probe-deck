@@ -97,6 +97,18 @@ The Switches tab is the same page as GXL-LANapp's Switches tab (ported from its 
 - Set **one read-only community** (v1 or v2c) and add switches by IP, or from **found but not added** (CDP neighbors of your switches) and the subnet **Scan**. An **AireOS wireless controller** shows its access points and clients (its community is set on the controller: Management → SNMP → Communities).
 - The community is kept on the probe (`/etc/probe-deck/config.json` and `devices.json`, root-only) and never sent to the page. Viewers see everything, including the drill-down; admins add, remove, reorder and mark ports.
 
+### CS2 (is this network fit for a match?)
+Everything about the network that decides a Counter-Strike match, measured from the probe's switch port:
+- **Game servers**: list them (`Name = host:port`) or pick one the **LAN scan** found (the same broadcast the game's server browser sends). For each: **ping** (ICMP, once a second) and **server reply** (the game's own A2S query over UDP, once a second, so it includes the server answering), as needle meters and a 5-minute chart; the server's game, **map** (split-flap), player count and the **players' names and scores**.
+- **Stats** over 1 and 10 minutes: average, best, p95, p99, worst, **jitter** (also in CS2 ticks: 15.6 ms at 64 tick), **loss**, **spikes**, and **latency during a speed test** (bufferbloat: run a test on the Probe tab and watch it).
+- **MTU**: whether full-size packets reach the server without fragmenting.
+- **Switch path** to the server (from Trace), with each port's load, errors and health.
+- **Player PCs**: every machine saved on the Wake tab (or one group, e.g. a team), pinged every 2 seconds.
+- **Lag events**: spanning tree changes, broadcast storms, IP conflicts, rogue DHCP, the probe's link dropping, latency spikes and loss bursts, on one timeline.
+- **Steam**: connect time to Steam's API (servers with online auth need it).
+- A **verdict** at the top: **MATCH READY**, **CHECK** or **NOT READY**, with the reasons. LAN limits: ping 2 ms (bad at 5), jitter 1 ms (bad at 3), loss 0.1% (bad at 1%).
+- The server query code is GameLAN-Visualizer's (`gamelan/`, copied unchanged).
+
 ### Trace (where is this host plugged in?)
 - Type an **IP, MAC or host name**. The probe pings it (so the switches' MAC tables are fresh), finds its MAC (its own ARP table, the Watchdog, the switches' ARP tables, or the wireless controller), then asks every switch's MAC table, VLAN by VLAN (`community@vlan`), where it was learned.
 - The **end** is the port where the MAC was learned and the CDP neighbor isn't another managed switch. The **path** from the probe to it follows the CDP links between your switches.
@@ -104,6 +116,9 @@ The Switches tab is the same page as GXL-LANapp's Switches tab (ported from its 
 - The end-port card shows the port's link, VLAN, errors and description, and warns when **several MACs** share the port (an unmanaged switch, hub or VM host behind it), when the port has **errors**, or when it's at **half duplex**.
 - A live log shows each step. The last 20 traces are kept. Viewers can trace too. On the Wake tab, every machine has a **Trace** button.
 - Limits: a host behind a switch that isn't managed (or doesn't speak CDP) can be traced only to the port that switch is on. The MAC must have been seen in the last ~5 minutes.
+
+### Remote access (optional)
+[Tailscale](https://tailscale.com) works on the probe: `curl -fsSL https://tailscale.com/install.sh | sh`, then `tailscale up --hostname=probe-01` and open the link it prints. The page is then at `https://probe-01.<your-tailnet>.ts.net/` from anywhere (add that name to the certificate on the HTTPS tab).
 
 ### HTTPS
 - The page is on **https://** (port 443). On first start the probe makes a **self-signed** certificate (ECDSA P-256, 10 years) for its host name, `<host>.local` and its IP. Plain **http://** visits move to HTTPS, except `GET /api/probe`, which stays on HTTP because the T-Displays poll it (an ESP32 can't check a self-signed certificate). The redirect can be turned off.
@@ -260,6 +275,8 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 | POST | `/api/net/add`, `/remove`, `/scan`, `/refresh` | `{host, name?, community?}`, `{id}` (admin) |
 | POST | `/api/net/order`, `/api/net/role` | `{ids}`; `{id, port, role: firewall\|cache\|null}` (admin) |
 | POST | `/api/trace` | `{q: IP, MAC or name}` → `{id}` (any user) |
+| GET | `/api/cs` | The CS2 tab: servers, stats, path, player PCs, lag events, verdict |
+| POST | `/api/cs/scan` | Scan the LAN for game servers now (any user) |
 | GET | `/api/trace/<id>`, `/api/traces` | A trace's steps and result; recent traces |
 | GET | `/api/tls`, `/api/tls/cert.pem` | Certificate details; download the certificate |
 | POST | `/api/tls/generate` | `{names: "probe-01, probe-01.local, 192.168.1.50", days?}`: new self-signed certificate (admin) |

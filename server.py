@@ -30,13 +30,14 @@ from pathlib import Path
 
 import auth as auth_mod
 import console as console_mod
+import cs as cs_mod
 import netmap as netmap_mod
 import tls as tls_mod
 import wake as wake_mod
 import watchdog as watch_mod
 import ws as ws_mod
 
-__version__ = "0.8.1"
+__version__ = "0.9.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -68,12 +69,13 @@ DEFAULTS = {
     **wake_mod.DEFAULTS,
     **tls_mod.DEFAULTS,
     **netmap_mod.DEFAULTS,
+    **cs_mod.DEFAULTS,
 }
 HTTPS_PORT = 443
 PLAIN_OK = ("/api/probe",)
 OPEN_GET = ("/", "/index.html", "/api/probe", "/api/auth")      # no login needed (the page shell, the displays, login state)
 OPEN_POST = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
-ANY_USER_POST = ("/api/auth/password", "/api/trace")          # viewers may change their own password and run traces  # the displays poll this over plain HTTP (an ESP32 can't check a self-signed cert)
+ANY_USER_POST = ("/api/auth/password", "/api/trace", "/api/cs/scan")          # viewers may change their own password and run traces  # the displays poll this over plain HTTP (an ESP32 can't check a self-signed cert)
 VENDOR = {"xterm.js": "text/javascript", "xterm.css": "text/css", "addon-fit.js": "text/javascript"}
 
 HOST_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.\-:]{0,252}")
@@ -138,7 +140,7 @@ class Probe:
         self.iperf_srv = None
         self.speed_proc = None
         self.wake_ev = threading.Event()
-        self.watch = self.wake = self.console = self.tls = self.auth = self.netmap = None
+        self.watch = self.wake = self.console = self.tls = self.auth = self.netmap = self.cs = None
         DATA.mkdir(parents=True, exist_ok=True)
         try:
             self.history = json.loads((DATA / "history.json").read_text())[-HISTORY_MAX:]
@@ -169,6 +171,11 @@ class Probe:
                 c[k] = v
         if "watch_trusted" in new:
             c["watch_trusted"] = ", ".join(watch_mod.norm_trusted(new["watch_trusted"]))
+        if "cs_servers" in new:
+            cs_mod.parse_servers(new["cs_servers"])
+            c["cs_servers"] = str(new["cs_servers"])[:2000]
+        if "cs_group" in new:
+            c["cs_group"] = re.sub(r"[^\w .\-#]", "", str(new["cs_group"] or ""))[:20]
         if "snmp_community" in new:
             c["snmp_community"] = netmap_mod.NetMap.check_community(new["snmp_community"])
         if "snmp_version" in new:
@@ -839,6 +846,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(200, p.console.info(self.user["role"] == "admin"))
         if path == "/api/net":
             return self.send_body(200, p.netmap.snapshot())
+        if path == "/api/cs":
+            return self.send_body(200, p.cs.snapshot())
         if path == "/api/traces":
             return self.send_body(200, p.netmap.trace_list())
         if path.startswith("/api/trace/"):
@@ -940,6 +949,8 @@ class Handler(BaseHTTPRequestHandler):
                 p.netmap.set_role(str(body.get("id")), str(body.get("port") or ""), body.get("role") or None)
             elif path == "/api/net/refresh":
                 p.netmap.wake.set()
+            elif path == "/api/cs/scan":
+                threading.Thread(target=p.cs.scan, daemon=True).start()
             elif path == "/api/trace":
                 reply["id"] = p.netmap.start_trace(body.get("q"), self.user["name"])
             # ----- console -----
@@ -1037,6 +1048,7 @@ def main():
     probe.auth = auth_mod.Auth(CONF.parent, DATA, legacy_hash=probe.conf.get("console_pw", ""))
     probe.console.auth = probe.auth
     probe.netmap = netmap_mod.NetMap(probe, CONF.parent, DATA)
+    probe.cs = cs_mod.CS(probe)
     probe.tls = tls_mod.TLS(probe, CONF.parent)
     if HTTPS_PORT:
         probe.tls.ensure()
