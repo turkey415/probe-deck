@@ -486,6 +486,26 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 .pc.bad { border-color: #7a2b2b; background: #1d1212; } .pc.bad .v { color: #ff7b7b; } .pc.off { opacity: .5; }
 .cnhead { margin: 6px 2px -6px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--amber); display: flex; align-items: center; gap: 10px; }
 .cnhead .sub { letter-spacing: normal; text-transform: none; }
+/* ---------- guarded switch (Tailscale on/off): slide to arm, then press ---------- */
+.arm-sw { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px 10px 14px; border-radius: 8px; background: radial-gradient(ellipse at 50% 30%, #23231f, #121211 75%); border: 1px solid #0b0b0a; box-shadow: inset 0 2px 10px rgba(0,0,0,.7); }
+.arm-latch { position: relative; width: 138px; height: 26px; border-radius: 13px; border: 0; padding: 0; cursor: pointer; background: #0b0b0a; box-shadow: inset 0 2px 5px rgba(0,0,0,.9), 0 0 0 2px #2d2d29; }
+.arm-latch span:not(.arm-knob) { position: absolute; top: 50%; transform: translateY(-50%); font: 700 8.5px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .22em; color: #cfcab8; opacity: .8; }
+.arm-safe { right: 13px; } .arm-arm { left: 15px; color: var(--amber) !important; }
+.arm-knob { position: absolute; top: 3px; left: 3px; width: 58px; height: 20px; border-radius: 10px; transition: left .22s cubic-bezier(.3,1.3,.5,1);
+  background: repeating-linear-gradient(-45deg, #f2c300 0 5px, #161614 5px 10px); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 2px 4px rgba(0,0,0,.6); }
+.arm-sw.armed .arm-knob { left: 77px; }
+.arm-korry { width: 88px; height: 88px; border-radius: 7px; padding: 6px; border: 0; cursor: pointer; background: linear-gradient(145deg, #3a3a35, #161614); box-shadow: 0 0 0 2px #0b0b0a, 0 6px 12px rgba(0,0,0,.6); transition: transform .08s, opacity .2s; }
+.arm-korry:active:not(:disabled) { transform: scale(.96); }
+.arm-face { height: 100%; border-radius: 4px; display: grid; grid-template-rows: 1fr 1fr; background: #0c0c0b; box-shadow: inset 0 2px 7px rgba(0,0,0,.9); overflow: hidden; }
+.arm-face span { display: grid; place-items: center; font: 700 10.5px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em; color: #3b3a34; transition: color .2s, background .2s, text-shadow .2s; }
+.arm-face .k1 { border-bottom: 1px solid #222; }
+.arm-sw.on .k2 { color: var(--good, #3dff7a); background: rgba(61,255,122,.08); text-shadow: 0 0 9px #3dff7a; }
+.arm-sw:not(.on) .k2 { color: #a3352c; }
+.arm-sw.busy .k2 { color: var(--amber); background: rgba(255,178,46,.06); animation: armblink .6s steps(2) infinite; }
+.arm-sw.armed .k1 { color: var(--amber); background: rgba(255,178,46,.08); text-shadow: 0 0 9px var(--amber); }
+.arm-sw:not(.armed) .arm-korry { opacity: .75; }
+.arm-sw :disabled { cursor: not-allowed; opacity: .45; }
+@keyframes armblink { 50% { opacity: .35; } }
 /* ---------- Tailscale map ---------- */
 .tsmap { padding: 0; overflow: hidden; background: #03080d; border-color: #10384d; }
 .tsm-wrap { position: relative; aspect-ratio: 975 / 610; width: 100%; background: radial-gradient(ellipse at 50% 40%, #071a26 0%, #02060a 75%); }
@@ -988,8 +1008,11 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
   <section class="card admin-only">
     <h2>On / off</h2>
     <div class="form">
-      <div class="row"><button class="btn primary" id="tsx-up">Turn on</button><button class="btn ghost" id="tsx-down">Turn off</button></div>
-      <span class="sub">Off = disconnected from the tailnet but still logged in (like <code>tailscale down</code>). On reconnects without a new login.</span>
+      <div class="arm-sw" id="tsx-sw">
+        <button class="arm-latch" id="tsx-latch" type="button" aria-label="Slide the safety latch to arm the Tailscale switch"><span class="arm-safe">SAFE</span><span class="arm-arm">ARM</span><span class="arm-knob"></span></button>
+        <button class="arm-korry" id="tsx-korry" type="button" aria-label="Press to switch Tailscale on or off"><span class="arm-face"><span class="k1">ARMED</span><span class="k2" id="tsx-k2">LINK OFF</span></span></button>
+      </div>
+      <span class="sub">Slide to ARM, then press. Off disconnects from the tailnet but stays logged in (like <code>tailscale down</code>); on reconnects without a new login.</span>
       <label class="chk"><input type="checkbox" id="tsx-svc"><span>Tailscale service running and started at boot<small>Unticked stops tailscaled completely and keeps it off after a reboot.</small></span></label>
       <div class="row"><button class="btn ghost" id="tsx-login">Log in</button><button class="btn ghost" id="tsx-logout">Log out</button></div>
       <span id="tsx-msg"></span>
@@ -2752,7 +2775,7 @@ function renderTS() {
     || '<tr><td class="sub" colspan="6">No other devices.</td></tr>' : '<tr><td class="sub" colspan="6">Not connected.</td></tr>');
   for (const el of document.querySelectorAll('#v-ts aside button, #v-ts aside input')) el.disabled = locked || (!svc.active && el.id !== 'tsx-svc');
   $('#tsx-svc').checked = !!(svc.active && svc.enabled);
-  $('#tsx-up').disabled ||= run; $('#tsx-down').disabled ||= !run;
+  tsSwitch(run, t.state);
   $('#tsx-logout').disabled ||= !run && t.state !== 'Stopped'; $('#tsx-login').disabled ||= run;
   if (!$('#f-ts')._filled && t.prefs) {
     $('#tsx-host').value = pr.hostname || ''; $('#tsx-dns').checked = !!pr.corp_dns; $('#tsx-routeall').checked = !!pr.route_all;
@@ -2762,11 +2785,33 @@ function renderTS() {
 }
 const viaTailnet = () => TS && TS.client_tailnet && !confirm('You are on this page through Tailscale. This cuts your connection to it. Go ahead?');
 async function tsDo(body, msg, el = '#tsx-msg') {
-  try { await api('/api/tailscale', body); flash($(el), msg, true); } catch (err) { flash($(el), err.message); }
+  let ok = true;
+  try { await api('/api/tailscale', body); flash($(el), msg, true); } catch (err) { flash($(el), err.message); ok = false; }
   setTimeout(tsRefresh, 600); setTimeout(tsRefresh, 2500);
+  return ok;
 }
-$('#tsx-up').onclick = () => tsDo({ action: 'up' }, 'Turning on…');
-$('#tsx-down').onclick = () => { if (!viaTailnet()) tsDo({ action: 'down' }, 'Turned off'); };
+// the guarded on/off switch: slide the latch to arm, then press; it disarms by itself after 8 s
+const TSW = { timer: 0, busy: 0, want: null };
+function tsArm(on) {
+  clearTimeout(TSW.timer);
+  $('#tsx-sw').classList.toggle('armed', on);
+  if (on) TSW.timer = setTimeout(() => tsArm(false), 8000);
+}
+function tsSwitch(run, state) {
+  const sw = $('#tsx-sw');
+  if (TSW.want != null && (run === TSW.want || Date.now() - TSW.busy > 15000)) TSW.want = null;
+  sw.classList.toggle('on', run); sw.classList.toggle('busy', TSW.want != null);
+  $('#tsx-k2').textContent = TSW.want != null ? (TSW.want ? 'LINKING' : 'DROPPING') : run ? 'LINK ON' : state === 'NeedsLogin' ? 'LOG IN' : 'LINK OFF';
+  if ($('#tsx-latch').disabled) tsArm(false);
+}
+$('#tsx-latch').onclick = () => tsArm(!$('#tsx-sw').classList.contains('armed'));
+$('#tsx-korry').onclick = () => {
+  if (!$('#tsx-sw').classList.contains('armed') || TSW.want != null || !TS) return;
+  const on = TS.state !== 'Running';
+  if (!on && viaTailnet()) return;
+  tsArm(false); TSW.want = on; TSW.busy = Date.now(); tsSwitch(!on, TS.state);
+  tsDo({ action: on ? 'up' : 'down' }, on ? 'Turning on…' : 'Turned off').then(ok => { if (!ok) { TSW.want = null; tsSwitch(!on, TS.state); } });
+};
 $('#tsx-login').onclick = () => tsDo({ action: 'login' }, 'The login link shows at the top in a moment');
 $('#tsx-logout').onclick = () => { if (!viaTailnet() && confirm('Log the probe out of the tailnet? It needs a new login (a link) to come back.')) tsDo({ action: 'logout' }, 'Logged out'); };
 $('#tsx-svc').onchange = e => {

@@ -38,7 +38,7 @@ import wake as wake_mod
 import watchdog as watch_mod
 import ws as ws_mod
 
-__version__ = "0.13.0"
+__version__ = "0.14.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
