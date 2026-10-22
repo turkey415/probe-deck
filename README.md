@@ -101,22 +101,61 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 
 ## Hardware
 
+<p align="center"><img src="docs/hardware/00-probe.jpg" width="460" alt="probe-01: the Radxa ZERO 3E and PoE HAT in a blue and black 3D-printed case"></p>
+
 | Part | Notes |
 | --- | --- |
 | **Radxa ZERO 3E** (2 GB is plenty) | RK3566, gigabit Ethernet, 65 × 30 mm. The **3E** has Ethernet; the 3W does not. |
-| **Radxa ZERO 3E PoE HAT** | IEEE 802.3af. **The copper standoffs and screws carry the power**: PoE does not work without them, so tighten them, and keep metal away from them. |
-| **microSD card**, 16–32 GB | The board has no built-in storage. |
-| Case (optional) | [Case for Radxa 3E with PoE HAT](https://www.printables.com/model/848702-case-for-radxa-3e-with-poe-hat) on Printables. It wants a 40 mm fan, and there is a [taller lid](https://www.printables.com/model/1572977-lid-case-radxa-3e-with-poe-hat) for v1.2 of the HAT. |
+| **Radxa ZERO 3E PoE HAT** | IEEE 802.3af. Comes with 4 standoffs and 8 screws. **The standoffs and screws carry the power**: PoE does not work without them, so tighten them, and keep metal away from them. |
+| **microSD card**, 16–32 GB | The board has no built-in storage. A high-endurance card lasts longer. |
+| Fan (optional) | A 20 mm 5 V fan under the HAT, on the HAT's fan plug (as in the photos). Worth it in a closed case. |
+| **USB console cable** (for the Console tab) | USB-C on the probe to the switch's RJ45 console port. Any FTDI, Prolific, CH340 or CP210x cable works. |
+| Case (optional) | 3D printed, from two Printables models. **You may need both:** print the bottom from [Case for Radxa 3E with PoE HAT](https://www.printables.com/model/848702-case-for-radxa-3e-with-poe-hat), and the lid from [Lid: case Radxa 3E with PoE HAT](https://www.printables.com/model/1572977-lid-case-radxa-3e-with-poe-hat/files). The newer lid is taller: the original lid can be too tight over v1.2 of the HAT and its parts. |
 
-**Putting it together:** follow Radxa's [ZERO 3E PoE HAT guide](https://docs.radxa.com/en/zero/zero3/accessories/3e-poe-hat), which has diagrams for each step:
-1. Screw the copper standoffs onto the ZERO 3E.
-2. Seat the PoE HAT on top.
-3. Screw the HAT down from above. Tighten every screw: the standoffs carry the PoE power.
-4. Plug in an Ethernet cable from a PoE (802.3af) switch port.
+### Putting it together
 
-If it doesn't power up, check that the switch port gives PoE and that the screws are tight.
+Radxa's [ZERO 3E PoE HAT guide](https://docs.radxa.com/en/zero/zero3/accessories/3e-poe-hat) has official diagrams. These are photos of probe-01 being built.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/hardware/01-parts.jpg" alt="All the parts: PoE HAT, ZERO 3E, microSD card, standoffs and screws, both case halves, patch cable and USB console cable"></td>
+<td width="50%"><img src="docs/hardware/02-board.jpg" alt="The Radxa ZERO 3E from the top: RK3566, RAM, USB-C ports, micro HDMI, 40-pin header, gigabit Ethernet and mounting holes"></td>
+</tr>
+<tr>
+<td><b>1. The parts.</b> Board, PoE HAT, microSD card, 4 standoffs and 8 screws, the case, a patch cable and (for the Console tab) a USB console cable.</td>
+<td><b>2. The board.</b> PoE power comes in through the Ethernet jack. The HAT plugs onto the 40-pin header, and the standoffs go in the four corner holes.</td>
+</tr>
+<tr>
+<td><img src="docs/hardware/03-hat-top.jpg" alt="The PoE HAT from the top: PoE converter, 40-pin pass-through and the POE12 and POE36 holes"></td>
+<td><img src="docs/hardware/04-hat-under.jpg" alt="The PoE HAT from underneath with four standoffs screwed in, the 40-pin socket and an optional 20 mm fan"></td>
+</tr>
+<tr>
+<td><b>3. The HAT.</b> The holes marked <b>POE12</b> and <b>POE36</b> are how the power reaches the HAT: through the standoffs. That's why they must be tight.</td>
+<td><b>4. Standoffs on the HAT.</b> Screw the four standoffs into the underside of the HAT. Fit the fan here now if you're using one, and plug it into the HAT's fan connector.</td>
+</tr>
+<tr>
+<td><img src="docs/hardware/05-stack.jpg" alt="The HAT stacked on the board with the standoffs between them, sitting in the case bottom"></td>
+<td><img src="docs/hardware/06-sd-screws.jpg" alt="The underside of the board: the microSD card in its slot and screws into the four standoffs"></td>
+</tr>
+<tr>
+<td><b>5. Stack them.</b> Press the HAT's socket straight down onto the board's 40-pin header, so the standoffs land on the board's corner holes.</td>
+<td><b>6. Screws and microSD.</b> Turn it over and screw through the board into all four standoffs. Tighten them. Slide the flashed microSD card into the slot under the board.</td>
+</tr>
+<tr>
+<td><img src="docs/hardware/07-case.jpg" alt="The assembled probe in the black case bottom, with the Ethernet jack in its opening"></td>
+<td><img src="docs/hardware/08-in-use.jpg" alt="The finished probe on a Cisco Catalyst 3560-CX, with a PoE patch cable and a USB console cable to the switch's console port"></td>
+</tr>
+<tr>
+<td><b>7. Into the case.</b> Drop it into the case bottom with the Ethernet jack in its opening, then put the lid on.</td>
+<td><b>8. On the job.</b> One patch cable from a PoE port powers it and connects it. The console cable runs from the probe's USB-C to the switch's console port.</td>
+</tr>
+</table>
+
+If it doesn't power up, check that the switch port gives PoE (802.3af) and that all eight screws are tight.
 
 At idle the board sits around 45 °C with no case. Gigabit tests load the CPU, so add a small fan if it goes in a closed case.
+
+The photos are made by `tools/annotate_photos.py` from the originals. It keeps only the pixels (no location or camera data) and blurs the serial-number stickers.
 
 ## Build one
 
