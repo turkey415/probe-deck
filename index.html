@@ -179,9 +179,9 @@ select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent);
 .note.crit { border-left-color: var(--crit); }
 
 /* ---------- console screen ---------- */
-.screen { --ph: #ffb000; position: relative; background: #0b0b0a; border-radius: 12px; padding: 12px 8px 12px 14px;
+.screen { --ph: #33ff66; position: relative; background: #0b0b0a; border-radius: 12px; padding: 12px 8px 12px 14px;
   border: 1px solid rgba(255, 255, 255, .07); box-shadow: inset 0 0 50px rgba(0, 0, 0, .85), 0 0 0 4px #161615, 0 0 0 5px #2e2e2b; }
-.screen.green { --ph: #3dff7a; } .screen.white { --ph: #e9e7dd; }
+.screen.amber { --ph: #ffb000; } .screen.white { --ph: #e9e7dd; }
 .screen::after { content: ""; position: absolute; inset: 0; border-radius: 12px; pointer-events: none; z-index: 2;
   background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px), radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, .35)); }
 .screen:fullscreen { border-radius: 0; padding: 16px; }
@@ -371,7 +371,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
       <span class="sub" id="c-pastest"></span>
       <span class="spacer"></span>
       <span class="keys" id="c-ph" role="group" aria-label="Screen colour">
-        <button class="key" data-ph="amber" title="Amber phosphor">Amb</button><button class="key" data-ph="green" title="Green phosphor">Grn</button><button class="key" data-ph="white" title="White phosphor">Wht</button>
+        <button class="key" data-ph="green" title="Green phosphor">Grn</button><button class="key" data-ph="amber" title="Amber phosphor">Amb</button><button class="key" data-ph="white" title="White phosphor">Wht</button>
       </span>
       <button class="key" id="c-fminus" title="Smaller text">A−</button><button class="key" id="c-fplus" title="Bigger text">A+</button>
       <button class="key" id="c-clear" title="Clear the screen and the saved scrollback">Clear</button>
@@ -905,9 +905,9 @@ const shortMac = m => m || '—';
 
 // ---------- console ----------
 const CON = { info: null, st: null, term: null, fit: null, ws: null, retry: 0, started: false };
-const PH = { amber: '#ffb000', green: '#3dff7a', white: '#e9e7dd' };
+const PH = { green: '#33ff66', amber: '#ffb000', white: '#e9e7dd' };
 function phTheme(name) {
-  const fg = PH[name] || PH.amber;
+  const fg = PH[name] || PH.green;
   return { background: '#0b0b0a', foreground: fg, cursor: fg, cursorAccent: '#0b0b0a', selectionBackground: 'rgba(255,255,255,.22)',
     black: '#1b1b1a', brightBlack: '#6b6a65', white: '#c3c2b7', brightWhite: '#f0efec' };
 }
@@ -919,7 +919,7 @@ async function conInit() {
   const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/vendor/xterm.css'; document.head.append(l);
   try { await loadScript('/vendor/xterm.js'); await loadScript('/vendor/addon-fit.js'); }
   catch { $('#term').textContent = 'Could not load the terminal (vendor/xterm.js missing on the probe).'; return; }
-  const ph = lsGet('pd-ph', 'amber');
+  const ph = lsGet('pd-phosphor', 'green');
   setPhosphor(ph);
   const term = new Terminal({ fontFamily: '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace', fontSize: +lsGet('pd-font', 14),
     cursorBlink: true, scrollback: 10000, theme: phTheme(ph), allowTransparency: true });
@@ -961,7 +961,7 @@ function setPhosphor(name) {
   $('#screen').classList.remove('amber', 'green', 'white'); $('#screen').classList.add(name);
   for (const b of document.querySelectorAll('#c-ph [data-ph]')) b.classList.toggle('sel', b.dataset.ph === name);
   if (CON.term) CON.term.options.theme = phTheme(name);
-  lsSet('pd-ph', name);
+  lsSet('pd-phosphor', name);
 }
 function renderConDeck() {
   const st = CON.st || (S && S.console) || CON.info || {}, info = CON.info || {};
