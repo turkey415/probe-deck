@@ -186,7 +186,8 @@ select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent);
   background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px), radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, .35)); }
 .screen:fullscreen { border-radius: 0; padding: 16px; }
 .screen:fullscreen .term { height: calc(100vh - 32px); }
-.term { height: max(380px, calc(100vh - 360px)); }
+.term { height: max(380px, calc(100vh - 250px)); }
+#v-console:has(#con-nopw:not([hidden])) .term { height: max(380px, calc(100vh - 315px)); }
 .term .xterm-rows { text-shadow: 0 0 5px color-mix(in srgb, var(--ph) 55%, transparent); }
 .term .xterm-viewport { background: transparent !important; }
 .term .xterm-viewport::-webkit-scrollbar { width: 8px; } .term .xterm-viewport::-webkit-scrollbar-thumb { background: #2e2e2b; border-radius: 4px; }
@@ -351,15 +352,6 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 <!-- ================= CONSOLE ================= -->
 <div class="layout r view" id="v-console" hidden>
 <main>
-  <section class="card deck">
-    <h2>Console <span class="spacer"></span><span class="lamp" id="con-lamp"></span></h2>
-    <div class="wells">
-      <div class="well wide" id="cw-port"><span class="k">Serial port</span><div class="big-port" id="con-port">—</div><div class="wsub" id="con-adapter"></div></div>
-      <div class="well" id="cw-baud"><span class="k">Baud</span><div id="con-baud"></div><span class="un">8N1 · no flow control</span></div>
-      <div class="well" id="cw-view"><span class="k">Attached</span><div id="con-viewers"></div><span class="un" id="con-viewers2">—</span></div>
-      <div class="well" id="cw-up"><span class="k">Session</span><div class="big-port" id="con-up" style="font-size:22px">—</div><span class="un" id="con-log">no log</span></div>
-    </div>
-  </section>
 
   <div class="note crit" id="con-nopw" hidden>No console password is set, so anyone who can open this page can type into the switch console. Set one under <b>Password</b>.</div>
 
@@ -390,6 +382,16 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
       </div>
     </div>
     <div class="keys" id="c-macros" style="margin-top:12px"></div>
+  </section>
+
+  <section class="card deck">
+    <h2>Console <span class="spacer"></span><span class="lamp" id="con-lamp"></span></h2>
+    <div class="wells">
+      <div class="well wide" id="cw-port"><span class="k">Serial port</span><div class="big-port" id="con-port">—</div><div class="wsub" id="con-adapter"></div></div>
+      <div class="well" id="cw-baud"><span class="k">Baud</span><div id="con-baud"></div><span class="un">8N1 · no flow control</span></div>
+      <div class="well" id="cw-view"><span class="k">Attached</span><div id="con-viewers"></div><span class="un" id="con-viewers2">—</span></div>
+      <div class="well" id="cw-up"><span class="k">Session</span><div class="big-port" id="con-up" style="font-size:22px">—</div><span class="un" id="con-log">no log</span></div>
+    </div>
   </section>
 </main>
 <aside>
