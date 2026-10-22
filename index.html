@@ -208,9 +208,71 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 .mrow .num small, .mrow .who small { display: block; color: var(--muted); font-size: 11px; }
 .mrow input[type=checkbox] { accent-color: var(--amber); width: 15px; height: 15px; margin: 0; }
 .sled.waking { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: pulse .8s ease-in-out infinite; }
-.ro .mrow { grid-template-columns: 12px minmax(110px, 1.4fr) minmax(60px, .6fr) 130px minmax(110px, 1fr) 70px; }
+.ro .mrow { grid-template-columns: 12px minmax(110px, 1.4fr) minmax(60px, .6fr) 130px minmax(110px, 1fr) 70px auto; }
 @media (max-width: 760px) { .mrow { grid-template-columns: 22px 12px minmax(0, 1fr) auto; } .mrow .grp, .mrow .macc, .mrow .ipc, .mrow .ping { display: none; } }
 @media (prefers-reduced-motion: reduce) { .sled.waking { animation: none; } }
+
+/* ---------- switches ---------- */
+.dev { display: flex; flex-direction: column; gap: 12px; }
+.devhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.devhead .who { min-width: 0; flex: 1; }
+.devhead .who b { font-size: 15px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.ports { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 4px; }
+.pt { height: 30px; border-radius: 4px; border: 1px solid #34342f; background: #1a1a18; color: #6b6a65; cursor: pointer; padding: 0;
+  font: 600 10px ui-monospace, Menlo, Consolas, monospace; display: grid; place-items: center; position: relative; }
+.pt.up { background: #12301a; border-color: #2c7a3f; color: #9ff0ae; box-shadow: inset 0 0 8px rgba(61, 255, 122, .15); }
+.pt.off { background: repeating-linear-gradient(135deg, #1a1a18 0 4px, #232320 4px 8px); color: #4a4a46; }
+.pt.upl { border-color: #b07cff; box-shadow: 0 0 6px rgba(176, 124, 255, .35); }
+.pt.ap { border-color: #3fc3ff; box-shadow: 0 0 6px rgba(63, 195, 255, .35); }
+.pt.me { outline: 2px solid var(--amber); outline-offset: 1px; }
+.pt.sel { outline: 2px solid #fff; outline-offset: 1px; }
+.pt:hover { filter: brightness(1.3); }
+.pgrp { grid-column: 1 / -1; font: 600 9.5px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .12em; color: var(--muted); margin-top: 4px; }
+@media (max-width: 1500px) { #h-pd, #h-link { display: none; } }
+.tabs a { padding: 5px 10px; }
+.ptlegend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); }
+.ptlegend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; border: 1px solid; }
+.portinfo { background: var(--well); border: 1px solid rgba(255, 255, 255, .06); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+.aplist { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+.aplist div { background: var(--well); border: 1px solid rgba(255, 255, 255, .06); border-radius: 6px; padding: 6px 10px; display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+.aplist b { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* ---------- trace ---------- */
+.tracebar { display: flex; gap: 10px; }
+.tracebar input { font: 600 17px ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; padding: 11px 14px; letter-spacing: .04em; }
+.tracebar .btn { padding: 0 22px; font-size: 14px; }
+.tlog { font: 12.5px/1.6 ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; color: #9ff0ae; background: #0b0b0a; border-radius: 8px; padding: 10px 14px;
+  max-height: 220px; overflow: auto; text-shadow: 0 0 5px rgba(61, 255, 122, .35); border: 1px solid rgba(255, 255, 255, .06); }
+.tlog .t { color: #3f7a4c; margin-right: 10px; }
+.tlog .err { color: #ff9b9b; text-shadow: 0 0 5px rgba(255, 90, 77, .4); }
+.path { display: flex; align-items: stretch; flex-wrap: wrap; gap: 0; row-gap: 14px; }
+.node { position: relative; background: var(--well); border: 1px solid rgba(255, 255, 255, .08); border-radius: 10px; padding: 12px 14px; min-width: 150px; max-width: 240px;
+  display: flex; flex-direction: column; gap: 3px; box-shadow: inset 0 0 22px rgba(0, 0, 0, .45); }
+.node::before, .node::after { content: ""; position: absolute; width: 8px; height: 8px; border: 1px solid #4a4a46; }
+.node::before { top: 5px; left: 5px; border-right: 0; border-bottom: 0; } .node::after { bottom: 5px; right: 5px; border-left: 0; border-top: 0; }
+.node b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.node .k { letter-spacing: .08em; }
+.node.probe { border-color: rgba(255, 176, 0, .45); } .node.probe .nk { color: var(--amber); }
+.node.swn .nk { color: #c9a6ff; } .node.swn { border-color: rgba(176, 124, 255, .35); }
+.node.ap .nk { color: #7fd6ff; } .node.ap { border-color: rgba(63, 195, 255, .4); }
+.node.host { border-color: rgba(61, 255, 122, .55); box-shadow: inset 0 0 22px rgba(0, 0, 0, .45), 0 0 14px rgba(61, 255, 122, .2); } .node.host .nk { color: #3dff7a; }
+.nk { font: 600 10px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; }
+.link { flex: 1; min-width: 64px; max-width: 150px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; padding: 0 4px; }
+.link .wire { width: 100%; height: 2px; background: var(--amber); box-shadow: 0 0 8px var(--amber); position: relative; }
+.link .wire::after { content: ""; position: absolute; right: -2px; top: -4px; border: 5px solid transparent; border-left-color: var(--amber); border-right: 0; }
+.link.air .wire { background: repeating-linear-gradient(90deg, #3fc3ff 0 6px, transparent 6px 11px); box-shadow: none; animation: air 1s linear infinite; background-size: 22px 2px; }
+.link.air .wire::after { border-left-color: #3fc3ff; }
+@keyframes air { to { background-position: 22px 0; } }
+.link .pl { font: 600 10.5px ui-monospace, Menlo, Consolas, monospace; color: var(--text-2); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; min-height: 13px; }
+@media (max-width: 760px) { .path { flex-direction: column; } .node { max-width: none; } .link { min-height: 46px; max-width: none; flex-direction: row; gap: 10px; }
+  .link .wire { width: 2px; height: 34px; } .link .wire::after { right: -4px; top: auto; bottom: -2px; border: 5px solid transparent; border-top-color: var(--amber); border-bottom: 0; }
+  .link.air .wire::after { border-top-color: #3fc3ff; } }
+.recent { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.recent button { font: 12px ui-monospace, Menlo, Consolas, monospace; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text-2); cursor: pointer; }
+.recent button:hover { color: var(--text); border-color: var(--amber); }
+.sigbars { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; margin-left: 6px; vertical-align: -1px; }
+.sigbars i { width: 3px; background: #34342f; } .sigbars i.on { background: #3fc3ff; box-shadow: 0 0 4px #3fc3ff; }
+@media (prefers-reduced-motion: reduce) { .link.air .wire { animation: none; } }
 /* ---------- login + roles ---------- */
 .gate { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; overflow: auto;
   background: radial-gradient(ellipse at center, #1a1a19 0%, #0b0b0a 70%); }
@@ -261,6 +323,8 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
     <a href="#console" data-view="console">Console <span class="dot" id="t-con"></span></a>
     <a href="#watch" data-view="watch">Watchdog <span class="badge" id="t-watch" hidden></span></a>
     <a href="#wake" data-view="wake">Wake</a>
+    <a href="#net" data-view="net">Switches <span class="badge" id="t-net" hidden></span></a>
+    <a href="#trace" data-view="trace">Trace</a>
     <a href="#https" data-view="https">HTTPS <span class="dot" id="t-https"></span></a>
     <a href="#users" data-view="users">Users</a>
   </nav>
@@ -586,6 +650,77 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
 </main>
 </div>
 
+
+<!-- ================= SWITCHES ================= -->
+<div class="layout view" id="v-net" hidden>
+<aside>
+  <section class="card admin-only">
+    <h2>SNMP</h2>
+    <form class="form" id="f-snmp">
+      <label class="f">Read-only community <span class="sub">One string for every device (a device can have its own). Kept on the probe and never shown again.</span>
+        <input type="password" id="sn-comm" autocomplete="off" spellcheck="false"></label>
+      <label class="f">Version <select id="sn-ver"><option value="2">v2c</option><option value="1">v1</option></select></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="sn-msg"></span></div>
+    </form>
+  </section>
+  <section class="card admin-only">
+    <h2>Add a device</h2>
+    <form class="form" id="f-devadd">
+      <label class="f">IP address <input type="text" id="da-host" spellcheck="false" placeholder="192.168.1.124"></label>
+      <label class="f">Name <span class="sub">Optional: the device's own name is used otherwise.</span><input type="text" id="da-name" maxlength="40"></label>
+      <label class="f">Its own community <span class="sub">Optional: only if this one differs.</span><input type="password" id="da-comm" autocomplete="off"></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none" id="da-go">Add</button><span id="da-msg"></span></div>
+      <span class="sub">Switches and AireOS wireless controllers. The probe reads it once to check before adding it.</span>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Discovered <span class="spacer"></span><button class="btn ghost admin-only" id="b-scan">Scan</button></h2>
+    <span class="sub" id="scan-note"></span>
+    <div class="tablewrap" style="margin-top:8px"><table><tbody id="disc"></tbody></table></div>
+  </section>
+</aside>
+<main>
+  <div class="note" id="net-empty" hidden></div>
+  <section class="card deck">
+    <h2>Switches <span class="spacer"></span><span class="lamp" id="net-lamp"></span></h2>
+    <div class="wells">
+      <div class="well" id="nw-dev"><span class="k">Devices</span><div id="net-ndev"></div><span class="un" id="net-ndev2">managed</span></div>
+      <div class="well" id="nw-down"><span class="k">Not answering</span><div id="net-ndown"></div><span class="un">SNMP</span></div>
+      <div class="well" id="nw-ports"><span class="k">Ports up</span><div id="net-nports"></div><span class="un" id="net-nports2">—</span></div>
+      <div class="well" id="nw-poe"><span class="k">PoE in use</span><div id="net-poe"></div><span class="un" id="net-poe2">watts</span></div>
+      <div class="well" id="nw-wifi"><span class="k">Wi-Fi clients</span><div id="net-wifi"></div><span class="un" id="net-wifi2">—</span></div>
+    </div>
+  </section>
+  <div class="ptlegend"><span><i style="background:#12301a;border-color:#2c7a3f"></i>link up</span><span><i style="background:#1a1a18;border-color:#34342f"></i>down</span>
+    <span><i style="background:#232320;border-color:#34342f"></i>shut</span><span><i style="border-color:#b07cff"></i>to a switch</span><span><i style="border-color:#3fc3ff"></i>access point</span>
+    <span><i style="border-color:var(--amber);border-width:2px"></i>this probe</span></div>
+  <div class="stlist" id="dev-list" style="gap:18px"></div>
+</main>
+</div>
+
+<!-- ================= TRACE ================= -->
+<div class="view" id="v-trace" hidden style="padding:18px 20px 40px;max-width:1640px;margin:0 auto;display:flex;flex-direction:column;gap:18px">
+  <section class="card">
+    <h2>Host trace <span class="spacer"></span><span class="sub">IP, MAC or host name: finds the switch port (or access point) it's on</span></h2>
+    <form class="tracebar" id="f-trace">
+      <input type="text" id="tr-q" spellcheck="false" autocomplete="off" placeholder="192.168.1.154  ·  bc:24:11:20:39:74  ·  seat-12.lan" aria-label="What to trace">
+      <button class="btn primary ro-ok" type="submit" id="tr-go">Trace</button>
+    </form>
+    <div class="recent" id="tr-recent"></div>
+  </section>
+  <section class="card" id="tr-logcard" hidden>
+    <h2>Trace log <span class="spacer"></span><span class="lamp" id="tr-lamp"></span></h2>
+    <div class="tlog" id="tr-log" aria-live="polite"></div>
+  </section>
+  <section class="card deck" id="tr-pathcard" hidden>
+    <h2>Path <span class="spacer"></span><span class="sub" id="tr-sum"></span></h2>
+    <div class="path" id="tr-path"></div>
+  </section>
+  <div class="grid2" id="tr-details" hidden>
+    <section class="card"><h2>End port</h2><dl class="kv" id="tr-port"></dl><div id="tr-warn" style="margin-top:12px"></div></section>
+    <section class="card" id="tr-wcard" hidden><h2>Wireless</h2><dl class="kv" id="tr-wifi"></dl></section>
+  </div>
+</div>
 <!-- ================= HTTPS ================= -->
 <div class="layout view" id="v-https" hidden>
 <aside>
@@ -1003,16 +1138,18 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 
 // ---------- views (tabs) ----------
-const VIEWS = ['probe', 'console', 'watch', 'wake', 'https', 'users'];
+const VIEWS = ['probe', 'console', 'watch', 'wake', 'net', 'trace', 'https', 'users'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
-  view = VIEWS.includes(v) ? v : 'probe';
+  view = VIEWS.includes(v.split('?')[0]) ? v.split('?')[0] : 'probe';
   for (const n of VIEWS) $('#v-' + n).hidden = n !== view;
   for (const a of document.querySelectorAll('.tabs a')) a.classList.toggle('on', a.dataset.view === view);
   if (view === 'console') conInit().then(fitTerm);
   if (view === 'https') tlsRefresh();
   if (view === 'users') usersRefresh();
+  if (view === 'net') netRefresh();
+  if (view === 'trace') traceInit();
   if (S) render();
 }
 addEventListener('hashchange', showView);
@@ -1271,7 +1408,7 @@ function renderWake() {
       <span class="k macc mono">${esc(h.mac)}</span>
       <div class="ipc mono" style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis">${esc(h.cur_ip || '—')}${h.learned ? '<small class="sub" style="display:block">from ARP</small>' : ''}</div>
       <div class="num ping">${h.ms != null ? (h.ms < 10 ? h.ms.toFixed(2) : h.ms.toFixed(0)) : '—'}<small>ms</small></div>
-      <div class="keys admin-only"><button class="key" data-wake="${h.id}"${running ? ' disabled' : ''}>Wake</button><button class="key" data-edit="${h.id}">Edit</button><button class="key" data-del="${h.id}" title="Delete">✕</button></div></div>`;
+      <div class="keys"><a class="key ro-ok" href="#trace?q=${encodeURIComponent(h.mac)}" title="Find the switch port" style="text-decoration:none">Trace</a><span class="keys admin-only"><button class="key" data-wake="${h.id}"${running ? ' disabled' : ''}>Wake</button><button class="key" data-edit="${h.id}">Edit</button><button class="key" data-del="${h.id}" title="Delete">✕</button></span></div></div>`;
   }).join('') || '<div class="empty">No machines saved. Add one on the left, import a list, or pick from "Seen on the network".</div>');
   $('#seen-n').textContent = w.seen.length ? w.seen.length : '';
   setHTML('#seen', w.seen.map(x => `<tr><td class="mono">${esc(x.mac)}</td><td class="l mono">${esc(x.ip)}</td><td><button class="btn ghost" data-add="${esc(x.mac)}" data-ip="${esc(x.ip)}">Add</button></td></tr>`).join('')
@@ -1484,6 +1621,190 @@ $('#f-mypw').onsubmit = async e => {
   try { await api('/api/auth/password', { current: $('#mp-cur').value, new: $('#mp-new').value }); flash($('#mp-msg'), 'Password changed. Your other browsers are logged out.', true); $('#mp-cur').value = $('#mp-new').value = $('#mp-new2').value = ''; }
   catch (err) { flash($('#mp-msg'), err.message); }
 };
+
+
+// ---------- switches ----------
+let NET = null, netSel = {};
+async function netRefresh() {
+  try {
+    const r = await fetch('/api/net', { cache: 'no-store' });
+    if (r.status === 401) return showGate();
+    NET = await r.json();
+  } catch { return; }
+  renderNet();
+}
+setInterval(() => { if (view === 'net' && ME) netRefresh(); }, 5000);
+const portNum = n => (n.match(/(\d+)$/) || [, n.slice(-3)])[1];
+function portTip(p) {
+  return `${p.name}${p.alias ? ' · ' + p.alias : ''}\n${!p.admin ? 'shut down' : p.up ? `up · ${p.speed >= 1000 ? p.speed / 1000 + ' G' : p.speed + ' M'} ${p.duplex}` : 'down'}`
+    + `${p.trunk ? ' · trunk' : p.vlan ? ' · VLAN ' + p.vlan : ''}${p.cdp ? `\nCDP: ${p.cdp.short} ${p.cdp.port} (${p.cdp.platform})` : ''}`;
+}
+function renderNet() {
+  netFill();
+  const n = NET;
+  if (!n) return;
+  const devs = n.devices, down = devs.filter(d => d.status === 'error');
+  $('#t-net').hidden = !down.length; $('#t-net').textContent = down.length;
+  if (view !== 'net') return;
+  const sws = devs.filter(d => d.kind !== 'wlc'), wlcs = devs.filter(d => d.kind === 'wlc');
+  const allPorts = sws.flatMap(d => d.ports || []).filter(p => !p.po);
+  const up = allPorts.filter(p => p.up).length;
+  const poe = sws.reduce((a, d) => a + ((d.poe || {}).used || 0), 0), budget = sws.reduce((a, d) => a + ((d.poe || {}).budget || 0), 0);
+  const clients = wlcs.reduce((a, d) => a + (d.clients || 0), 0);
+  setSeg('#net-ndev', devs.length, 2); $('#nw-dev').classList.toggle('off', !devs.length);
+  $('#net-ndev2').textContent = `${sws.length} switch${sws.length === 1 ? '' : 'es'} · ${wlcs.length} WLC`;
+  setSeg('#net-ndown', down.length, 2); $('#nw-down').classList.toggle('alarm', down.length > 0); $('#nw-down').classList.toggle('off', !down.length);
+  setSeg('#net-nports', up, 3); $('#nw-ports').classList.toggle('off', !allPorts.length); $('#net-nports2').textContent = `of ${allPorts.length}`;
+  setSeg('#net-poe', poe, 4); $('#nw-poe').classList.toggle('off', !budget); $('#net-poe2').textContent = budget ? `of ${budget} W` : 'watts';
+  setSeg('#net-wifi', wlcs.length ? clients : '---', 3); $('#nw-wifi').classList.toggle('off', !wlcs.length);
+  $('#net-wifi2').textContent = wlcs.length ? `${wlcs.reduce((a, d) => a + (d.aps || []).length, 0)} access points` : 'add a controller';
+  $('#net-lamp').innerHTML = !n.community_set ? '<span class="dot warn"></span>no community set' : down.length ? `<span class="dot err"></span>${down.length} not answering`
+    : devs.length ? '<span class="dot on"></span>all answering' : '<span class="dot"></span>no devices';
+  $('#net-empty').hidden = n.community_set && devs.length;
+  $('#net-empty').textContent = !n.community_set ? (isAdmin() ? 'Start by setting the read-only SNMP community on the left, then add your switches or press Scan.' : 'An admin needs to set up SNMP here first.')
+    : 'No devices yet. Add a switch by IP, or press Scan to look for them.';
+  const scan = n.scan || {};
+  $('#scan-note').textContent = scan.running ? `Scanning ${scan.net}…` : scan.error ? 'Scan failed: ' + scan.error : scan.at ? `Last scan of ${scan.net}: ${scan.found} answered SNMP.` : 'Neighbors of your devices (CDP) that aren’t added yet. Scan looks for more on the probe’s subnet.';
+  $('#b-scan').disabled = !!scan.running || !n.community_set;
+  setHTML('#disc', n.discovered.map(d => `<tr><td class="l"><b>${esc(d.name)}</b><div class="sub mono">${esc(d.ip)} · ${esc(d.platform || '')}</div><div class="sub">${esc(d.via)}</div></td>
+    <td><span class="chip ${d.kind === 'wlc' ? 'ok' : ''}">${d.kind === 'wlc' ? 'WLC' : 'switch'}</span></td>
+    <td><button class="btn ghost admin-only" data-addip="${esc(d.ip)}">Add</button></td></tr>`).join('') || '<tr><td class="sub">Nothing new.</td></tr>');
+  const me = n.probe_switch, myPort = (S && S.neighbor || {}).port;
+  setHTML('#dev-list', devs.map(d => {
+    const chips = [];
+    if (d.status === 'error') chips.push(`<span class="chip bad">DOWN ${d.down_since ? fmtDur(Date.now() / 1000 - d.down_since) : ''}</span>`);
+    if (d.uptime != null) chips.push(`<span class="chip">UP ${esc(fmtDur(d.uptime))}</span>`);
+    if (d.cpu != null) chips.push(`<span class="chip ${d.cpu > 80 ? 'bad' : d.cpu > 50 ? 'warn' : ''}">CPU ${d.cpu}%</span>`);
+    if (d.poe) chips.push(`<span class="chip ${d.poe.used / d.poe.budget > .9 ? 'bad' : ''}">POE ${d.poe.used}/${d.poe.budget} W</span>`);
+    if (d.kind === 'wlc' && d.clients != null) chips.push(`<span class="chip ok">${d.clients} CLIENTS</span>`);
+    if (d.own_community) chips.push('<span class="chip">OWN COMMUNITY</span>');
+    let body = '';
+    if (d.status === 'pending') body = '<div class="sub">Reading…</div>';
+    else if (d.kind === 'wlc') body = `<div class="aplist">${(d.aps || []).map(a => `<div><b title="${esc(a.mac)}">${esc(a.name)}</b><span class="k">${a.clients} client${a.clients === 1 ? '' : 's'}</span></div>`).join('') || '<span class="sub">No access points joined.</span>'}</div>`;
+    else {
+      const sel = netSel[d.id];
+      let grp = null;
+      const groups = new Set((d.ports || []).map(p => p.po ? 'Po' : p.name.replace(/\d+$/, '')));
+      body = `<div class="ports">${(d.ports || []).map(p => {
+        const g = p.po ? 'Po' : p.name.replace(/\d+$/, '');
+        const head = groups.size > 1 && g !== grp ? `<div class="pgrp">${esc(g === 'Po' ? 'PORT-CHANNELS' : g)}</div>` : '';
+        grp = g;
+        const cls = ['pt', !p.admin ? 'off' : p.up ? 'up' : '', p.cdp && p.cdp.kind === 'switch' ? 'upl' : '', p.cdp && p.cdp.kind === 'ap' ? 'ap' : '',
+          d.id === me && p.name === myPort ? 'me' : '', sel === p.name ? 'sel' : ''].join(' ');
+        return head + `<button type="button" class="${cls}" data-dev="${d.id}" data-port="${esc(p.name)}" title="${esc(portTip(p))}">${esc(p.po ? 'Po' + portNum(p.name) : portNum(p.name))}</button>`;
+      }).join('')}</div>`;
+      const p = sel && (d.ports || []).find(x => x.name === sel);
+      if (p) body += `<div class="portinfo"><b>${esc(p.name)}</b>${p.alias ? ' · ' + esc(p.alias) : ''} — ${!p.admin ? 'shut down' : p.up ? `up, ${p.speed} Mbps ${esc(p.duplex)}` : 'down'}${p.trunk ? ', trunk' : p.vlan ? ', VLAN ' + p.vlan : ''}
+        ${p.cdp ? `<div class="sub" style="margin-top:4px">CDP neighbor: <b>${esc(p.cdp.short)}</b> ${esc(p.cdp.port)} · ${esc(p.cdp.platform)}${p.cdp.ip ? ' · ' + esc(p.cdp.ip) : ''}</div>` : ''}
+        ${p.members && p.members.length ? `<div class="sub">${p.members.length} member links</div>` : ''}</div>`;
+    }
+    return `<section class="card dev"><div class="devhead"><span class="sled ${d.status === 'ok' ? 'ready' : d.status === 'error' ? 'testing' : 'busy'}"></span>
+      <div class="who"><b>${esc(d.name)}</b><span class="k" style="letter-spacing:.06em;text-transform:none">${esc(d.model || '')} · ${esc(d.host)}${d.kind === 'wlc' ? ' · wireless controller' : ''}${d.id === me ? ' · the probe is plugged in here' : ''}</span></div>
+      <div class="chips">${chips.join('')}</div><button class="btn ghost admin-only" data-rmdev="${d.id}" data-name="${esc(d.name)}">Remove</button></div>
+      ${d.status === 'error' ? `<div class="note crit">${esc(d.error || 'Not answering')}</div>` : ''}${body}</section>`;
+  }).join(''));
+}
+$('#dev-list').onclick = async e => {
+  const pt = e.target.closest('[data-port]'), rm = e.target.closest('[data-rmdev]');
+  if (pt) { netSel[pt.dataset.dev] = netSel[pt.dataset.dev] === pt.dataset.port ? null : pt.dataset.port; renderNet(); return; }
+  if (rm && confirm(`Stop managing ${rm.dataset.name}?`)) { await api('/api/net/remove', { id: rm.dataset.rmdev }).catch(err => alert(err.message)); netRefresh(); }
+};
+$('#disc').onclick = async e => {
+  const b = e.target.closest('[data-addip]');
+  if (!b) return;
+  b.disabled = true; b.textContent = 'Adding…';
+  try { await api('/api/net/add', { host: b.dataset.addip }); } catch (err) { alert(err.message); }
+  setTimeout(netRefresh, 600);
+};
+$('#b-scan').onclick = async () => { try { await api('/api/net/scan'); } catch (err) { alert(err.message); } netRefresh(); setTimeout(netRefresh, 6000); };
+$('#f-snmp').onsubmit = async e => {
+  e.preventDefault();
+  try { await api('/api/net/settings', { community: $('#sn-comm').value, version: +$('#sn-ver').value }); $('#sn-comm').value = ''; flash($('#sn-msg'), 'Saved', true); }
+  catch (err) { flash($('#sn-msg'), err.message); }
+  netRefresh();
+};
+$('#f-devadd').onsubmit = async e => {
+  e.preventDefault();
+  $('#da-go').disabled = true;
+  try { await api('/api/net/add', { host: $('#da-host').value.trim(), name: $('#da-name').value.trim(), community: $('#da-comm').value }); flash($('#da-msg'), 'Added', true); $('#da-host').value = $('#da-name').value = $('#da-comm').value = ''; }
+  catch (err) { flash($('#da-msg'), err.message); }
+  $('#da-go').disabled = false;
+  setTimeout(netRefresh, 600);
+};
+const netFill = () => { if (NET && !$('#f-snmp')._filled) { $('#sn-ver').value = NET.version; $('#sn-comm').placeholder = NET.community_set ? '•••••••• (set: type to change)' : 'e.g. the one your switches use'; $('#f-snmp')._filled = true; } };
+
+// ---------- trace ----------
+let TR = null, trTimer = null;
+async function traceInit() {
+  const m = location.hash.match(/^#trace\?q=(.+)$/);   // a link from the Wake tab: trace it at once
+  if (m) { history.replaceState(null, '', '#trace'); $('#tr-q').value = decodeURIComponent(m[1]); startTrace(); }
+  else if (!TR) $('#tr-q').focus();
+  try { const r = await fetch('/api/traces', { cache: 'no-store' }); if (r.ok) renderRecent(await r.json()); } catch {}
+}
+function renderRecent(list) {
+  setHTML('#tr-recent', list.slice(0, 10).map(t => `<button type="button" data-tid="${t.id}" title="${esc(t.summary || t.error || '')}">${esc(t.q)}${t.done ? (t.error ? ' ✗' : ' ✓') : ' …'}</button>`).join(''));
+}
+$('#tr-recent').onclick = e => { const b = e.target.closest('[data-tid]'); if (b) loadTrace(b.dataset.tid); };
+$('#f-trace').onsubmit = e => { e.preventDefault(); startTrace(); };
+async function startTrace() {
+  const q = $('#tr-q').value.trim();
+  if (!q) return;
+  $('#tr-go').disabled = true;
+  try { const r = await api('/api/trace', { q }); loadTrace(r.id); }
+  catch (err) { TR = { q, steps: [{ t: 0, msg: '✗ ' + err.message }], error: err.message, done: true }; renderTrace(); $('#tr-go').disabled = false; }
+}
+async function loadTrace(id) {
+  clearTimeout(trTimer);
+  try { const r = await fetch('/api/trace/' + id, { cache: 'no-store' }); if (!r.ok) return; TR = await r.json(); } catch { return; }
+  renderTrace();
+  if (!TR.done) trTimer = setTimeout(() => loadTrace(id), 350);
+  else { $('#tr-go').disabled = false; fetch('/api/traces').then(r => r.json()).then(renderRecent).catch(() => {}); }
+}
+function sigBars(rssi) {
+  const n = rssi == null ? 0 : rssi >= -55 ? 4 : rssi >= -65 ? 3 : rssi >= -72 ? 2 : rssi >= -80 ? 1 : 0;
+  return `<span class="sigbars">${[4, 7, 10, 12].map((h, i) => `<i style="height:${h}px" class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+}
+function renderTrace() {
+  const t = TR;
+  $('#tr-logcard').hidden = false;
+  $('#tr-lamp').innerHTML = !t.done ? '<span class="dot live"></span>tracing' : t.error ? '<span class="dot err"></span>no result' : `<span class="dot on"></span>done in ${t.took ?? '?'} s`;
+  const log = $('#tr-log');
+  setHTML('#tr-log', t.steps.map(s => `<div class="${s.msg.startsWith('✗') ? 'err' : ''}"><span class="t">${s.t.toFixed(2).padStart(5, ' ')}</span>${esc(s.msg)}</div>`).join('') + (t.done ? '' : '<div>▌</div>'));
+  log.scrollTop = log.scrollHeight;
+  const r = t.result;
+  $('#tr-pathcard').hidden = $('#tr-details').hidden = !r;
+  if (!r) return;
+  const e = r.end, w = r.wireless, tg = r.target;
+  $('#tr-sum').textContent = r.summary;
+  const parts = [];
+  if (r.probe) parts.push(`<div class="node probe"><span class="nk">probe</span><b>${esc(r.probe.name)}</b><span class="k">${esc(r.probe.switch || '')}</span></div>`,
+    `<div class="link"><span class="pl">eth0</span><div class="wire"></div><span class="pl">${esc(r.probe.port || '?')}</span></div>`);
+  r.hops.forEach((h, i) => {
+    parts.push(`<div class="node swn"><span class="nk">switch</span><b title="${esc(h.name)}">${esc((h.name || '').split('.')[0])}</b><span class="k" style="letter-spacing:.04em;text-transform:none">${esc(h.model || '')}<br>${esc(h.host || '')}</span></div>`);
+    if (i < r.hops.length - 1) parts.push(`<div class="link"><span class="pl">${esc(h.out || '?')}</span><div class="wire"></div><span class="pl">${esc(r.hops[i + 1].in || '?')}</span></div>`);
+  });
+  if (e.role === 'ap' && w) {
+    parts.push(`<div class="link"><span class="pl">${esc(e.port)}</span><div class="wire"></div><span class="pl">${esc((e.cdp || {}).port || '')}</span></div>`,
+      `<div class="node ap"><span class="nk">access point</span><b>${esc(w.ap)}</b><span class="k" style="text-transform:none">${esc((e.cdp || {}).platform || '')}</span></div>`,
+      `<div class="link air"><span class="pl">${esc(w.band || '')}${sigBars(w.rssi)}</span><div class="wire"></div><span class="pl" title="${esc(w.ssid || '')}">${esc(w.ssid || '')}</span></div>`);
+  } else parts.push(`<div class="link"><span class="pl">${esc(e.port)}</span><div class="wire"></div><span class="pl">${e.trunk ? 'trunk' : e.vlan ? 'VLAN ' + e.vlan : ''}</span></div>`);
+  const self = e.cdp && e.cdp.ip && e.cdp.ip === tg.ip ? e.cdp.kind : null;
+  parts.push(`<div class="node host"><span class="nk">${w ? 'wireless client' : self === 'ap' ? 'access point' : self === 'router' ? 'router' : 'host'}</span><b>${esc(tg.name || tg.ip || tg.mac)}</b><span class="k" style="text-transform:none">${esc(tg.ip || '')}<br>${esc(tg.mac)}</span></div>`);
+  setHTML('#tr-path', parts.join(''));
+  const kv = [['Switch', e.switch], ['Port', e.port], ['Description', e.alias || '—'], ['Link', e.up ? `up · ${e.speed} Mbps ${e.duplex || ''}` : 'down'],
+    ['VLAN', e.trunk ? 'trunk' : e.vlan], ['Errors', e.errors ?? '—'], ['MACs on the port', e.mac_count ?? '—'],
+    ['CDP neighbor', e.cdp ? `${e.cdp.short} (${e.cdp.platform})` : 'none']];
+  setHTML('#tr-port', kv.map(([k, v]) => `<div><dt>${k}</dt><dd title="${esc(v ?? '')}">${esc(v ?? '—')}</dd></div>`).join(''));
+  const warns = [];
+  if (e.mac_count > 1 && e.role !== 'ap') warns.push(`<div class="note">${e.mac_count} MAC addresses on this port: there's probably an unmanaged switch, hub, or a VM host behind it. ${e.macs ? 'Seen: ' + e.macs.map(esc).join(', ') : ''}</div>`);
+  if (e.errors > 0) warns.push(`<div class="note crit">${e.errors} errors counted on this port since the switch started. Check the cable.</div>`);
+  if (e.up && e.duplex === 'half') warns.push('<div class="note crit">Half duplex: a duplex mismatch or a bad cable.</div>');
+  setHTML('#tr-warn', warns.join(''));
+  $('#tr-wcard').hidden = !w;
+  if (w) setHTML('#tr-wifi', [['Controller', w.wlc], ['Access point', w.ap], ['Band', w.band], ['SSID', w.ssid], ['Signal', w.rssi != null ? w.rssi + ' dBm' : '—'],
+    ['SNR', w.snr != null ? w.snr + ' dB' : '—'], ['Client IP', w.ip], ['User', w.user || '—'], ['AP is on', e.role === 'ap' ? `${e.switch} ${e.port}` : 'not found by CDP']]
+    .map(([k, v]) => `<div><dt>${k}</dt><dd title="${esc(v ?? '')}">${esc(v ?? '—')}</dd></div>`).join(''));
+}
 
 // ---------- polling ----------
 let timer = null;

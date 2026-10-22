@@ -30,12 +30,13 @@ from pathlib import Path
 
 import auth as auth_mod
 import console as console_mod
+import netmap as netmap_mod
 import tls as tls_mod
 import wake as wake_mod
 import watchdog as watch_mod
 import ws as ws_mod
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -66,12 +67,13 @@ DEFAULTS = {
     **watch_mod.DEFAULTS,
     **wake_mod.DEFAULTS,
     **tls_mod.DEFAULTS,
+    **netmap_mod.DEFAULTS,
 }
 HTTPS_PORT = 443
 PLAIN_OK = ("/api/probe",)
 OPEN_GET = ("/", "/index.html", "/api/probe", "/api/auth")      # no login needed (the page shell, the displays, login state)
 OPEN_POST = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
-ANY_USER_POST = ("/api/auth/password",)                        # viewers may change their own password  # the displays poll this over plain HTTP (an ESP32 can't check a self-signed cert)
+ANY_USER_POST = ("/api/auth/password", "/api/trace")          # viewers may change their own password and run traces  # the displays poll this over plain HTTP (an ESP32 can't check a self-signed cert)
 VENDOR = {"xterm.js": "text/javascript", "xterm.css": "text/css", "addon-fit.js": "text/javascript"}
 
 HOST_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.\-:]{0,252}")
@@ -136,7 +138,7 @@ class Probe:
         self.iperf_srv = None
         self.speed_proc = None
         self.wake_ev = threading.Event()
-        self.watch = self.wake = self.console = self.tls = self.auth = None
+        self.watch = self.wake = self.console = self.tls = self.auth = self.netmap = None
         DATA.mkdir(parents=True, exist_ok=True)
         try:
             self.history = json.loads((DATA / "history.json").read_text())[-HISTORY_MAX:]
@@ -167,6 +169,12 @@ class Probe:
                 c[k] = v
         if "watch_trusted" in new:
             c["watch_trusted"] = ", ".join(watch_mod.norm_trusted(new["watch_trusted"]))
+        if "snmp_community" in new:
+            c["snmp_community"] = netmap_mod.NetMap.check_community(new["snmp_community"])
+        if "snmp_version" in new:
+            if int(new["snmp_version"]) not in (1, 2):
+                raise ValueError("SNMP version must be 1 or 2c")
+            c["snmp_version"] = int(new["snmp_version"])
         if "wol_stagger" in new:
             v = float(new["wol_stagger"])
             if not 0 <= v <= 60:
@@ -206,6 +214,7 @@ class Probe:
             self.conf = c
         CONF.parent.mkdir(parents=True, exist_ok=True)
         CONF.write_text(json.dumps(c, indent=2))
+        os.chmod(CONF, 0o600)  # holds the SNMP community
         with self.lock:
             self.pings = {k: v for k, v in self.pings.items() if k in {t["label"] for t in self.targets()}}
         self.wake_ev.set()
@@ -719,7 +728,7 @@ class Probe:
         with self.lock:
             return {
                 "id": self.id, "now": time.time(), "started": self.started, "system": self.system(),
-                "conf": {k: v for k, v in self.conf.items() if not k.startswith("console_")},
+                "conf": {k: v for k, v in self.conf.items() if not k.startswith("console_") and k != "snmp_community"},
                 "link": {**self.link, "flaps": len(self.link["flaps"]), "last_flap": self.link["flaps"][-1] if self.link["flaps"] else None,
                          "renewing": self.renewing},
                 "net": self.net, "neighbor": self.neighbor, "pings": pings, "checks": self.checks,
@@ -828,6 +837,13 @@ class Handler(BaseHTTPRequestHandler):
                                   [("Content-Disposition", f'attachment; filename="{socket.gethostname()}.crt"')])
         if path == "/api/console":
             return self.send_body(200, p.console.info(self.user["role"] == "admin"))
+        if path == "/api/net":
+            return self.send_body(200, p.netmap.snapshot())
+        if path == "/api/traces":
+            return self.send_body(200, p.netmap.trace_list())
+        if path.startswith("/api/trace/"):
+            t = p.netmap.trace_get(path.rsplit("/", 1)[1])
+            return self.send_body(200, t) if t else self.send_body(404, {"error": "no such trace"})
         if path.startswith("/api/console/log/"):
             f = p.console.log_path(path.rsplit("/", 1)[1])
             if not f:
@@ -900,6 +916,25 @@ class Handler(BaseHTTPRequestHandler):
                 p.auth.update(str(body.get("name")), role=body.get("role"), pw=body.get("password"))
             elif path == "/api/users/delete":
                 p.auth.delete(str(body.get("name")), self.user["name"])
+            # ----- switches and trace -----
+            elif path == "/api/net/settings":
+                changes = {}
+                if body.get("community"):
+                    changes["snmp_community"] = body["community"]
+                if "version" in body:
+                    changes["snmp_version"] = body["version"]
+                p.save_conf(changes)
+                p.netmap.wake.set()
+            elif path == "/api/net/add":
+                reply["id"] = p.netmap.add(body.get("host"), body.get("name"), body.get("community"))
+            elif path == "/api/net/remove":
+                p.netmap.remove(str(body.get("id")))
+            elif path == "/api/net/scan":
+                p.netmap.start_scan()
+            elif path == "/api/net/refresh":
+                p.netmap.wake.set()
+            elif path == "/api/trace":
+                reply["id"] = p.netmap.start_trace(body.get("q"), self.user["name"])
             # ----- console -----
             elif path in ("/api/console/settings", "/api/console/logs/clear"):
                 if path.endswith("clear"):
@@ -994,6 +1029,7 @@ def main():
     probe.console = console_mod.Console(probe, DATA)
     probe.auth = auth_mod.Auth(CONF.parent, DATA, legacy_hash=probe.conf.get("console_pw", ""))
     probe.console.auth = probe.auth
+    probe.netmap = netmap_mod.NetMap(probe, CONF.parent, DATA)
     probe.tls = tls_mod.TLS(probe, CONF.parent)
     if HTTPS_PORT:
         probe.tls.ensure()

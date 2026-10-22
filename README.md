@@ -7,6 +7,8 @@ It also does three other jobs, each on its own tab:
 - **Watchdog**: catches rogue DHCP servers, IP conflicts, gateway spoofing, broadcast storms, spanning tree changes and rogue IPv6 routers.
 - **Wake**: Wake-on-LAN for every machine in the room, with a staggered "wake all".
 - **HTTPS**: the page is served over HTTPS with a certificate the probe makes itself, and this tab shows it and regenerates it.
+- **Switches**: your switches and wireless controller over SNMP: every port's link, VLAN and CDP neighbor, plus CPU, PoE and uptime.
+- **Trace**: type an IP, MAC or host name and see the path from the probe, switch by switch, to the port (or access point) it's on.
 - **Users**: everyone logs in. **Admins** can change anything; **viewers** see everything but change nothing.
 
 It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same look as [iPerf Deck](https://github.com/turkey415/Perf-Deck). The probe joins Perf-Deck's network of stations, so the two can test each other.
@@ -82,6 +84,21 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - **Wake all**, wake a group, or wake the ones you tick. Machines wake **2 s apart** by default, so 30 PCs don't all draw power in the same second.
 - An **up/down light** for each machine (ping), and the **boot time**: seconds from the magic packet to the first ping reply. With no IP saved, the watchdog's ARP table supplies one.
 - Magic packets go to 255.255.255.255 and the subnet broadcast on UDP 9 and 7. For another VLAN, give the machine that VLAN's broadcast address (the switch needs `ip directed-broadcast` on that VLAN's interface).
+
+### Switches (SNMP)
+- Set **one read-only community** (v1 or v2c) and add switches by IP. The probe reads each one once before adding it, so a wrong address or community shows up straight away. A device can have its own community if it differs.
+- **Discovered:** switches and controllers that are CDP neighbors of your devices but not added yet, plus a **Scan** of the probe's subnet. One click adds them.
+- Each switch shows a **port panel** (link up, down or shut; links to other switches in purple, access points in blue, the probe's own port in amber; module ports grouped) and chips for uptime, CPU and PoE. Click a port for its speed, VLAN or trunk, description and CDP neighbor.
+- An **AireOS wireless controller** shows its access points and how many clients each has. Its SNMP community is set on the controller itself (Management → SNMP → Communities: read-only).
+- Polled every minute. The community is kept on the probe (`/etc/probe-deck/config.json` and `devices.json`, root-only) and never sent to the page.
+
+### Trace (where is this host plugged in?)
+- Type an **IP, MAC or host name**. The probe pings it (so the switches' MAC tables are fresh), finds its MAC (its own ARP table, the Watchdog, the switches' ARP tables, or the wireless controller), then asks every switch's MAC table, VLAN by VLAN (`community@vlan`), where it was learned.
+- The **end** is the port where the MAC was learned and the CDP neighbor isn't another managed switch. The **path** from the probe to it follows the CDP links between your switches.
+- **Wireless clients:** the controller gives the access point, band, SSID, signal (RSSI) and SNR, and the AP is traced to its switch port by CDP. The path ends: switch → access point → radio → client.
+- The end-port card shows the port's link, VLAN, errors and description, and warns when **several MACs** share the port (an unmanaged switch, hub or VM host behind it), when the port has **errors**, or when it's at **half duplex**.
+- A live log shows each step. The last 20 traces are kept. Viewers can trace too. On the Wake tab, every machine has a **Trace** button.
+- Limits: a host behind a switch that isn't managed (or doesn't speak CDP) can be traced only to the port that switch is on. The MAC must have been seen in the last ~5 minutes.
 
 ### HTTPS
 - The page is on **https://** (port 443). On first start the probe makes a **self-signed** certificate (ECDSA P-256, 10 years) for its host name, `<host>.local` and its IP. Plain **http://** visits move to HTTPS, except `GET /api/probe`, which stays on HTTP because the T-Displays poll it (an ESP32 can't check a self-signed certificate). The redirect can be turned off.
@@ -207,6 +224,7 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 - **`watchdog.py`**: a raw packet socket with a BPF filter (broadcast/multicast only), plus the DHCP scan.
 - **`wake.py`**: saved machines, magic packets and the ping checks.
 - **`index.html`**: one file. It polls `/api/state` every second (twice a second during a test). The console loads `vendor/xterm.js` the first time you open it.
+- **`netmap.py`**: devices, the poller, discovery and the trace. **`pc_snmp.py`** is the SNMP v1/v2c client, copied unchanged from PorkChopCheck.
 - **`auth.py`**: users, roles and sessions (and the `passwd`/`add`/`del` command for SSH).
 - **`tls.py`**: makes the certificate with `openssl` and holds the SSL context. The HTTPS server does each handshake in the request's thread and picks up a new certificate on the next connection.
 - **Files on the probe:** settings in `/etc/probe-deck/config.json`, the certificate in `/etc/probe-deck/tls/`; in `/var/lib/probe-deck`: test history `history.json`, watchdog events `events.json`, saved machines `wol.json`, console logs `console/`.
@@ -232,6 +250,11 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 | WS | `/ws/console` | The terminal: binary frames are serial output; JSON `{t: in\|paste\|paste_stop\|break\|macro\|clear}` |
 | POST | `/api/console/settings` | Port, baud, paste delay, telnet, macros |
 | GET | `/api/console/log/<name>` | Download a session log |
+| GET | `/api/net` | Switches, controllers, ports, discovered devices |
+| POST | `/api/net/settings` | `{community?, version}` (admin) |
+| POST | `/api/net/add`, `/remove`, `/scan`, `/refresh` | `{host, name?, community?}`, `{id}` (admin) |
+| POST | `/api/trace` | `{q: IP, MAC or name}` → `{id}` (any user) |
+| GET | `/api/trace/<id>`, `/api/traces` | A trace's steps and result; recent traces |
 | GET | `/api/tls`, `/api/tls/cert.pem` | Certificate details; download the certificate |
 | POST | `/api/tls/generate` | `{names: "probe-01, probe-01.local, 192.168.1.221", days?}`: new self-signed certificate (admin) |
 | POST | `/api/tls/settings` | `{https_redirect}` (admin) |
@@ -256,6 +279,7 @@ To try it on a PC without a cable or root: `socat -d pty,raw,echo=0,link=/tmp/tt
 | TCP 2001 | Console over telnet (off by default) |
 | UDP 9, 7 | Wake-on-LAN magic packets (sent) |
 | UDP 67/68 | DHCP scan (sent: a Discover every 60 s) |
+| UDP 161 | SNMP to your switches and controller (sent) |
 | UDP 5353 | mDNS: `<host>.local` and `_probe-deck._tcp` (avahi) |
 
 ## Related
