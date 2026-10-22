@@ -177,6 +177,8 @@ select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent);
 .ev .dot { transform: translateY(1px); }
 .note { font-size: 12.5px; color: var(--text-2); background: var(--panel-2); border: 1px solid var(--line-2); border-left: 3px solid var(--warn); border-radius: 7px; padding: 9px 12px; }
 .note.crit { border-left-color: var(--crit); }
+.note a { color: #8fb8ff; }
+a.btn { text-decoration: none; color: var(--text); text-transform: none; letter-spacing: 0; font-size: 13px; }
 
 /* ---------- console screen ---------- */
 .screen { --ph: #33ff66; position: relative; background: #0b0b0a; border-radius: 12px; padding: 12px 8px 12px 14px;
@@ -222,6 +224,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
     <a href="#console" data-view="console">Console <span class="dot" id="t-con"></span></a>
     <a href="#watch" data-view="watch">Watchdog <span class="badge" id="t-watch" hidden></span></a>
     <a href="#wake" data-view="wake">Wake</a>
+    <a href="#https" data-view="https">HTTPS <span class="dot" id="t-https"></span></a>
   </nav>
   <span class="pill"><span class="dot" id="h-dot"></span><span id="h-name">connecting…</span></span>
   <span class="spacer"></span>
@@ -375,6 +378,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
         <form id="f-login">
           <div class="big-port">CONSOLE LOCKED</div>
           <span class="sub">Enter the console password to use the switch console.</span>
+          <div class="note crit plainwarn" hidden style="text-align:left">This page isn't encrypted, so the password crosses the network in clear text. <a class="httpslink" href="#">Use the HTTPS page</a>.</div>
           <input type="password" id="c-pw" autocomplete="current-password" placeholder="Console password">
           <button class="btn primary" type="submit">Unlock</button>
           <div class="msg" id="c-loginerr" hidden></div>
@@ -414,6 +418,8 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
   <section class="card">
     <h2>Password</h2>
     <form class="form" id="f-pw">
+      <div class="note crit plainwarn" hidden>This page isn't encrypted. <a class="httpslink" href="#">Switch to HTTPS</a> before you type a password.</div>
+      <span class="sub">Protects the console, its telnet port, and the HTTPS settings.</span>
       <label class="f" id="pw-cur-l">Current password <input type="password" id="pw-cur" autocomplete="current-password"></label>
       <label class="f">New password <input type="password" id="pw-new" autocomplete="new-password" placeholder="6 characters or more"></label>
       <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none" id="pw-go">Set password</button>
@@ -560,6 +566,57 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
     </div>
     <div class="sub" id="wk-note" style="margin-bottom:10px"></div>
     <div class="stlist" id="wk-list"></div>
+  </section>
+</main>
+</div>
+
+<!-- ================= HTTPS ================= -->
+<div class="layout view" id="v-https" hidden>
+<aside>
+  <section class="card">
+    <h2>New certificate</h2>
+    <form class="form" id="f-cert">
+      <label class="f">Names and IPs <span class="sub">Every name or address you'll type in the browser, comma separated. The first one is the certificate's name.</span>
+        <textarea id="tc-names" rows="3" spellcheck="false"></textarea></label>
+      <button class="btn ghost" type="button" id="tc-default" style="align-self:flex-start">Use this probe's names</button>
+      <label class="f">Valid for (days) <input type="number" id="tc-days" min="1" max="3650" value="3650"></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Regenerate</button><span id="tc-msg"></span></div>
+      <span class="sub">Self-signed, ECDSA P-256. Browsers warn again after a new certificate until you trust the new one.</span>
+    </form>
+  </section>
+  <section class="card">
+    <h2>HTTPS settings</h2>
+    <form class="form" id="f-tlsset">
+      <label class="chk"><input type="checkbox" id="ts-redirect"><span>Send HTTP visitors to HTTPS<small>http:// pages move to https://. <code>/api/probe</code> stays on HTTP for the T-Displays.</small></span></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="ts-msg"></span></div>
+    </form>
+  </section>
+</aside>
+<main>
+  <div class="note crit" id="tls-plain" hidden></div>
+  <div class="note" id="tls-locked" hidden>Changes here need the console password. <a href="#console">Unlock the console</a> first.</div>
+  <section class="card deck">
+    <h2>HTTPS <span class="spacer"></span><span class="lamp" id="tls-lamp"></span></h2>
+    <div class="wells">
+      <div class="well" id="tw-conn"><span class="k">This page</span><div class="big-port" id="tls-conn">—</div><span class="un" id="tls-conn2">—</span></div>
+      <div class="well" id="tw-days"><span class="k">Expires in</span><div id="tls-days"></div><span class="un" id="tls-days2">days</span></div>
+      <div class="well" id="tw-key"><span class="k">Key</span><div class="big-port" id="tls-key">—</div><span class="un" id="tls-key2">—</span></div>
+      <div class="well" id="tw-ip"><span class="k">Covers this IP</span><div class="big-port" id="tls-ip">—</div><span class="un" id="tls-ip2">—</span></div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Certificate <span class="spacer"></span><a class="btn" id="tls-dl" href="/api/tls/cert.pem" download>Download certificate</a></h2>
+    <dl class="kv" id="tls-kv"></dl>
+  </section>
+  <section class="card">
+    <h2>Stop the browser warning</h2>
+    <div class="sub" style="line-height:1.7">
+      A self-signed certificate is encrypted like any other, but browsers warn because nobody vouches for it. Trust it once on each PC:<br>
+      <b>Windows (Chrome, Edge):</b> download it, open the .crt, Install Certificate → Local Machine → Place in <i>Trusted Root Certification Authorities</i>.<br>
+      <b>Linux:</b> <code>sudo cp probe-01.crt /etc/pki/ca-trust/source/anchors/ &amp;&amp; sudo update-ca-trust</code> (Fedora/Nobara), then restart the browser.<br>
+      <b>Firefox:</b> Settings → Privacy &amp; Security → Certificates → View Certificates → Authorities → Import.<br>
+      Check the SHA-256 fingerprint above matches what the browser shows before you trust it.
+    </div>
   </section>
 </main>
 </div>
@@ -887,7 +944,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 
 // ---------- views (tabs) ----------
-const VIEWS = ['probe', 'console', 'watch', 'wake'];
+const VIEWS = ['probe', 'console', 'watch', 'wake', 'https'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -895,6 +952,7 @@ function showView() {
   for (const n of VIEWS) $('#v-' + n).hidden = n !== view;
   for (const a of document.querySelectorAll('.tabs a')) a.classList.toggle('on', a.dataset.view === view);
   if (view === 'console') conInit().then(fitTerm);
+  if (view === 'https') tlsRefresh();
   if (S) render();
 }
 addEventListener('hashchange', showView);
@@ -1223,6 +1281,69 @@ $('#f-adhoc').onsubmit = async e => {
   try { await api('/api/wol/wake', { mac: $('#ah-mac').value }); flash($('#ah-msg'), 'Magic packet sent', true); } catch (err) { flash($('#ah-msg'), err.message); }
 };
 $('#seen').onclick = e => { const b = e.target.closest('[data-add]'); if (b) { editMachine(null); $('#m-mac').value = b.dataset.add; $('#m-ip').value = b.dataset.ip; $('#m-name').focus(); } };
+
+
+// ---------- https ----------
+let TLS = null;
+const httpsURL = port => `https://${location.hostname}${port && port !== 443 ? ':' + port : ''}${location.pathname}${location.hash}`;
+function plainWarn(port) {
+  const plain = location.protocol === 'http:';
+  for (const el of document.querySelectorAll('.plainwarn')) el.hidden = !plain;
+  for (const a of document.querySelectorAll('.httpslink')) a.href = httpsURL(port);
+}
+async function tlsRefresh() {
+  try { TLS = await (await fetch('/api/tls', { cache: 'no-store' })).json(); } catch { return; }
+  renderTLS();
+}
+function renderTLS() {
+  const t = TLS;
+  if (!t) return;
+  plainWarn(t.port);
+  const i = t.info, locked = t.need_auth && !t.authed;
+  $('#t-https').className = 'dot ' + (location.protocol === 'https:' ? 'on' : 'warn');
+  if (view !== 'https') return;
+  $('#tls-locked').hidden = !locked;
+  for (const el of document.querySelectorAll('#f-cert input, #f-cert textarea, #f-cert button, #f-tlsset input, #f-tlsset button')) el.disabled = locked;
+  $('#tls-plain').hidden = t.https;
+  $('#tls-plain').innerHTML = `You're on plain HTTP. <a href="${esc(httpsURL(t.port))}">Open the HTTPS page</a>.`;
+  $('#tls-lamp').innerHTML = t.error ? `<span class="dot err"></span>${esc(t.error)}` : i ? '<span class="dot on"></span>certificate loaded' : '<span class="dot err"></span>no certificate';
+  $('#tw-conn').classList.toggle('alarm', !t.https);
+  $('#tls-conn').textContent = t.https ? 'HTTPS' : 'HTTP';
+  $('#tls-conn2').textContent = t.https ? 'encrypted' : 'not encrypted';
+  const days = i ? Math.floor((i.to - i.now) / 86400) : null;
+  $('#tw-days').classList.toggle('off', days == null); $('#tw-days').classList.toggle('alarm', days != null && days < 30);
+  setSeg('#tls-days', days == null ? '----' : days, 4);
+  $('#tls-days2').textContent = i ? 'days · ' + new Date(i.to * 1000).toLocaleDateString() : 'days';
+  $('#tw-key').classList.toggle('off', !i);
+  $('#tls-key').textContent = i ? i.key.split(' ')[0] : '—';
+  $('#tls-key2').textContent = i ? (i.key.split(' ')[1] || '') + ' bit · ' + (i.self_signed ? 'self-signed' : 'CA-signed') : '—';
+  $('#tw-ip').classList.toggle('off', !i); $('#tw-ip').classList.toggle('alarm', !!i && !i.covers_ip);
+  $('#tls-ip').textContent = i ? (i.covers_ip ? 'YES' : 'NO') : '—';
+  $('#tls-ip2').textContent = i && i.ip ? i.ip + (i.covers_ip ? '' : ' · regenerate') : '—';
+  setHTML('#tls-kv', i ? [['Name', i.cn], ['Also valid for', i.names.join(', ')], ['Issued by', i.issuer + (i.self_signed ? ' (itself)' : '')],
+    ['Valid from', new Date(i.from * 1000).toLocaleString()], ['Valid until', new Date(i.to * 1000).toLocaleString()], ['Serial', i.serial]]
+    .map(([k, v]) => `<div><dt>${k}</dt><dd title="${esc(v)}">${esc(v)}</dd></div>`).join('') +
+    `<div style="grid-column:1/-1"><dt>SHA-256 fingerprint</dt><dd class="mono" style="white-space:normal;word-break:break-all">${esc(i.sha256)}</dd></div>` : '<div><dd class="sub">No certificate yet.</dd></div>');
+  $('#tls-dl').hidden = !i;
+  if (!$('#f-cert')._filled) { $('#tc-names').value = i ? i.names.join(', ') : t.default_names; $('#f-cert')._filled = true; }
+  if (!$('#f-tlsset')._filled) { $('#ts-redirect').checked = !!t.redirect; $('#f-tlsset')._filled = true; }
+}
+$('#tc-default').onclick = () => { if (TLS) $('#tc-names').value = TLS.default_names; };
+$('#f-cert').onsubmit = async e => {
+  e.preventDefault();
+  if (!confirm('Make a new certificate? Browsers that trusted the old one will warn again until you trust the new one.')) return;
+  try { await api('/api/tls/generate', { names: $('#tc-names').value, days: +$('#tc-days').value }); flash($('#tc-msg'), 'New certificate in use. Reload the page and accept it.', true); $('#f-cert')._filled = false; }
+  catch (err) { flash($('#tc-msg'), err.message); }
+  tlsRefresh();
+};
+$('#f-tlsset').onsubmit = async e => {
+  e.preventDefault();
+  try { await api('/api/tls/settings', { https_redirect: $('#ts-redirect').checked }); flash($('#ts-msg'), 'Saved', true); $('#f-tlsset')._filled = false; }
+  catch (err) { flash($('#ts-msg'), err.message); }
+  tlsRefresh();
+};
+tlsRefresh();
+setInterval(() => { if (view === 'https') tlsRefresh(); }, 10000);
 
 // ---------- polling ----------
 let timer = null;

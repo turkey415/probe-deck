@@ -18,6 +18,7 @@ import json
 import os
 import re
 import socket
+import ssl
 import subprocess
 import threading
 import time
@@ -28,11 +29,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import console as console_mod
+import tls as tls_mod
 import wake as wake_mod
 import watchdog as watch_mod
 import ws as ws_mod
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -62,7 +64,10 @@ DEFAULTS = {
     **console_mod.DEFAULTS,
     **watch_mod.DEFAULTS,
     **wake_mod.DEFAULTS,
+    **tls_mod.DEFAULTS,
 }
+HTTPS_PORT = 443
+PLAIN_OK = ("/api/probe",)  # the displays poll this over plain HTTP (an ESP32 can't check a self-signed cert)
 VENDOR = {"xterm.js": "text/javascript", "xterm.css": "text/css", "addon-fit.js": "text/javascript"}
 
 HOST_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.\-:]{0,252}")
@@ -127,7 +132,7 @@ class Probe:
         self.iperf_srv = None
         self.speed_proc = None
         self.wake_ev = threading.Event()
-        self.watch = self.wake = self.console = None
+        self.watch = self.wake = self.console = self.tls = None
         DATA.mkdir(parents=True, exist_ok=True)
         try:
             self.history = json.loads((DATA / "history.json").read_text())[-HISTORY_MAX:]
@@ -145,7 +150,7 @@ class Probe:
         """internal=True is for the console module, whose settings sit behind the console password."""
         c = dict(self.conf)
         if internal:
-            c.update({k: v for k, v in new.items() if k.startswith("console_")})
+            c.update({k: v for k, v in new.items() if k.startswith(("console_", "https_"))})
             new = {}
         for k in ("watch_scan", "watch_storm"):
             if k in new:
@@ -745,11 +750,36 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def is_https(self):
+        return isinstance(self.connection, ssl.SSLSocket)
+
+    def to_https(self, code):
+        """Send plain-HTTP visitors to the HTTPS page. True when it answered."""
+        p = self.probe
+        if self.is_https() or not p.conf.get("https_redirect") or not (p.tls and p.tls.ctx):
+            return False
+        if self.path.split("?")[0] in PLAIN_OK:
+            return False
+        host = re.sub(r":\d+$", "", self.headers.get("Host") or p.net.get("ip") or "")
+        self.send_response(code)
+        self.send_header("Location", f"https://{host}{'' if HTTPS_PORT == 443 else ':' + str(HTTPS_PORT)}{self.path}")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+        return True
+
+    def tls_info(self):
+        p = self.probe
+        return {"info": p.tls.info(), "error": p.tls.error, "redirect": p.conf.get("https_redirect"), "https": self.is_https(),
+                "port": HTTPS_PORT, "authed": p.console.authed(self.headers), "need_auth": p.console.need_auth(),
+                "default_names": ", ".join(p.tls.default_names())}
+
     def same_origin(self):
         origin = self.headers.get("Origin")
         return not origin or re.sub(r"^https?://", "", origin) == self.headers.get("Host")
 
     def do_GET(self):
+        if self.to_https(301):
+            return
         path = self.path.split("?")[0]
         p = self.probe
         if path in ("/", "/index.html"):
@@ -760,6 +790,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(200, p.probe_message())
         if path.startswith("/vendor/") and path[8:] in VENDOR:
             return self.send_body(200, (ROOT / "vendor" / path[8:]).read_bytes(), VENDOR[path[8:]])
+        if path == "/api/tls":
+            return self.send_body(200, self.tls_info())
+        if path == "/api/tls/cert.pem":
+            if not p.tls.cert.exists():
+                return self.send_body(404, {"error": "no certificate yet"})
+            return self.send_body(200, p.tls.cert.read_bytes(), "application/x-pem-file",
+                                  [("Content-Disposition", f'attachment; filename="{socket.gethostname()}.crt"')])
         if path == "/api/console":
             return self.send_body(200, p.console.info(p.console.authed(self.headers)))
         if path.startswith("/api/console/log/"):
@@ -784,6 +821,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_body(404, {"error": "not found"})
 
     def do_POST(self):
+        if self.to_https(308):
+            return
         if not self.same_origin():
             return self.send_body(403, {"error": "cross-site request"})
         headers = []
@@ -818,15 +857,15 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/console/login":
                 tok = con.login(body.get("password", ""))
                 if tok:
-                    headers.append(("Set-Cookie", con.cookie(tok)))
+                    headers.append(("Set-Cookie", con.cookie(tok, self.is_https())))
             elif path == "/api/console/logout":
                 tok = SimpleCookie(self.headers.get("Cookie") or "").get(console_mod.COOKIE)
                 if tok:
                     con.tokens.pop(tok.value, None)
-                headers.append(("Set-Cookie", con.cookie(None)))
+                headers.append(("Set-Cookie", con.cookie(None, self.is_https())))
             elif path == "/api/console/password":
                 tok = con.set_password(body.get("current"), body.get("new"), con.authed(self.headers) and con.need_auth())
-                headers.append(("Set-Cookie", con.cookie(tok)))
+                headers.append(("Set-Cookie", con.cookie(tok, self.is_https())))
             elif path in ("/api/console/settings", "/api/console/logs/clear"):
                 if not con.authed(self.headers):
                     return self.send_body(401, {"error": "log in to the console first"})
@@ -834,6 +873,14 @@ class Handler(BaseHTTPRequestHandler):
                     con.clear_logs()
                 else:
                     con.save(body)
+            # ----- HTTPS (behind the console password, when one is set) -----
+            elif path in ("/api/tls/generate", "/api/tls/settings"):
+                if not con.authed(self.headers):
+                    return self.send_body(401, {"error": "log in to the console first"})
+                if path.endswith("generate"):
+                    p.tls.generate(body.get("names") or ", ".join(p.tls.default_names()), body.get("days") or 3650)
+                else:
+                    p.save_conf({"https_redirect": bool(body.get("https_redirect"))}, internal=True)
             # ----- watchdog -----
             elif path == "/api/watch/clear":
                 p.watch.clear_events()
@@ -871,22 +918,55 @@ class Handler(BaseHTTPRequestHandler):
         self.send_body(200, reply, headers=headers)
 
 
+class TLSServer(ThreadingHTTPServer):
+    """HTTPS. The handshake runs in the request's own thread, and a new certificate applies to the next connection."""
+    daemon_threads = True
+
+    def __init__(self, addr, handler, tls):
+        self.tls = tls
+        super().__init__(addr, handler)
+
+    def get_request(self):
+        sock, addr = super().get_request()
+        ctx = self.tls.ctx
+        if not ctx:
+            sock.close()
+            raise OSError("no certificate")
+        return ctx.wrap_socket(sock, server_side=True, do_handshake_on_connect=False), addr
+
+    def finish_request(self, request, client_address):
+        try:
+            request.settimeout(10)
+            request.do_handshake()
+            request.settimeout(None)
+        except (ssl.SSLError, OSError):
+            return  # e.g. a browser that hasn't accepted the self-signed certificate yet
+        super().finish_request(request, client_address)
+
+
 def main():
-    global IFACE, DATA, CONF
+    global IFACE, DATA, CONF, HTTPS_PORT
     ap = argparse.ArgumentParser(description="Probe Deck")
     ap.add_argument("--port", type=int, default=80)
     ap.add_argument("--listen", default="0.0.0.0")
     ap.add_argument("--iface", default=IFACE, help="wired interface (default eth0)")
     ap.add_argument("--data", default=str(DATA), help="history, logs and saved machines")
     ap.add_argument("--conf", default=str(CONF), help="settings file")
+    ap.add_argument("--https-port", type=int, default=HTTPS_PORT, help="0 = no HTTPS")
     a = ap.parse_args()
-    IFACE, DATA, CONF = a.iface, Path(a.data), Path(a.conf)
+    IFACE, DATA, CONF, HTTPS_PORT = a.iface, Path(a.data), Path(a.conf), a.https_port
     probe = Probe()
     Handler.probe = probe
     probe.read_net()
     probe.watch = watch_mod.Watchdog(probe, IFACE, DATA, on_alert=probe.on_alert)
     probe.wake = wake_mod.Wake(probe, IFACE, DATA, watchdog=probe.watch)
     probe.console = console_mod.Console(probe, DATA)
+    probe.tls = tls_mod.TLS(probe, CONF.parent)
+    if HTTPS_PORT:
+        probe.tls.ensure()
+        tsrv = TLSServer((a.listen, HTTPS_PORT), Handler, probe.tls)
+        threading.Thread(target=tsrv.serve_forever, daemon=True).start()
+        print(f"HTTPS on port {HTTPS_PORT}" + (f" ({probe.tls.error})" if probe.tls.error else ""), flush=True)
     for fn in (probe.link_loop, probe.ping_loop, probe.check_loop, probe.iperf_server_loop):
         threading.Thread(target=fn, daemon=True).start()
     probe.start_udp()

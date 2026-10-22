@@ -251,10 +251,11 @@ class Console:
         return self.login(new) if new else None
 
     @staticmethod
-    def cookie(tok):
+    def cookie(tok, secure=False):
+        sec = "; Secure" if secure else ""  # over HTTPS the browser never sends it back over plain HTTP
         if tok is None:
-            return f"{COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict"
-        return f"{COOKIE}={tok}; Path=/; Max-Age={TOKEN_SECS}; HttpOnly; SameSite=Strict"
+            return f"{COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict{sec}"
+        return f"{COOKIE}={tok}; Path=/; Max-Age={TOKEN_SECS}; HttpOnly; SameSite=Strict{sec}"
 
     # ---------- the serial port ----------
     def pick(self):

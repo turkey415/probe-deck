@@ -15,4 +15,4 @@ ssh "$HOST" 'grep -q "^DAEMON_ARGS=.*-c" /etc/default/lldpd || { echo "DAEMON_AR
   python3 -c "import serial" 2>/dev/null || apt-get install -y -q python3-serial >/dev/null
   systemctl daemon-reload; systemctl enable -q probe-deck; systemctl restart probe-deck
   sleep 2; systemctl is-active probe-deck'
-echo "Open http://${HOST#*@}/"
+echo "Open https://${HOST#*@}/ (self-signed certificate: see the HTTPS tab)"

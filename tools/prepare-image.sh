@@ -35,7 +35,7 @@ sed -i \
  -e "s|^AUTO_SETUP_NET_HOSTNAME=.*|AUTO_SETUP_NET_HOSTNAME=$NAME|" \
  -e "s|^AUTO_SETUP_SSH_SERVER_INDEX=.*|AUTO_SETUP_SSH_SERVER_INDEX=-2|" \
  -e "s|^#AUTO_SETUP_SSH_PUBKEY=.*|AUTO_SETUP_SSH_PUBKEY=$(cat "$KEY")|" \
- -e "s|^#AUTO_SETUP_APT_INSTALLS=.*|AUTO_SETUP_APT_INSTALLS=iperf3 tcpdump lldpd ethtool python3 python3-serial avahi-daemon dnsutils iputils-ping curl jq|" \
+ -e "s|^#AUTO_SETUP_APT_INSTALLS=.*|AUTO_SETUP_APT_INSTALLS=iperf3 tcpdump lldpd ethtool python3 python3-serial avahi-daemon dnsutils iputils-ping curl jq openssl|" \
  -e "s|^AUTO_SETUP_AUTOMATED=.*|AUTO_SETUP_AUTOMATED=1|" \
  -e "s|^SURVEY_OPTED_IN=.*|SURVEY_OPTED_IN=0|" dietpi.txt
 mcopy -o -i setup.fat dietpi.txt ::dietpi.txt

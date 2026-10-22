@@ -6,6 +6,7 @@ It also does three other jobs, each on its own tab:
 - **Console**: plug a USB console cable into a switch and use its console from the web page (or over telnet).
 - **Watchdog**: catches rogue DHCP servers, IP conflicts, gateway spoofing, broadcast storms, spanning tree changes and rogue IPv6 routers.
 - **Wake**: Wake-on-LAN for every machine in the room, with a staggered "wake all".
+- **HTTPS**: the page is served over HTTPS with a certificate the probe makes itself, and this tab shows it and regenerates it.
 
 It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same look as [iPerf Deck](https://github.com/turkey415/Perf-Deck). The probe joins Perf-Deck's network of stations, so the two can test each other.
 
@@ -74,7 +75,13 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - An **up/down light** for each machine (ping), and the **boot time**: seconds from the magic packet to the first ping reply. With no IP saved, the watchdog's ARP table supplies one.
 - Magic packets go to 255.255.255.255 and the subnet broadcast on UDP 9 and 7. For another VLAN, give the machine that VLAN's broadcast address (the switch needs `ip directed-broadcast` on that VLAN's interface).
 
-**Login.** Only the console has a password. The rest of the page has none, like Perf-Deck, so only use it on networks you trust.
+### HTTPS
+- The page is on **https://** (port 443). On first start the probe makes a **self-signed** certificate (ECDSA P-256, 10 years) for its host name, `<host>.local` and its IP. Plain **http://** visits move to HTTPS, except `GET /api/probe`, which stays on HTTP because the T-Displays poll it (an ESP32 can't check a self-signed certificate). The redirect can be turned off.
+- The **HTTPS tab** shows the certificate (names, expiry, key, SHA-256 fingerprint), warns when it doesn't cover the probe's current IP (after a move to another VLAN), **regenerates** it with the names you give, and downloads it so you can trust it on your PCs and stop the browser warning.
+- The certificate is plain PEM in `/etc/probe-deck/tls/` (`cert.pem`, `key.pem`), so one signed by your own root CA can replace it.
+- The console cookie is marked `Secure` over HTTPS. The password screens warn when the page is on plain HTTP.
+
+**Login.** Only the console has a password. It also guards the HTTPS settings. The rest of the page has none, like Perf-Deck, so only use it on networks you trust.
 
 ## Hardware
 
@@ -123,7 +130,7 @@ DietPi swaps its temporary SSH server for OpenSSH during setup, so SSH warns onc
 
 This copies the Python files, `index.html` and `vendor/` (xterm.js) to `/opt/probe-deck` and installs and starts the `probe-deck` systemd service. It also turns on CDP in lldpd (Cisco switches send CDP, not LLDP, by default). Run it again after any change to update the probe.
 
-Open **http://probe-02.local/**.
+Open **https://probe-02.local/** and accept the self-signed certificate (or trust it: see the HTTPS tab).
 
 ## How it works
 
@@ -137,7 +144,8 @@ Open **http://probe-02.local/**.
 - **`watchdog.py`**: a raw packet socket with a BPF filter (broadcast/multicast only), plus the DHCP scan.
 - **`wake.py`**: saved machines, magic packets and the ping checks.
 - **`index.html`**: one file. It polls `/api/state` every second (twice a second during a test). The console loads `vendor/xterm.js` the first time you open it.
-- **Files on the probe:** settings in `/etc/probe-deck/config.json`; in `/var/lib/probe-deck`: test history `history.json`, watchdog events `events.json`, saved machines `wol.json`, console logs `console/`.
+- **`tls.py`**: makes the certificate with `openssl` and holds the SSL context. The HTTPS server does each handshake in the request's thread and picks up a new certificate on the next connection.
+- **Files on the probe:** settings in `/etc/probe-deck/config.json`, the certificate in `/etc/probe-deck/tls/`; in `/var/lib/probe-deck`: test history `history.json`, watchdog events `events.json`, saved machines `wol.json`, console logs `console/`.
 
 ### API
 
@@ -157,6 +165,9 @@ Open **http://probe-02.local/**.
 | POST | `/api/console/login`, `/logout`, `/password` | Console password (a cookie, 12 h) |
 | POST | `/api/console/settings` | Port, baud, paste delay, telnet, macros (logged in) |
 | GET | `/api/console/log/<name>` | Download a session log (logged in) |
+| GET | `/api/tls`, `/api/tls/cert.pem` | Certificate details; download the certificate |
+| POST | `/api/tls/generate` | `{names: "probe-01, probe-01.local, 192.168.1.221", days?}`: new self-signed certificate (logged in) |
+| POST | `/api/tls/settings` | `{https_redirect}` (logged in) |
 | POST | `/api/watch/trust` | `{value: IP or MAC, remove?}` |
 | POST | `/api/watch/scan`, `/api/watch/clear` | DHCP scan now; clear the events |
 | POST | `/api/wol/save`, `/delete`, `/import` | Saved machines |
@@ -170,7 +181,8 @@ To try it on a PC without a cable or root: `socat -d pty,raw,echo=0,link=/tmp/tt
 
 | Port | Use |
 | --- | --- |
-| TCP 80 | The page |
+| TCP 443 | The page (HTTPS) |
+| TCP 80 | Moves to HTTPS; `/api/probe` for the displays |
 | TCP 5201 | iperf3 server |
 | UDP 52010 | Perf-Deck discovery (broadcast hello, plus ping/pong for station latency) |
 | UDP 47474 | Probe message and `probe-alert` broadcasts |
