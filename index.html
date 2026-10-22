@@ -504,6 +504,15 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 .arm-sw.busy .k2 { color: var(--amber); background: rgba(255,178,46,.06); animation: armblink .6s steps(2) infinite; }
 .arm-sw.armed .k1 { color: var(--amber); background: rgba(255,178,46,.08); text-shadow: 0 0 9px var(--amber); }
 .arm-sw:not(.armed) .arm-korry { opacity: .75; }
+.arm-row { display: flex; gap: 10px; }
+#pw-sw .k2 { font-size: 9.5px; letter-spacing: .1em; }
+#pw-sw .pw-off .k2 { color: #a3352c; } #pw-sw .pw-re .k2 { color: #8a6a2a; }
+#pw-sw.armed .pw-off .k2 { color: #ff6b5e; text-shadow: 0 0 8px #ff4d40; } #pw-sw.armed .pw-re .k2 { color: var(--amber); text-shadow: 0 0 8px var(--amber); }
+.pw-screen { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: radial-gradient(ellipse at center, #1a1a19 0%, #0b0b0a 70%); text-align: center; }
+.pw-screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.25) 0 1px, transparent 1px 3px); }
+.pw-screen div { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 10px; align-items: center; max-width: 440px; }
+.pw-screen b { font: 700 22px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .2em; color: var(--amber); text-shadow: 0 0 12px rgba(255,178,46,.5); }
+.pw-screen .sub { line-height: 1.6; }
 .arm-sw :disabled { cursor: not-allowed; opacity: .45; }
 @keyframes armblink { 50% { opacity: .35; } }
 /* ---------- Tailscale map ---------- */
@@ -637,6 +646,21 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
     <div class="row admin-only" style="margin-top:14px">
       <button class="btn" id="b-recheck">Check now</button>
       <button class="btn" id="b-renew">Renew DHCP</button>
+    </div>
+  </section>
+
+  <section class="card admin-only">
+    <h2>Power</h2>
+    <div class="form">
+      <div class="arm-sw" id="pw-sw">
+        <button class="arm-latch" id="pw-latch" type="button" aria-label="Slide the safety latch to arm the power buttons"><span class="arm-safe">SAFE</span><span class="arm-arm">ARM</span><span class="arm-knob"></span></button>
+        <div class="arm-row">
+          <button class="arm-korry pw-off" data-pw="poweroff" type="button" aria-label="Shut the probe down"><span class="arm-face"><span class="k1">ARMED</span><span class="k2">SHUT DOWN</span></span></button>
+          <button class="arm-korry pw-re" data-pw="reboot" type="button" aria-label="Restart the probe"><span class="arm-face"><span class="k1">ARMED</span><span class="k2">RESTART</span></span></button>
+        </div>
+      </div>
+      <span class="sub">Slide to ARM, then press. Shut down before unplugging: the SD card is safe once the green light on the board stops blinking (about 15 s).</span>
+      <span id="pw-msg"></span>
     </div>
   </section>
 </aside>
@@ -2717,6 +2741,40 @@ $('#f-cs').onsubmit = async e => {
   try { await api('/api/settings', { cs_servers: $('#cs-servers').value, cs_group: $('#cs-group').value, cs_nodes: $('#cs-nodes').checked }); flash($('#csx-msg'), 'Saved', true); $('#f-cs')._filled = false; }
   catch (err) { flash($('#csx-msg'), err.message); }
   csRefresh();
+};
+
+// ---------- power: shut down / restart behind the arm latch ----------
+const PW = { timer: 0 };
+function pwArm(on) {
+  clearTimeout(PW.timer); $('#pw-sw').classList.toggle('armed', on);
+  if (on) PW.timer = setTimeout(() => pwArm(false), 8000);
+}
+$('#pw-latch').onclick = () => pwArm(!$('#pw-sw').classList.contains('armed'));
+for (const b of document.querySelectorAll('#pw-sw [data-pw]')) b.onclick = async () => {
+  if (!$('#pw-sw').classList.contains('armed')) return;
+  const act = b.dataset.pw;
+  pwArm(false);
+  try { await api('/api/system/power', { action: act }); } catch (err) { flash($('#pw-msg'), err.message); return; }
+  const scr = document.createElement('div'); scr.className = 'pw-screen';
+  scr.innerHTML = act === 'poweroff'
+    ? '<div><b>SHUTTING DOWN</b><span class="sub" id="pw-left">Safe to unplug in about 15 s, once the green light on the board stops blinking.</span></div>'
+    : '<div><b>RESTARTING</b><span class="sub" id="pw-left">Back in about a minute. This page reloads by itself.</span></div>';
+  document.body.append(scr); clearTimeout(timer);
+  const t0 = Date.now();
+  if (act === 'poweroff') {
+    const tick = setInterval(() => { const left = 15 - Math.floor((Date.now() - t0) / 1000);
+      $('#pw-left').textContent = left > 0 ? `Safe to unplug in about ${left} s, once the green light on the board stops blinking.` : 'Probe is off. Safe to unplug once the green light has stopped.';
+      if (left <= 0) clearInterval(tick); }, 1000);
+  } else {
+    // wait for it to go away, then for it to answer again
+    let down = false;
+    const tick = setInterval(async () => {
+      const s = Math.floor((Date.now() - t0) / 1000);
+      try { const r = await fetch('/api/auth', { cache: 'no-store' }); if (r.ok && (down || s > 40)) { clearInterval(tick); location.reload(); return; } } catch { down = true; }
+      $('#pw-left').textContent = `${down ? 'Starting up' : 'Going down'}… ${s} s. This page reloads by itself.`;
+      if (s > 240) { clearInterval(tick); $('#pw-left').textContent = 'Not back after 4 minutes. Check the PoE cable and the lights on the board.'; }
+    }, 2000);
+  }
 };
 
 // ---------- Tailscale ----------

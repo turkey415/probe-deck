@@ -118,6 +118,9 @@ Everything about the network that decides a Counter-Strike match, measured from 
 - A live log shows each step. The last 20 traces are kept. Viewers can trace too. On the Wake tab, every machine has a **Trace** button.
 - Limits: a host behind a switch that isn't managed (or doesn't speak CDP) can be traced only to the port that switch is on. The MAC must have been seen in the last ~5 minutes.
 
+### Power
+The Probe tab's **Power** card shuts the probe down or restarts it, behind the same slide-to-ARM latch as the Tailscale switch. Shut down before pulling the PoE cable: the SD card is safe once the green light on the board stops blinking (about 15 s). After a restart the page waits and reloads by itself.
+
 ### Tailscale (remote access, optional)
 Install it once on the probe: `curl -fsSL https://tailscale.com/install.sh | sh`. The **Tailscale tab** does the rest:
 - **Live map** (dark US map, top of the tab): every device on the tailnet at its **nearest Tailscale relay city** (Tailscale doesn't hand out devices' addresses), or, with the opt-in **city-level locations** switch, at the city of its public IP (the probe's own, and devices with a direct connection; looked up at ip-api.com). Arcs from the probe to each online device, green when direct and magenta through the relay city; amber and cyan pulses fly along them whenever the probe sends or receives Tailscale traffic. It shows the probe's own traffic only: a tailnet device can't see traffic between two others.
@@ -284,6 +287,7 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 | POST | `/api/net/add`, `/remove`, `/scan`, `/refresh` | `{host, name?, community?}`, `{id}` (admin) |
 | POST | `/api/net/order`, `/api/net/role` | `{ids}`; `{id, port, role: firewall\|cache\|null}` (admin) |
 | POST | `/api/trace` | `{q: IP, MAC or name}` → `{id}` (any user) |
+| POST | `/api/system/power` | `{action: poweroff\|reboot}`: shut down or restart the probe (admin) |
 | GET | `/api/tailscale` | Tailscale status, settings and devices |
 | POST | `/api/tailscale` | `{action: up\|down\|login\|logout\|service\|settings\|cert\|add_server\|switch\|remove, ...}` (admin) |
 | GET | `/api/cs` | The CS2 tab: servers, Perf-Deck nodes, stats, path, player PCs, lag events, verdict |

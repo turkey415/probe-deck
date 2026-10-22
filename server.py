@@ -38,7 +38,7 @@ import wake as wake_mod
 import watchdog as watch_mod
 import ws as ws_mod
 
-__version__ = "0.14.0"
+__version__ = "0.15.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -953,6 +953,14 @@ class Handler(BaseHTTPRequestHandler):
                 p.netmap.set_role(str(body.get("id")), str(body.get("port") or ""), body.get("role") or None)
             elif path == "/api/net/refresh":
                 p.netmap.wake.set()
+            elif path == "/api/system/power":
+                act = body.get("action")
+                if act not in ("poweroff", "reboot"):
+                    raise ValueError("Pick poweroff or reboot")
+                print(f"{act} asked for by {self.user['name']} from {self.client_ip()}", flush=True)
+                # answer the page first, then go down
+                threading.Timer(1.5, lambda: subprocess.run(["systemctl", act], capture_output=True)).start()
+                reply["in"] = 1.5
             elif path == "/api/tailscale":
                 if body.get("action") == "cert":
                     p.tls.generate(p.ts.cert_names(p.tls))
