@@ -139,7 +139,7 @@ class NetMap:
     def add(self, host, name=None, community=None):
         host = str(host or "").strip()
         if not S.private_ip(host):
-            raise ValueError("Give the device's IPv4 address on the local network, e.g. 192.168.1.124")
+            raise ValueError("Give the device's IPv4 address on the local network, e.g. 192.168.1.2")
         with self.lock:
             if any(d["host"] == host for d in self.devices):
                 raise ValueError("That device is already on the list")

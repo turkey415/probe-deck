@@ -262,7 +262,7 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 | POST | `/api/trace` | `{q: IP, MAC or name}` → `{id}` (any user) |
 | GET | `/api/trace/<id>`, `/api/traces` | A trace's steps and result; recent traces |
 | GET | `/api/tls`, `/api/tls/cert.pem` | Certificate details; download the certificate |
-| POST | `/api/tls/generate` | `{names: "probe-01, probe-01.local, 192.168.1.221", days?}`: new self-signed certificate (admin) |
+| POST | `/api/tls/generate` | `{names: "probe-01, probe-01.local, 192.168.1.50", days?}`: new self-signed certificate (admin) |
 | POST | `/api/tls/settings` | `{https_redirect}` (admin) |
 | POST | `/api/watch/trust` | `{value: IP or MAC, remove?}` |
 | POST | `/api/watch/scan`, `/api/watch/clear` | DHCP scan now; clear the events |

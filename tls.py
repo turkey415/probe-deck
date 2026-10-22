@@ -19,7 +19,7 @@ NAME_RE = re.compile(r"(?=.{1,253}$)[A-Za-z0-9*]([A-Za-z0-9\-]{0,62})(\.[A-Za-z0
 
 
 def parse_names(text):
-    """'probe-01, probe-01.local, 192.168.1.221' -> (dns names, ips)."""
+    """'probe-01, probe-01.local, 192.168.1.50' -> (dns names, ips)."""
     dns, ips = [], []
     for part in re.split(r"[,\s]+", str(text)):
         part = part.strip()
