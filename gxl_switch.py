@@ -281,10 +281,14 @@ class Reader:
     def __init__(self):
         self.watches, self.readings, self.fdb, self.slow = {}, {}, {}, {}
         self.casts, self.totals, self.history = {}, {}, {}
+        # marked ports (firewall, cache): (switch, port) -> recent (time, into the hall, out of it), Mbps
+        self.gear = {}
 
     def forget(self, did):
         for d in (self.watches, self.readings, self.fdb, self.slow, self.casts, self.totals, self.history):
             d.pop(did, None)
+        for key in [k for k in self.gear if k[0] == did]:
+            del self.gear[key]
 
     def read(self, did, client, info, host, community, version, roles):
         """One reading: the ports, graded, with neighbors, VLANs, rates and the environment."""
@@ -339,6 +343,7 @@ class Reader:
         to_switches = {norm_port(n.get("local_port")) for n in neighbors if n.get("is_switch")}
         self.record_traffic(did, out, to_switches, roles)
         rates = self.record_rates(did, out, to_switches, roles)
+        self.record_gear(did, out, roles)
         try:
             env = read_environment(client)
         except pc_snmp.SnmpError:
@@ -348,6 +353,15 @@ class Reader:
                 "vlan_list": slow.get("vlan_list", [1]), "po": slow.get("po", {}),
                 "uptime_s": int(uptime / 100) if uptime else None,
                 "history": [list(x) for x in self.history.get(did, [])]}
+
+    def record_gear(self, did, ports, roles):
+        """Traffic on the ports marked as the event's firewall and cache. What the device sends is what
+        comes into the hall (the internet through the firewall, games from the cache)."""
+        at = int(time.time())
+        for p in ports:
+            if p["name"] in roles and p["up"] and p["in_mbps"] is not None:
+                self.gear.setdefault((did, p["name"]), collections.deque(maxlen=HISTORY_POINTS)).append(
+                    (at, round(p["in_mbps"], 2), round(p["out_mbps"] or 0, 2)))
 
     def record_rates(self, did, ports, to_switches, roles):
         edge = [p for p in ports if not is_uplink(p, to_switches) and p["name"] not in roles]

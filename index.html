@@ -431,6 +431,22 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 .gx .blm .plate { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 3px 6px; border-radius: 4px; background: linear-gradient(#1d1d1b, #141413); border: 1px solid #2c2c29; min-height: 24px; }
 .gx .blm .plate .name { font: 700 11px var(--mono); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .gx .blm .plate .seg7 { margin-left: auto; flex: none; width: 54px; } .gx .blm.off .plate .name { color: var(--muted); }
+.gx.rig { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; padding: 12px 16px; background: linear-gradient(180deg, #232322, #191918); }
+.gx .gearmons { display: flex; gap: 10px; flex: 1 1 380px; min-width: 0; max-width: 600px; }
+.gx .gearmon { flex: 1 1 0; min-width: 170px; max-width: 290px; padding: 6px 8px 7px; border-radius: 7px; background: linear-gradient(#0e100f, #090a09);
+  border: 1px solid #2a2f2b; display: flex; flex-direction: column; gap: 4px; }
+.gx .gearmon.firewall { border-color: color-mix(in srgb, #ff3d8b 35%, #2a2f2b); box-shadow: inset 0 0 14px rgba(255, 61, 139, .07); }
+.gx .gearmon.cache { border-color: color-mix(in srgb, #b26bff 35%, #2a2f2b); box-shadow: inset 0 0 14px rgba(178, 107, 255, .07); }
+.gx .gmhead { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.gx .gmtitle { font: 700 10.5px var(--mono); letter-spacing: .2em; white-space: nowrap; flex: none; }
+.gx .gearmon.firewall .gmtitle { color: #ff6fa8; text-shadow: 0 0 6px rgba(255, 61, 139, .6); }
+.gx .gearmon.cache .gmtitle { color: #c99bff; text-shadow: 0 0 6px rgba(178, 107, 255, .6); }
+.gx .gmwhere { flex: 1 1 0; min-width: 0; font: 600 9px var(--mono); color: #6b6a65; letter-spacing: .06em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gx .gmread { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 4px 6px; align-items: center; font: 700 9px var(--mono); letter-spacing: .1em; }
+.gx .gmread .seg7 { height: 17px; }
+.gx .gearmon .scope .scale { font-size: 8px; top: 2px; left: 5px; }
+.gx .gearmon .scope .wait { font-size: 8px; letter-spacing: .2em; }
+.gx.rig .rigk { font: 700 10px var(--mono); letter-spacing: .2em; color: var(--muted); }
 .gx .uleg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-2); margin-top: 10px; }
 .gx .uleg > span { display: inline-flex; align-items: center; gap: 6px; }
 .fold { display: flex; align-items: center; gap: 8px; align-self: flex-start; font: 600 10px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase;
@@ -851,6 +867,7 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
 </aside>
 <main>
   <div class="note" id="net-empty" hidden></div>
+  <section class="card gx rig" id="gx-rig" hidden aria-label="Event gear"></section>
   <section class="card gx"><h2><span id="gx-title">Switches</span><span class="spacer"></span><span class="cbadge" id="gx-count"></span></h2><div id="gx-root" class="ro-ok"></div></section>
   <section class="card gx" id="gx-wlc-card" hidden><h2>Wireless controllers <span class="spacer"></span><span class="cbadge" id="gx-wcount"></span></h2><div id="gx-wlc" class="swgrid ro-ok"></div></section>
   <section class="card gx" id="gx-found-card"><h2>Switches found but not added <span class="spacer"></span><span class="cbadge" id="gx-fcount"></span></h2>
@@ -1913,7 +1930,8 @@ function flapMeasure() {  // fill: as many tiles as fit across
 }
 // phosphor trace
 function niceMax(v) { if (!(v > 0)) return 1; const p = 10 ** Math.floor(Math.log10(v)); return ([1, 2, 5, 10].find(m => m * p >= v) ?? 10) * p; }
-function gScope({ down, up, height = 120, max, points = 90, grid = true }) {
+function gScope({ down, up, height = 120, max, points = 90, grid = true, colors }) {
+  const DC = colors?.down ?? '#ffb000', UC = colors?.up ?? '#3dd6ff';
   const W = 600, H = 100, top = max ?? niceMax(Math.max(1, ...down, ...up) * 1.1);
   const x = (i, n) => W - (n - 1 - i) * (W / (points - 1)), y = v => H - (Math.max(0, v) / top) * (H - 4) - 2;
   const line = vals => vals.map((v, i) => `${i ? 'L' : 'M'}${x(i, vals.length).toFixed(1)} ${y(v).toFixed(1)}`).join('');
@@ -1921,8 +1939,8 @@ function gScope({ down, up, height = 120, max, points = 90, grid = true }) {
   let g = '';
   if (grid) { for (let i = 0; i < 9; i++) g += `<line class="gr" x1="${(i + 1) * 60}" x2="${(i + 1) * 60}" y1="0" y2="${H}"/>`; for (const v of [25, 50, 75]) g += `<line class="gr" x1="0" x2="${W}" y1="${v}" y2="${v}"/>`; }
   return `<div class="scope" style="height:${height}px"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${g}
-    ${down.length > 1 ? `<path class="area" d="${area(down)}" style="fill:#ffb000"/><path class="trace" d="${line(down)}" style="stroke:#ffb000;color:#ffb000"/>` : ''}
-    ${up.length > 1 ? `<path class="trace" d="${line(up)}" style="stroke:#3dd6ff;color:#3dd6ff"/>` : ''}</svg>
+    ${down.length > 1 ? `<path class="area" d="${area(down)}" style="fill:${DC}"/><path class="trace" d="${line(down)}" style="stroke:${DC};color:${DC}"/>` : ''}
+    ${up.length > 1 ? `<path class="trace" d="${line(up)}" style="stroke:${UC};color:${UC}"/>` : ''}</svg>
     ${grid ? `<span class="scale">${num3(top)} Mbps</span>` : ''}${down.length < 2 ? '<span class="wait">ACQUIRING SIGNAL…</span>' : ''}</div>`;
 }
 
@@ -2182,6 +2200,31 @@ function switchDetail(sw) {
       <div class="well"><span class="k bright">Environment</span>${envTable(sw.environment || {}, sw.uptime_s)}</div></div></div>`;
 }
 
+
+// the firewall's and the cache's traffic, as GXL's top banner shows it (Bandwidth.tsx GearMonitors)
+const GEAR = {
+  firewall: { title: 'FIREWALL', down: '#ff3d8b', up: '#ffd23f', downLabel: 'IN', upLabel: 'OUT', hint: 'internet in / out' },
+  cache: { title: 'LAN CACHE', down: '#b26bff', up: '#3dffa8', downLabel: 'SERVED', upLabel: 'FILL', hint: 'served to PCs / filling' },
+};
+function gearTotals(gear, role) {
+  const mine = gear.filter(g => g.role === role), longest = Math.max(0, ...mine.map(g => g.history.length));
+  const down = new Array(longest).fill(0), up = new Array(longest).fill(0);
+  for (const g of mine) g.history.forEach((p, i) => { down[longest - g.history.length + i] += p[1]; up[longest - g.history.length + i] += p[2]; });
+  const live = mine.filter(g => g.up && g.in_hall_mbps !== null);
+  return { ports: mine, down, up, nowDown: live.length ? live.reduce((t, g) => t + (g.in_hall_mbps ?? 0), 0) : null,
+    nowUp: live.length ? live.reduce((t, g) => t + (g.out_hall_mbps ?? 0), 0) : null };
+}
+function gearMonitors(gear) {
+  // pops up for the roles that are marked on a port
+  return `<span class="rigk">EVENT GEAR</span><div class="gearmons">${['firewall', 'cache'].filter(role => gear.some(g => g.role === role)).map(role => {
+    const look = GEAR[role], t = gearTotals(gear, role), where = t.ports.map(g => `${g.switch.split('.')[0]} ${g.port}`).join(', ');
+    return `<div class="gearmon ${role}" title="${esc(`${look.title}: ${where} · ${look.hint}`)}">
+      <div class="gmhead"><span class="gmtitle">${look.title}</span><span class="gmwhere">${esc(where)}</span></div>
+      <div class="gmread"><span style="color:${look.down}">▼ ${look.downLabel}</span>${gSeg(t.nowDown === null ? '-' : num3(t.nowDown), 4, look.down, 17)}
+        <span style="color:${look.up}">▲ ${look.upLabel}</span>${gSeg(t.nowUp === null ? '-' : num3(t.nowUp), 4, look.up, 17)}</div>
+      ${gScope({ down: t.down, up: t.up, height: 44, colors: { down: look.down, up: look.up } })}</div>`;
+  }).join('')}</div>`;
+}
 // ---------- page glue ----------
 async function netRefresh() {
   try {
@@ -2206,6 +2249,9 @@ function renderNet() {
   if (GX.open && !sw) GX.open = null;
   $('#gx-title').textContent = sw ? 'Switches · ports' : 'Switches';
   $('#gx-count').textContent = sws.length;
+  const gear = n.gear || [];
+  $('#gx-rig').hidden = !gear.length;
+  if (gear.length) morph($('#gx-rig'), gearMonitors(gear));
   morph($('#gx-root'), sw ? switchDetail(sw) : switchesView(sws));
   flapMeasure();
   if (GX.remeasure) { GX.remeasure = false; morph($('#gx-root'), sw ? switchDetail(sw) : switchesView(sws)); }

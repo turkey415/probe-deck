@@ -353,8 +353,19 @@ class NetMap:
                       uplink_out_mbps=round(sum(p["in_mbps"] or 0 for p in uplinks), 2) if uplinks else None,
                       down_reason=G.down_report(d, devs, states) if st.get("status") == "error" else "")
             out.append(sw)
+        gear = []  # every port marked as the firewall or the cache, firewalls first (GXL's gear_out)
+        for d in devs:
+            st = states.get(d["id"], {})
+            ports = {p["name"]: p for p in st.get("ports") or []}
+            for name, role in (d.get("roles") or {}).items():
+                p = ports.get(name) or {}
+                live = st.get("status") == "ok" and p.get("up")
+                gear.append({"role": role, "switch": d.get("name") or d["host"], "port": name, "up": bool(live),
+                             "in_hall_mbps": p.get("in_mbps") if live else None, "out_hall_mbps": p.get("out_mbps") if live else None,
+                             "history": [list(x) for x in self.reader.gear.get((d["id"], name), ())]})
+        gear.sort(key=lambda g: (g["role"] != "firewall", g["switch"], g["port"]))
         return {"community_set": bool(self.conf.get("snmp_community")), "version": self.version(),
-                "devices": out, "discovered": sorted(self.discovered.values(), key=lambda f: f["ip"]),
+                "devices": out, "gear": gear, "discovered": sorted(self.discovered.values(), key=lambda f: f["ip"]),
                 "scan": self.scan, "probe_switch": self.probe_switch_id(),
                 "probe_port": short_if((self.p.neighbor or {}).get("port") or ""), "every": POLL_EVERY}
 
