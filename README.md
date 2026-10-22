@@ -7,7 +7,7 @@ It also does three other jobs, each on its own tab:
 - **Watchdog**: catches rogue DHCP servers, IP conflicts, gateway spoofing, broadcast storms, spanning tree changes and rogue IPv6 routers.
 - **Wake**: Wake-on-LAN for every machine in the room, with a staggered "wake all".
 - **HTTPS**: the page is served over HTTPS with a certificate the probe makes itself, and this tab shows it and regenerates it.
-- **Switches**: your switches and wireless controller over SNMP: every port's link, VLAN and CDP neighbor, plus CPU, PoE and uptime.
+- **Switches**: GXL-LANapp's Switches page: hall gauges, a bandwidth monitor, firewall and LAN cache monitors, every switch's ports and busiest ports, and a drill-down into each port, over SNMP.
 - **Trace**: type an IP, MAC or host name and see the path from the probe, switch by switch, to the port (or access point) it's on.
 - **Users**: everyone logs in. **Admins** can change anything; **viewers** see everything but change nothing.
 
@@ -85,12 +85,16 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - An **up/down light** for each machine (ping), and the **boot time**: seconds from the magic packet to the first ping reply. With no IP saved, the watchdog's ARP table supplies one.
 - Magic packets go to 255.255.255.255 and the subnet broadcast on UDP 9 and 7. For another VLAN, give the machine that VLAN's broadcast address (the switch needs `ip directed-broadcast` on that VLAN's interface).
 
-### Switches (SNMP)
-- Set **one read-only community** (v1 or v2c) and add switches by IP. The probe reads each one once before adding it, so a wrong address or community shows up straight away. A device can have its own community if it differs.
-- **Discovered:** switches and controllers that are CDP neighbors of your devices but not added yet, plus a **Scan** of the probe's subnet. One click adds them.
-- Each switch shows a **port panel** (link up, down or shut; links to other switches in purple, access points in blue, the probe's own port in amber; module ports grouped) and chips for uptime, CPU and PoE. Click a port for its speed, VLAN or trunk, description and CDP neighbor.
-- An **AireOS wireless controller** shows its access points and how many clients each has. Its SNMP community is set on the controller itself (Management → SNMP → Communities: read-only).
-- Polled every minute. The community is kept on the probe (`/etc/probe-deck/config.json` and `devices.json`, root-only) and never sent to the page.
+### Switches (SNMP): the GXL-LANapp look
+The Switches tab is the same page as GXL-LANapp's Switches tab (ported from its React code and its server's switch poller), so Probe Deck can watch a network on its own.
+- **Hall readouts:** needle meters for the whole network's download and upload, and for the busiest uplink and busiest PC port (named on a split-flap board); a phosphor **bandwidth monitor** with each switch's uplink trace; **network stats** (broadcasts and multicasts per second from PCs, errors and discards per minute, and counts: switches up, ports up, PCs, neighbors, VLANs, ports in trouble, flapping, slow or half duplex).
+- **Each switch:** CPU, memory, temperature and PoE as LED bars, ports up, uplink traffic and a trace; a lamp per port (green, amber, red; purple outline to a known switch, orange to an unknown uplink, amber ring for the probe's own port); and **backlit VU meters** for its five busiest ports. Drag the ⠿ handle to reorder.
+- **Ports (drill-down):** big CPU, memory, temperature and PoE needles; the **front panel** (odd ports on top, even below, uplink modules on their own) with speed, load and neighbor on each port; the **CDP/LLDP neighbor** table; and, for the port you click, in and out needles, LED bars and everything known: link, busy %, link-up time, flaps, CRC and other errors, discards, collisions, VLAN, MAC addresses, neighbor.
+- **Event gear:** mark a port as the **event firewall** or **LAN cache** (hazard stripes; left out of the busiest-port and PC counts). Once a port is marked, GXL's **FIREWALL** (internet in/out) and **LAN CACHE** (served/fill) monitors pop up at the top of the tab, with seven-segment readouts and a half-hour trace in the same colours.
+- **Environment** table: CPU (5 s, 1 min, 5 min), memory, every temperature sensor against its limit, fans, power supplies, PoE. A switch that stops answering shows **DOWN** with why (what its neighbor switch sees on the link).
+- Ports are graded by PorkChopCheck's rules (link changes, half duplex, slow links, errors, drops, busy). Read every 20 s; the MAC tables, neighbors and VLANs every minute.
+- Set **one read-only community** (v1 or v2c) and add switches by IP, or from **found but not added** (CDP neighbors of your switches) and the subnet **Scan**. An **AireOS wireless controller** shows its access points and clients (its community is set on the controller: Management → SNMP → Communities).
+- The community is kept on the probe (`/etc/probe-deck/config.json` and `devices.json`, root-only) and never sent to the page. Viewers see everything, including the drill-down; admins add, remove, reorder and mark ports.
 
 ### Trace (where is this host plugged in?)
 - Type an **IP, MAC or host name**. The probe pings it (so the switches' MAC tables are fresh), finds its MAC (its own ARP table, the Watchdog, the switches' ARP tables, or the wireless controller), then asks every switch's MAC table, VLAN by VLAN (`community@vlan`), where it was learned.
@@ -224,7 +228,7 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 - **`watchdog.py`**: a raw packet socket with a BPF filter (broadcast/multicast only), plus the DHCP scan.
 - **`wake.py`**: saved machines, magic packets and the ping checks.
 - **`index.html`**: one file. It polls `/api/state` every second (twice a second during a test). The console loads `vendor/xterm.js` the first time you open it.
-- **`netmap.py`**: devices, the poller, discovery and the trace. **`pc_snmp.py`** is the SNMP v1/v2c client, copied unchanged from PorkChopCheck.
+- **`netmap.py`**: devices, the poller, discovery and the trace. **`gxl_switch.py`** reads a switch the way GXL-LANapp's server does (forwarding table, CDP/LLDP, VLANs, environment, rates, history). **`pc_snmp.py`** is the SNMP v1/v2c client and port grading, copied unchanged from PorkChopCheck.
 - **`auth.py`**: users, roles and sessions (and the `passwd`/`add`/`del` command for SSH).
 - **`tls.py`**: makes the certificate with `openssl` and holds the SSL context. The HTTPS server does each handshake in the request's thread and picks up a new certificate on the next connection.
 - **Files on the probe:** settings in `/etc/probe-deck/config.json`, the certificate in `/etc/probe-deck/tls/`; in `/var/lib/probe-deck`: test history `history.json`, watchdog events `events.json`, saved machines `wol.json`, console logs `console/`.
@@ -253,6 +257,7 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 | GET | `/api/net` | Switches, controllers, ports, discovered devices |
 | POST | `/api/net/settings` | `{community?, version}` (admin) |
 | POST | `/api/net/add`, `/remove`, `/scan`, `/refresh` | `{host, name?, community?}`, `{id}` (admin) |
+| POST | `/api/net/order`, `/api/net/role` | `{ids}`; `{id, port, role: firewall\|cache\|null}` (admin) |
 | POST | `/api/trace` | `{q: IP, MAC or name}` → `{id}` (any user) |
 | GET | `/api/trace/<id>`, `/api/traces` | A trace's steps and result; recent traces |
 | GET | `/api/tls`, `/api/tls/cert.pem` | Certificate details; download the certificate |
