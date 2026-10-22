@@ -21,10 +21,11 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
+import gxl_switch as G
 import pc_snmp as S
 
 DEFAULTS = {"snmp_community": "", "snmp_version": 2}
-POLL_EVERY = 60
+POLL_EVERY = 20       # as GXL-LANapp: traffic rates and the gauges need frequent readings
 MAX_DEVICES = 64
 
 O = S.oid
@@ -103,6 +104,7 @@ class NetMap:
         except (OSError, ValueError, KeyError, TypeError):
             pass
         self.wake = threading.Event()
+        self.reader = G.Reader()
         self.pool = ThreadPoolExecutor(8)
         threading.Thread(target=self.poll_loop, daemon=True).start()
 
@@ -168,6 +170,28 @@ class NetMap:
             self.devices = [d for d in self.devices if d["id"] != did]
             self.state.pop(did, None)
             self.save()
+        self.reader.forget(did)
+
+    def set_order(self, ids):
+        with self.lock:
+            pos = {i: n for n, i in enumerate(ids)}
+            self.devices.sort(key=lambda d: pos.get(d["id"], len(pos)))
+            self.save()
+
+    def set_role(self, did, port, role):
+        if role not in (None, "firewall", "cache"):
+            raise ValueError("Role must be firewall, cache or none")
+        with self.lock:
+            d = next((x for x in self.devices if x["id"] == did), None)
+            if not d:
+                raise ValueError("No such device")
+            roles = dict(d.get("roles") or {})
+            if role:
+                roles[str(port)[:40]] = role
+            else:
+                roles.pop(str(port), None)
+            d["roles"] = roles
+            self.save()
 
     # ---------- polling ----------
     def poll_loop(self):
@@ -182,19 +206,23 @@ class NetMap:
             self.wake.clear()
 
     def poll_one(self, dev):
+        prev = self.state.get(dev["id"], {})
         st = {"at": time.time()}
         t0 = time.time()
         try:
             with self.client(dev) as c:
                 info = S.identify(c)
+                kind = kind_of(info)
                 st.update(status="ok", name=info.get("name"), descr=info.get("descr"), model=S.model_of(info),
-                          uptime=(info["uptime"] / 100) if isinstance(info.get("uptime"), int) else None, kind=kind_of(info))
-                if st["kind"] == "wlc":
+                          uptime=(info["uptime"] / 100) if isinstance(info.get("uptime"), int) else None, kind=kind,
+                          last_ok_at=time.time())
+                if kind == "wlc":
                     st.update(self.read_wlc(c))
                 else:
-                    st.update(self.read_switch(c))
+                    st.update(self.reader.read(dev["id"], c, info, dev["host"], self.community(dev), self.version(dev),
+                                               dev.get("roles") or {}))
+                    self.attach_neighbors(st)
         except S.SnmpError as e:
-            prev = self.state.get(dev["id"], {})
             st.update({k: v for k, v in prev.items() if k not in ("status", "error", "at")})
             st.update(status="error", error=str(e)[:160], down_since=prev.get("down_since") or time.time())
         st["took"] = round(time.time() - t0, 2)
@@ -205,77 +233,25 @@ class NetMap:
             if st.get("model") and not dev.get("model"):
                 dev["model"] = st["model"]
 
-    def read_switch(self, c):
-        cols = {k: c.column(v) for k, v in (("type", IFTYPE), ("name", IFNAME), ("alias", IFALIAS), ("admin", IFADMIN),
-                                            ("oper", IFOPER), ("high", IFHIGH), ("speed", IFSPEED), ("duplex", DUPLEX),
-                                            ("vlan", VMVLAN), ("trunk", TRUNK))}
-        cdp = self.read_cdp(c)
-        members = self.read_stack(c, cols["name"])
-        vlans = sorted(o[-1] for o, v in c.walk(VTP_STATE) if v == 1 and o[-1] < 1002)
-        ports = []
-        for idx in sorted(cols["type"], key=lambda i: i[0] if i else 0):
-            if cols["type"][idx] not in S.ETHERNET_TYPES and cols["type"][idx] != 161:  # 161 = port-channel
-                continue
-            i = idx[0]
-            name = short_if(S.text(cols["name"].get(idx)))
-            if not name or name.startswith(("Nu", "Vl", "Lo", "Ap")):
-                continue
-            high = cols["high"].get(idx)
-            nb = cdp.get(i) or next((cdp[m] for m in members.get(i, []) if m in cdp), None)
-            ports.append({"if": i, "name": name, "alias": S.text(cols["alias"].get(idx))[:60],
-                          "admin": cols["admin"].get(idx) == 1, "up": cols["oper"].get(idx) == 1,
-                          "speed": high if isinstance(high, int) and high else (cols["speed"].get(idx) or 0) // 1000000,
-                          "duplex": {2: "half", 3: "full"}.get(cols["duplex"].get(idx), ""),
-                          "vlan": cols["vlan"].get(idx) if isinstance(cols["vlan"].get(idx), int) else None,
-                          "trunk": cols["trunk"].get(idx) == 1, "po": cols["type"][idx] == 161,
-                          "members": [m for m in members.get(i, [])], "cdp": nb})
-        out = {"ports": ports, "vlans": vlans or [1]}
-        try:
-            cpu = [v for _, v in c.walk(CPU5M, limit=8) if isinstance(v, int)]
-            out["cpu"] = max(cpu) if cpu else None
-        except S.SnmpError:
-            out["cpu"] = None
-        try:
-            power = sum(v for _, v in c.walk(POE_POWER, limit=16) if isinstance(v, int))
-            used = sum(v for _, v in c.walk(POE_USED, limit=16) if isinstance(v, int))
-            out["poe"] = {"budget": power, "used": used} if power else None
-        except S.SnmpError:
-            out["poe"] = None
-        return out
-
     @staticmethod
-    def read_cdp(c):
-        rows = {}
-        for col in (4, 6, 7, 8, 9):
-            for idx, v in c.column(CDP + (col,)).items():
-                rows.setdefault(idx, {})[col] = v
-        out = {}
-        for idx, r in rows.items():
-            caps = r.get(9)
-            capn = int.from_bytes(caps, "big") if isinstance(caps, bytes) and caps else 0
-            platform = S.text(r.get(8))
-            name = S.text(r.get(6)).split("(")[0]
-            out[idx[0]] = {"name": name, "short": name.split(".")[0], "port": short_if(S.text(r.get(7))), "platform": platform,
-                           "ip": ip_of(r.get(4)),
-                           "kind": "ap" if re.search(r"AIR-(C?AP|LAP|AP)", platform) else
-                                   "wlc" if re.search(r"AIR-CT|C9800|Controller", platform) else
-                                   "switch" if re.search(r"WS-C|C9[0-9]{3}|IE-|Catalyst", platform) or (
-                                       capn & CAP_SWITCH and not re.search(r"linux|freebsd|windows|vmware|esx", platform, re.I)) else
-                                   "router" if capn & CAP_ROUTER else "host"}
-        return out
-
-    @staticmethod
-    def read_stack(c, names):
-        """Port-channel ifIndex -> member ifIndexes (from ifStackTable)."""
-        out = {}
-        try:
-            for o, v in c.walk(IFSTACK, limit=2000):
-                hi, lo = o[-2], o[-1]
-                if hi and lo and S.text(names.get((hi,))).startswith("Po"):
-                    out.setdefault(hi, []).append(lo)
-        except S.SnmpError:
-            pass
-        return out
+    def attach_neighbors(st):
+        """Each port gets its CDP/LLDP neighbor (as GXL shows it) and the short form the trace uses."""
+        by_port = {G.norm_port(n.get("local_port")): n for n in st.get("neighbors") or [] if n.get("local_port")}
+        st["vlans"] = st.get("vlan_list") or [1]
+        for p in st.get("ports", []):
+            p["if"] = p["index"]
+            n = by_port.get(G.norm_port(p["name"]))
+            p["nb"] = n
+            if n:
+                platform = n.get("platform") or ""
+                p["cdp"] = {"name": n.get("name") or "", "short": (n.get("name") or "").split(".")[0].split("(")[0],
+                            "port": short_if(n.get("their_port") or ""), "platform": platform, "ip": n.get("ip") or None,
+                            "kind": "ap" if re.search(r"AIR-(C?AP|LAP|AP)", platform) else
+                                    "wlc" if re.search(r"AIR-CT|C9800|Controller", platform) else
+                                    "switch" if n.get("is_switch") or re.search(r"WS-C|C9[0-9]{3}|IE-|Catalyst", platform) else
+                                    "host"}
+            else:
+                p["cdp"] = None
 
     def read_wlc(self, c):
         aps = {}
@@ -341,16 +317,46 @@ class NetMap:
 
     def snapshot(self):
         with self.lock:
-            devs = []
-            for d in self.devices:
-                st = self.state.get(d["id"], {"status": "pending"})
-                devs.append({"id": d["id"], "host": d["host"], "name": d.get("name") or d["host"], "kind": d.get("kind", "switch"),
-                             "model": st.get("model") or d.get("model"), "own_community": bool(d.get("community")), **{
-                                 k: st.get(k) for k in ("status", "error", "at", "uptime", "cpu", "poe", "ports", "aps", "clients",
-                                                        "vlans", "took", "down_since")}})
-            return {"community_set": bool(self.conf.get("snmp_community")), "version": self.version(),
-                    "devices": devs, "discovered": sorted(self.discovered.values(), key=lambda f: f["ip"]),
-                    "scan": self.scan, "probe_switch": self.probe_switch_id()}
+            devs, states = list(self.devices), dict(self.state)
+        added = set()
+        for d in devs:
+            added |= {d["host"], G.norm_switch(d.get("name")), G.norm_switch(states.get(d["id"], {}).get("name"))}
+        out = []
+        for d in devs:
+            st = states.get(d["id"], {"status": "pending"})
+            sw = {"id": d["id"], "host": d["host"], "name": d.get("name") or d["host"], "kind": d.get("kind", "switch"),
+                  "model": st.get("model") or d.get("model"), "own_community": bool(d.get("community")),
+                  "status": st.get("status"), "error": st.get("error"), "polled_at": st.get("at"), "last_ok_at": st.get("last_ok_at"),
+                  "down_since": st.get("down_since") if st.get("status") == "error" else None,
+                  "uptime_s": st.get("uptime_s") or (int(st["uptime"]) if st.get("uptime") else None), "took": st.get("took")}
+            if sw["kind"] == "wlc":
+                sw.update(aps=st.get("aps"), clients=st.get("clients"))
+                out.append(sw)
+                continue
+            roles = d.get("roles") or {}
+            ports = []
+            for p in st.get("ports") or []:
+                n = p.get("nb")
+                is_sw = bool(n and n.get("is_switch"))
+                neighbor = None
+                if n:
+                    neighbor = {k: n.get(k) for k in ("name", "ip", "platform", "their_port")}
+                    neighbor.update(protocol=n.get("protocol", "cdp"), switch=is_sw,
+                                    added=n.get("ip") in added or G.norm_switch(n.get("name")) in added)
+                kind = "switch" if is_sw else "unknown" if p.get("mac_count", 0) > G.EDGE_MAX_MACS else None
+                ports.append({k: v for k, v in p.items() if k not in ("nb", "cdp", "if", "index", "bcast_pps", "mcast_pps")} |
+                             {"uplink": bool(kind), "uplink_kind": kind, "neighbor": neighbor, "role": roles.get(p["name"])})
+            uplinks = [p for p in ports if p["up"] and p["uplink"] and p["in_mbps"] is not None]
+            sw.update(ports=ports, environment=st.get("environment") or {}, rates=st.get("rates") if st.get("status") == "ok" else {},
+                      history=st.get("history") or [], vtp_domain=st.get("vtp_domain", ""), vtp_mode=st.get("vtp_mode", ""),
+                      uplink_in_mbps=round(sum(p["out_mbps"] or 0 for p in uplinks), 2) if uplinks else None,
+                      uplink_out_mbps=round(sum(p["in_mbps"] or 0 for p in uplinks), 2) if uplinks else None,
+                      down_reason=G.down_report(d, devs, states) if st.get("status") == "error" else "")
+            out.append(sw)
+        return {"community_set": bool(self.conf.get("snmp_community")), "version": self.version(),
+                "devices": out, "discovered": sorted(self.discovered.values(), key=lambda f: f["ip"]),
+                "scan": self.scan, "probe_switch": self.probe_switch_id(),
+                "probe_port": short_if((self.p.neighbor or {}).get("port") or ""), "every": POLL_EVERY}
 
     def probe_switch_id(self):
         nb = self.p.neighbor or {}
@@ -576,6 +582,16 @@ class NetMap:
             except S.SnmpError:
                 continue
             port = next((p for p in st.get("ports", []) if p["if"] == ifi), None)
+            members = (st.get("po") or {}).get(ifi)
+            if port is None and members:  # a port-channel: CDP is seen on its member links
+                mp = [p for p in st.get("ports", []) if p["if"] in members]
+                cdp = next((p["cdp"] for p in mp if p.get("cdp")), None)
+                try:
+                    with self.client(dev) as c:
+                        nm = short_if(S.text(c.get([IFNAME + (ifi,)]).get(IFNAME + (ifi,))))
+                except S.SnmpError:
+                    nm = f"Po{ifi}"
+                port = {"if": ifi, "name": nm, "cdp": cdp, "up": any(p["up"] for p in mp), "trunk": any(p.get("trunk") for p in mp)}
             if port is None:  # a port the last poll didn't list: name it now
                 try:
                     with self.client(dev) as c:
@@ -625,7 +641,7 @@ class NetMap:
         return None
 
     def port_detail(self, dev, port, step, count_vlan=None):
-        out = {"port": port["name"], "alias": port.get("alias"), "up": port.get("up"), "speed": port.get("speed"),
+        out = {"port": port["name"], "alias": port.get("alias"), "up": port.get("up"), "speed": port.get("speed_mbps"),
                "duplex": port.get("duplex"), "vlan": port.get("vlan"), "cdp": port.get("cdp"), "trunk": port.get("trunk"),
                "switch": dev.get("name"), "host": dev["host"]}
         try:

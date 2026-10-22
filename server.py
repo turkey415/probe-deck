@@ -36,7 +36,7 @@ import wake as wake_mod
 import watchdog as watch_mod
 import ws as ws_mod
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -931,6 +931,13 @@ class Handler(BaseHTTPRequestHandler):
                 p.netmap.remove(str(body.get("id")))
             elif path == "/api/net/scan":
                 p.netmap.start_scan()
+            elif path == "/api/net/order":
+                ids = body.get("ids")
+                if not (isinstance(ids, list) and all(isinstance(x, str) for x in ids)):
+                    raise ValueError("Bad order")
+                p.netmap.set_order(ids)
+            elif path == "/api/net/role":
+                p.netmap.set_role(str(body.get("id")), str(body.get("port") or ""), body.get("role") or None)
             elif path == "/api/net/refresh":
                 p.netmap.wake.set()
             elif path == "/api/trace":

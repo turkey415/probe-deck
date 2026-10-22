@@ -212,28 +212,9 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 @media (max-width: 760px) { .mrow { grid-template-columns: 22px 12px minmax(0, 1fr) auto; } .mrow .grp, .mrow .macc, .mrow .ipc, .mrow .ping { display: none; } }
 @media (prefers-reduced-motion: reduce) { .sled.waking { animation: none; } }
 
-/* ---------- switches ---------- */
-.dev { display: flex; flex-direction: column; gap: 12px; }
-.devhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.devhead .who { min-width: 0; flex: 1; }
-.devhead .who b { font-size: 15px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.ports { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 4px; }
-.pt { height: 30px; border-radius: 4px; border: 1px solid #34342f; background: #1a1a18; color: #6b6a65; cursor: pointer; padding: 0;
-  font: 600 10px ui-monospace, Menlo, Consolas, monospace; display: grid; place-items: center; position: relative; }
-.pt.up { background: #12301a; border-color: #2c7a3f; color: #9ff0ae; box-shadow: inset 0 0 8px rgba(61, 255, 122, .15); }
-.pt.off { background: repeating-linear-gradient(135deg, #1a1a18 0 4px, #232320 4px 8px); color: #4a4a46; }
-.pt.upl { border-color: #b07cff; box-shadow: 0 0 6px rgba(176, 124, 255, .35); }
-.pt.ap { border-color: #3fc3ff; box-shadow: 0 0 6px rgba(63, 195, 255, .35); }
-.pt.me { outline: 2px solid var(--amber); outline-offset: 1px; }
-.pt.sel { outline: 2px solid #fff; outline-offset: 1px; }
-.pt:hover { filter: brightness(1.3); }
-.pgrp { grid-column: 1 / -1; font: 600 9.5px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .12em; color: var(--muted); margin-top: 4px; }
-@media (max-width: 1500px) { #h-pd, #h-link { display: none; } }
+@media (max-width: 1700px) { #h-pd, #h-link { display: none; } }
 .tabs a { padding: 5px 10px; }
-.ptlegend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); }
-.ptlegend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; border: 1px solid; }
-.portinfo { background: var(--well); border: 1px solid rgba(255, 255, 255, .06); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+/* ---------- wireless controller AP list ---------- */
 .aplist { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
 .aplist div { background: var(--well); border: 1px solid rgba(255, 255, 255, .06); border-radius: 6px; padding: 6px 10px; display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
 .aplist b { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -273,6 +254,194 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 .sigbars { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; margin-left: 6px; vertical-align: -1px; }
 .sigbars i { width: 3px; background: #34342f; } .sigbars i.on { background: #3fc3ff; box-shadow: 0 0 4px #3fc3ff; }
 @media (prefers-reduced-motion: reduce) { .link.air .wire { animation: none; } }
+
+/* ================= GXL-LANapp switches look (ported from GXL shared/deck.css, scoped to .gx) ================= */
+.gx { --good: #3ddc5a; --crit: #ff4d4d; --warn: #fab219; --led-off: #2a2a28; --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; }
+.gx .k.bright { color: var(--text-2); }
+.gx .spacer { flex: 1; }
+.gx .cbadge { font: 650 10px var(--mono); letter-spacing: .1em; padding: 2px 8px; border-radius: 999px; background: var(--raised); color: var(--text-2); }
+.gx .key { font: 600 9.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; padding: 7px 9px; cursor: pointer; color: var(--text-2);
+  background: linear-gradient(#2a2a28, #1d1d1c); border: 1px solid #45453f; border-radius: 4px; box-shadow: 0 1px 0 rgba(0, 0, 0, .6); }
+.gx .key:hover:not(:disabled) { color: var(--text); border-color: var(--accent); }
+.gx .key.act { border-color: var(--amber); color: var(--text); box-shadow: 0 0 8px color-mix(in srgb, var(--amber) 35%, transparent); }
+.gx .key:disabled { color: #55544f; cursor: not-allowed; }
+.gx .sled.live { background: var(--crit); box-shadow: 0 0 8px var(--crit); animation: pulse .9s steps(2, jump-none) infinite; }
+.gx .sled.ready { background: var(--good); box-shadow: 0 0 7px var(--good); }
+.gx .sled.busy { background: var(--warn); box-shadow: 0 0 7px var(--warn); }
+.gx .sled.info { background: #5aa9ff; box-shadow: 0 0 7px #5aa9ff; }
+.gx .leds { flex: 1; display: flex; gap: 3px; min-width: 0; }
+.gx .leds i { flex: 1; height: 20px; border-radius: 2px; background: var(--led-off); transition: background .25s, box-shadow .25s; }
+.gx .leds i.on { background: var(--c, var(--accent)); box-shadow: 0 0 7px color-mix(in srgb, var(--c, var(--accent)) 70%, transparent); }
+.gx .leds.thin i { height: 12px; }
+.gx .seg7 { display: block; height: 30px; width: auto; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--c, var(--amber)) 55%, transparent)); }
+.gx .seg7 .on { fill: var(--c, var(--amber)); } .gx .seg7 .off { fill: rgba(255, 255, 255, .05); }
+.gx .off .seg7 { filter: none; } .gx .off .seg7 .on { fill: #55544f; }
+.gx .ports { display: flex; flex-wrap: wrap; gap: 4px; }
+.gx .pt { --tc: #33332f; width: 30px; padding: 4px 0 3px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: #131312; border: 1px solid #2f2f2d; border-radius: 4px; cursor: default; height: auto; color: inherit; font: inherit; }
+.gx .pt i { width: 14px; height: 5px; border-radius: 2px; background: var(--tc); }
+.gx .pt span { font: 600 8.5px var(--mono); color: var(--muted); }
+.gx .pt.ok { --tc: var(--good); } .gx .pt.warn { --tc: var(--warn); } .gx .pt.crit { --tc: var(--crit); }
+.gx .pt.ok i, .gx .pt.warn i, .gx .pt.crit i { box-shadow: 0 0 7px var(--tc); }
+.gx .pt.ok span, .gx .pt.warn span, .gx .pt.crit span { color: var(--text-2); }
+.gx .pt.crit i { animation: pulse .7s steps(2, jump-none) infinite; }
+.gx .pt.uplink { border-color: #ff8a3d; box-shadow: inset 0 0 0 1px #ff8a3d; } .gx .pt.uplink span { color: #ff8a3d; }
+.gx .pt.uplink.known { border-color: #b07cff; box-shadow: inset 0 0 0 1px #b07cff; } .gx .pt.uplink.known span { color: #c9a6ff; }
+.gx .pt.me { outline: 2px solid var(--amber); outline-offset: 1px; }
+.gx .pt.click { cursor: pointer; } .gx .pt.click:hover { border-color: var(--accent); }
+.gx .envline { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 9px; }
+.gx .chip { font: 600 10px var(--mono); letter-spacing: .06em; padding: 3px 7px; border-radius: 4px; background: #131312; border: 1px solid #2f2f2d; color: var(--text-2); white-space: nowrap; text-transform: none; }
+.gx .chip.ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, #2f2f2d); background: #131312; }
+.gx .chip.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, #2f2f2d); }
+.gx .chip.crit { color: var(--crit); border-color: color-mix(in srgb, var(--crit) 60%, #2f2f2d); animation: pulse 1.4s ease-in-out infinite; }
+.gx .grip { cursor: grab; color: #6b6a65; font: 14px/1 var(--mono); padding: 0 4px; user-select: none; }
+.gx .grip:hover { color: var(--text-2); }
+.gx .dragging { opacity: .45; } .gx .droptarget { outline: 2px dashed var(--accent); outline-offset: 2px; }
+.gx .swhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 9px; }
+.gx .kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 16px; margin: 0; }
+.gx .kv dt { color: var(--muted); font-size: 11.5px; } .gx .kv dd { margin: 1px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gx .issues { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.gx .issues li { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: var(--text-2); }
+.gx .srow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gx .swgrid { display: flex; flex-direction: column; gap: 14px; }
+.gx .swbody { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; }
+.gx .swmain { min-width: 0; }
+@media (max-width: 760px) { .gx .swbody { grid-template-columns: minmax(0, 1fr); } }
+.gx .swcard { transition: border-color .2s; }
+.gx .swcard.warn { border-color: color-mix(in srgb, var(--warn) 45%, #2f2f2d); } .gx .swcard.crit { border-color: color-mix(in srgb, var(--crit) 55%, #2f2f2d); }
+.gx .swname { cursor: pointer; } .gx .swname:hover { color: var(--accent); }
+.gx .gauges { display: grid; gap: 5px; }
+.gx .gauge { display: grid; grid-template-columns: 38px 1fr 52px; gap: 8px; align-items: center; }
+.gx .gauge .gv { font: 600 11px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.gx .swnums { display: grid; grid-template-columns: auto auto; justify-content: start; gap: 8px 18px; margin: 10px 0 8px; }
+.gx .swnums > div:first-child { grid-column: 1 / -1; } .gx .swnums > div { display: flex; align-items: center; gap: 6px; }
+.gx .faceplate { display: flex; flex-wrap: wrap; gap: 18px; padding: 14px; background: linear-gradient(#1c1c1a, #151514); border: 1px solid #34342f; border-radius: 8px; margin-bottom: 10px; overflow-x: auto; }
+.gx .fgroup { display: flex; flex-direction: column; gap: 5px; } .gx .frow { display: flex; gap: 5px; }
+.gx .pt.big { width: 50px; padding: 5px 0 0; gap: 3px; position: relative; overflow: hidden; cursor: pointer; }
+.gx .pt.big i { width: 26px; height: 6px; }
+.gx .pt.big .pn { font: 700 11px var(--mono); color: var(--text-2); }
+.gx .pt.big .ps { font: 600 8.5px var(--mono); color: var(--muted); min-height: 10px; }
+.gx .pt.big .ps.seat { color: var(--amber); padding-bottom: 5px; }
+.gx .pt.big .load { align-self: flex-start; height: 3px; background: #5aa9ff; box-shadow: 0 0 5px #5aa9ff; }
+.gx .pt.big:hover { border-color: #55544f; } .gx .pt.big.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, #131312); }
+.gx .envtable { display: grid; gap: 6px; margin: 10px 0 0; }
+.gx .envtable div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dashed #2a2a27; padding-bottom: 4px; }
+.gx .envtable dt { color: var(--muted); font-size: 12px; } .gx .envtable dd { margin: 0; font: 600 12px var(--mono); text-align: right; }
+.gx .dtag { display: inline-block; font: 700 10px var(--mono); letter-spacing: .14em; color: #fff; background: var(--crit); padding: 2px 6px; border-radius: 3px; margin-right: 8px;
+  box-shadow: 0 0 9px color-mix(in srgb, var(--crit) 60%, transparent); animation: pulse 1.4s ease-in-out infinite; }
+.gx .downnote { border: 1px solid color-mix(in srgb, var(--crit) 55%, #2f2f2d); background: color-mix(in srgb, var(--crit) 8%, #131312); border-radius: 6px; padding: 9px 11px; margin-bottom: 10px; display: grid; gap: 5px; }
+.gx .downnote .dhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .gx .downnote .dhead b { color: var(--crit); }
+.gx .downnote .dwhy { font-size: 13px; color: var(--text); }
+.gx .ports.stale, .gx .faceplate.stale { opacity: .4; filter: grayscale(1); }
+.gx .vus { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 12px; }
+.gx .vus.hall { grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); }
+.gx .vu .face { position: relative; border-radius: 8px; border: 1px solid #343432; overflow: hidden;
+  background: radial-gradient(120% 95% at 50% 108%, color-mix(in srgb, var(--c) 30%, transparent), transparent 72%), linear-gradient(#181817, #0d0d0c);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, .75); }
+.gx .vu .face::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgba(255, 255, 255, .075), rgba(255, 255, 255, 0) 36%); }
+.gx .vu svg.vf { display: block; width: 100%; height: auto; }
+.gx .vu .arc { fill: none; stroke: #77766f; stroke-width: 1.3; } .gx .vu .band { fill: none; stroke-width: 3.5; }
+.gx .vu .band.warn { stroke: var(--warn); filter: drop-shadow(0 0 3px var(--warn)); } .gx .vu .band.crit { stroke: var(--crit); filter: drop-shadow(0 0 3px var(--crit)); }
+.gx .vu .tk { stroke: #77766f; stroke-width: 1.1; } .gx .vu .tk.maj { stroke: var(--text-2); stroke-width: 1.7; }
+.gx .vu .vl { fill: var(--text-2); font: 10.5px var(--mono); } .gx .vu .vn { fill: var(--muted); font: 8.5px var(--mono); letter-spacing: .16em; }
+.gx .vu .ndl, .gx .vu .pkd { transform-origin: 100px 118px; transition: transform .95s cubic-bezier(.3, 1.5, .5, 1), opacity .3s; }
+.gx .vu .ndl line { stroke: color-mix(in srgb, var(--c) 62%, #fff); stroke-width: 2; stroke-linecap: round; filter: drop-shadow(0 0 3px var(--c)); }
+.gx .vu .pkd circle { fill: var(--text); } .gx .vu .hub { fill: #262624; stroke: #45453f; }
+.gx .vu .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 9px; min-height: 22px; }
+.gx .vu .foot .k { color: var(--text-2); } .gx .vu .seg7 { height: 21px; }
+.gx .vu.off .face { background: linear-gradient(#151514, #0d0d0c); } .gx .vu.off .band { stroke: #3a3a37; filter: none; }
+.gx .vu.off .ndl line { stroke: #6b6a65; filter: none; } .gx .vu.off .pkd { opacity: 0; }
+.gx .vu .underfoot { margin-top: 7px; }
+.gx .scope { position: relative; border-radius: 5px; overflow: hidden; background: radial-gradient(120% 140% at 50% 50%, #0b1a10, #040705 75%);
+  border: 1px solid #1f2b22; box-shadow: inset 0 0 18px rgba(0, 0, 0, .9); }
+.gx .scope svg { display: block; width: 100%; height: 100%; }
+.gx .scope::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .28) 0 1px, transparent 1px 3px); }
+.gx .scope .gr { stroke: #1d3a25; stroke-width: 1; vector-effect: non-scaling-stroke; stroke-dasharray: 2 3; }
+.gx .scope .trace { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; filter: drop-shadow(0 0 3px currentColor); }
+.gx .scope .area { opacity: .18; }
+.gx .scope .scale { position: absolute; top: 4px; left: 7px; font: 600 9px var(--mono); color: #5bbf78; letter-spacing: .1em; text-shadow: 0 0 4px #2f7a45; }
+.gx .scope .wait { position: absolute; inset: 0; display: grid; place-items: center; font: 600 10px var(--mono); letter-spacing: .3em; color: #4fae6b; text-shadow: 0 0 6px #2f7a45; animation: pulse 1.6s ease-in-out infinite; }
+.gx .bwmon, .gx .netstats { border: 1px solid #2a3a2e; border-radius: 10px; padding: 12px 14px 10px; margin-bottom: 16px; background: linear-gradient(#0e1410, #0a0d0b); }
+.gx .bwmon { box-shadow: inset 0 0 0 1px rgba(80, 255, 140, .04), 0 0 24px rgba(40, 200, 100, .05); }
+.gx .bwhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; font: 600 10px var(--mono); letter-spacing: .18em; }
+.gx .bwtitle { font: 700 14px var(--mono); letter-spacing: .32em; color: #7dffa0; text-shadow: 0 0 8px rgba(80, 255, 140, .55), 0 0 2px #7dffa0; }
+.gx .bwsub { color: #4f8a60; }
+.gx .rec { display: inline-flex; align-items: center; gap: 6px; color: #ff5d5d; }
+.gx .rec i { width: 8px; height: 8px; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 8px #ff4d4d; animation: pulse 1.2s ease-in-out infinite; }
+.gx .bwbody { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 14px; align-items: stretch; }
+@media (max-width: 760px) { .gx .bwbody { grid-template-columns: minmax(0, 1fr); } }
+.gx .bwread { display: flex; flex-direction: column; justify-content: space-between; gap: 8px; }
+.gx .bwread > div { display: grid; grid-template-columns: 58px 1fr auto; align-items: center; gap: 8px; }
+.gx .bwread .lbl { font: 700 10px var(--mono); letter-spacing: .14em; color: #9a998f; } .gx .bwread .u { font: 600 9px var(--mono); color: #6b6a65; letter-spacing: .12em; }
+.gx .bwch { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 6px 14px; margin-top: 12px; }
+.gx .bwch .ch { display: grid; grid-template-columns: 110px minmax(0, 1fr) 64px 64px; gap: 8px; align-items: center; }
+.gx .bwch .chname { font: 600 10px var(--mono); color: #8fd6a2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: .04em; }
+.gx .bwch .chv { font: 600 11px var(--mono); text-align: right; font-variant-numeric: tabular-nums; text-shadow: 0 0 5px currentColor; }
+.gx .bwfoot { margin-top: 9px; font: 10px var(--mono); color: #4f6a55; letter-spacing: .04em; }
+.gx .netstats .counters { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+.gx .netstats .ctr { display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; border: 1px solid #1f2b22; border-radius: 6px; background: #070a08; }
+.gx .netstats .ctr span { font: 600 9px var(--mono); letter-spacing: .14em; color: #4f8a60; }
+.gx .vfd { position: relative; border-radius: 8px; padding: 10px 12px 12px; background: radial-gradient(140% 120% at 50% 0%, #06201b, #020a08 70%);
+  border: 1px solid #12392f; box-shadow: inset 0 0 22px rgba(0, 0, 0, .85); color: #48ffd2; font: 600 11px var(--mono); letter-spacing: .06em;
+  text-shadow: 0 0 6px rgba(72, 255, 210, .55), 0 0 1px #48ffd2; overflow-x: auto; }
+.gx .vfd::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 8px;
+  background: repeating-linear-gradient(90deg, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px), repeating-linear-gradient(0deg, rgba(0, 0, 0, .18) 0 1px, transparent 1px 3px); }
+.gx .vfdhead { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 8px; font-size: 10px; letter-spacing: .24em; color: #2fd8ae; }
+.gx .vfd .cur { display: inline-block; width: 7px; height: 11px; margin-left: 6px; vertical-align: -1px; background: #48ffd2; box-shadow: 0 0 6px #48ffd2; animation: pulse 1s steps(2, jump-none) infinite; }
+.gx .vfd table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: inherit; }
+.gx .vfd th { text-align: left; font-size: 9px; letter-spacing: .2em; color: #1fa784; padding: 0 12px 5px 0; border-bottom: 1px dashed #145a48; font-weight: 600; }
+.gx .vfd td { padding: 4px 12px 4px 0; cursor: pointer; border: 0; text-align: left; }
+.gx .vfd tr.swr td:nth-child(2) { color: #d2a8ff; text-shadow: 0 0 6px rgba(176, 124, 255, .6); }
+.gx .vfd tbody tr:hover td { background: rgba(72, 255, 210, .06); } .gx .vfd tr.sel td { background: rgba(72, 255, 210, .13); }
+.gx .flap { display: flex; gap: 2px; padding: 3px; background: #050505; border-radius: 4px; box-shadow: 0 2px 6px rgba(0, 0, 0, .7), inset 0 0 0 1px #2a2a27; }
+.gx .flap i { flex: 1 1 0; min-width: 0; max-width: 17px; height: 22px; display: grid; place-items: center; font: 700 14px var(--mono); font-style: normal; color: #f4f1de;
+  background: linear-gradient(#262624 0 49%, #0d0d0c 49% 51%, #1c1c1a 51%); border-radius: 2px; text-shadow: 0 1px 0 #000; }
+.gx .flap i.flip { animation: flap .07s linear; color: #c9c5ad; }
+@keyframes flap { 0% { transform: scaleY(1); } 50% { transform: scaleY(.15); } 100% { transform: scaleY(1); } }
+.gx .pt.role-firewall, .gx .pt.role-cache { position: relative; overflow: hidden; }
+.gx .pt.role-firewall::after, .gx .pt.role-cache::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; opacity: .62; }
+.gx .pt.role-firewall::after { background: repeating-linear-gradient(-45deg, #ff2b2b 0 4px, #ffd400 4px 8px); }
+.gx .pt.role-cache::after { background: repeating-linear-gradient(-45deg, #0b0b0a 0 4px, #ffd400 4px 8px); }
+.gx .pt.role-firewall { border-color: #ff2b2b; box-shadow: 0 0 0 1px #ffd400, 0 0 8px rgba(255, 43, 43, .6); }
+.gx .pt.role-cache { border-color: #ffd400; box-shadow: 0 0 0 1px #0b0b0a, 0 0 8px rgba(255, 212, 0, .5); }
+.gx .pt.role-firewall > *, .gx .pt.role-cache > * { position: relative; z-index: 1; }
+.gx .pt.role-firewall span, .gx .pt.role-cache span { color: #fff !important; text-shadow: 0 0 2px #000, 0 0 3px #000, 0 1px 0 #000; font-weight: 800; }
+.gx .rolebadge { font: 800 10px var(--mono); letter-spacing: .14em; padding: 3px 8px; border-radius: 3px; color: #fff; text-shadow: 0 0 2px #000, 0 1px 0 #000; }
+.gx .rolebadge.firewall { background: repeating-linear-gradient(-45deg, #e01e1e 0 6px, #e8b800 6px 12px); }
+.gx .rolebadge.cache { background: repeating-linear-gradient(-45deg, #111 0 6px, #e8b800 6px 12px); }
+.gx .talkers { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+@media (max-width: 1100px) { .gx .talkers { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } }
+.gx .blm { min-width: 0; } .gx .blm.click { cursor: pointer; }
+.gx .blm .bezel { position: relative; padding: 7px; border-radius: 9px; background: linear-gradient(160deg, #3a3a37, #1c1c1a 45%, #0f0f0e); border: 1px solid #4a4a45;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 3px 10px rgba(0, 0, 0, .55); }
+.gx .blm.click:hover .bezel { border-color: var(--amber); }
+.gx .blm svg { display: block; width: 100%; height: auto; border-radius: 4px; box-shadow: inset 0 0 0 1px #000, 0 0 0 1px #000;
+  filter: brightness(calc(.42 + .62 * var(--lit))) saturate(calc(.6 + .5 * var(--lit))); transition: filter .9s ease; }
+.gx .blm .bezel::after { content: ""; position: absolute; inset: 7px; border-radius: 4px; pointer-events: none;
+  box-shadow: inset 0 0 18px rgba(60, 30, 0, .55), 0 0 calc(22px * var(--lit)) rgba(255, 196, 92, calc(.35 * var(--lit))); transition: box-shadow .9s ease; }
+.gx .blm .scale { fill: none; stroke: #2a2116; stroke-width: 1.2; } .gx .blm .redzone { fill: none; stroke: #c2241b; stroke-width: 6; opacity: .85; }
+.gx .blm .tk { stroke: #2a2116; stroke-width: 1; } .gx .blm .tk.maj { stroke-width: 1.8; } .gx .blm .tk.hot { stroke: #a8180f; }
+.gx .blm .num { fill: #241b10; font: 700 11px var(--mono); } .gx .blm .num.hot { fill: #a8180f; }
+.gx .blm .unit { fill: #3a2c18; font: 700 10px var(--mono); letter-spacing: .3em; } .gx .blm .legend { fill: #5a4423; font: 700 8px var(--mono); letter-spacing: .14em; }
+.gx .blm .needle { transform-origin: 120px 172px; transition: transform 1.1s cubic-bezier(.25, 1.45, .45, 1); }
+.gx .blm .needle line { stroke: #14100b; stroke-width: 1.9; stroke-linecap: round; } .gx .blm .needle.shadow line { stroke: rgba(40, 20, 0, .45); stroke-width: 2.2; }
+.gx .blm .pivot { fill: #151513; stroke: #000; stroke-width: 1; } .gx .blm .glass { pointer-events: none; }
+.gx .blm .screw { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #8b8b85, #2c2c29); box-shadow: 0 0 0 1px #0b0b0a; }
+.gx .blm .screw.tl { top: 2px; left: 2px; } .gx .blm .screw.tr { top: 2px; right: 2px; } .gx .blm .screw.bl { bottom: 2px; left: 2px; } .gx .blm .screw.br { bottom: 2px; right: 2px; }
+.gx .blm .plate { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 3px 6px; border-radius: 4px; background: linear-gradient(#1d1d1b, #141413); border: 1px solid #2c2c29; min-height: 24px; }
+.gx .blm .plate .name { font: 700 11px var(--mono); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.gx .blm .plate .seg7 { margin-left: auto; flex: none; width: 54px; } .gx .blm.off .plate .name { color: var(--muted); }
+.gx .uleg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-2); margin-top: 10px; }
+.gx .uleg > span { display: inline-flex; align-items: center; gap: 6px; }
+.fold { display: flex; align-items: center; gap: 8px; align-self: flex-start; font: 600 10px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); background: linear-gradient(#232322, #191918); border: 1px solid #3a3a37; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.fold span[aria-hidden] { font-size: 15px; line-height: 1; color: var(--amber); } .fold:hover { color: var(--text-2); border-color: #55544f; }
+.layout.folded { grid-template-columns: 40px minmax(0, 1fr); max-width: 2000px; }
+.layout.folded > aside > :not(.fold) { display: none; }
+.layout.folded > aside > .fold { padding: 8px 0; width: 40px; justify-content: center; position: sticky; top: 64px; }
+.layout.folded > aside > .fold .ft { display: none; }
+@media (max-width: 960px) { .layout.folded { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .gx .vu .ndl, .gx .vu .pkd, .gx .blm .needle, .gx .blm svg, .gx .blm .bezel::after { transition: none; } .gx .flap i.flip, .gx .dtag, .gx .vfd .cur, .gx .rec i, .gx .scope .wait, .gx .pt.crit i { animation: none; } }
 /* ---------- login + roles ---------- */
 .gate { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; overflow: auto;
   background: radial-gradient(ellipse at center, #1a1a19 0%, #0b0b0a 70%); }
@@ -651,9 +820,10 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
 </div>
 
 
-<!-- ================= SWITCHES ================= -->
+<!-- ================= SWITCHES (the GXL-LANapp look) ================= -->
 <div class="layout view" id="v-net" hidden>
 <aside>
+  <button type="button" class="fold" id="gx-fold" title="Fold the side panel away"><span aria-hidden="true">«</span><span class="ft">Fold panel</span></button>
   <section class="card admin-only">
     <h2>SNMP</h2>
     <form class="form" id="f-snmp">
@@ -664,37 +834,28 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
     </form>
   </section>
   <section class="card admin-only">
-    <h2>Add a device</h2>
+    <h2>Add a switch</h2>
     <form class="form" id="f-devadd">
-      <label class="f">IP address <input type="text" id="da-host" spellcheck="false" placeholder="192.168.1.124"></label>
-      <label class="f">Name <span class="sub">Optional: the device's own name is used otherwise.</span><input type="text" id="da-name" maxlength="40"></label>
+      <label class="f">Switch address <input type="text" id="da-host" spellcheck="false" placeholder="192.168.1.25"></label>
+      <label class="f">Name <span class="sub">Optional: the switch's own name is used otherwise.</span><input type="text" id="da-name" maxlength="40"></label>
       <label class="f">Its own community <span class="sub">Optional: only if this one differs.</span><input type="password" id="da-comm" autocomplete="off"></label>
-      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none" id="da-go">Add</button><span id="da-msg"></span></div>
-      <span class="sub">Switches and AireOS wireless controllers. The probe reads it once to check before adding it.</span>
+      <button class="btn" type="submit" id="da-go">Add switch</button><span id="da-msg"></span>
+      <span class="sub">Switches and AireOS wireless controllers. The probe reads it once to check, then every 20 seconds.</span>
     </form>
   </section>
-  <section class="card">
-    <h2>Discovered <span class="spacer"></span><button class="btn ghost admin-only" id="b-scan">Scan</button></h2>
+  <section class="card admin-only">
+    <h2>Find devices</h2>
     <span class="sub" id="scan-note"></span>
-    <div class="tablewrap" style="margin-top:8px"><table><tbody id="disc"></tbody></table></div>
+    <button class="btn" id="b-scan" style="margin-top:10px">Scan the probe's subnet</button>
   </section>
 </aside>
 <main>
   <div class="note" id="net-empty" hidden></div>
-  <section class="card deck">
-    <h2>Switches <span class="spacer"></span><span class="lamp" id="net-lamp"></span></h2>
-    <div class="wells">
-      <div class="well" id="nw-dev"><span class="k">Devices</span><div id="net-ndev"></div><span class="un" id="net-ndev2">managed</span></div>
-      <div class="well" id="nw-down"><span class="k">Not answering</span><div id="net-ndown"></div><span class="un">SNMP</span></div>
-      <div class="well" id="nw-ports"><span class="k">Ports up</span><div id="net-nports"></div><span class="un" id="net-nports2">—</span></div>
-      <div class="well" id="nw-poe"><span class="k">PoE in use</span><div id="net-poe"></div><span class="un" id="net-poe2">watts</span></div>
-      <div class="well" id="nw-wifi"><span class="k">Wi-Fi clients</span><div id="net-wifi"></div><span class="un" id="net-wifi2">—</span></div>
-    </div>
-  </section>
-  <div class="ptlegend"><span><i style="background:#12301a;border-color:#2c7a3f"></i>link up</span><span><i style="background:#1a1a18;border-color:#34342f"></i>down</span>
-    <span><i style="background:#232320;border-color:#34342f"></i>shut</span><span><i style="border-color:#b07cff"></i>to a switch</span><span><i style="border-color:#3fc3ff"></i>access point</span>
-    <span><i style="border-color:var(--amber);border-width:2px"></i>this probe</span></div>
-  <div class="stlist" id="dev-list" style="gap:18px"></div>
+  <section class="card gx"><h2><span id="gx-title">Switches</span><span class="spacer"></span><span class="cbadge" id="gx-count"></span></h2><div id="gx-root" class="ro-ok"></div></section>
+  <section class="card gx" id="gx-wlc-card" hidden><h2>Wireless controllers <span class="spacer"></span><span class="cbadge" id="gx-wcount"></span></h2><div id="gx-wlc" class="swgrid ro-ok"></div></section>
+  <section class="card gx" id="gx-found-card"><h2>Switches found but not added <span class="spacer"></span><span class="cbadge" id="gx-fcount"></span></h2>
+    <div id="gx-found" class="swgrid ro-ok" style="gap:8px"></div>
+    <div class="sub" style="margin-top:10px">Found from what the added switches see plugged into them (CDP), plus the subnet scan. Access points and PCs are left out.</div></section>
 </main>
 </div>
 
@@ -1623,8 +1784,405 @@ $('#f-mypw').onsubmit = async e => {
 };
 
 
-// ---------- switches ----------
-let NET = null, netSel = {};
+// ---------- switches: the GXL-LANapp Switches page (ported from GXL web/src/ops/Switches.tsx, Bandwidth.tsx, shared/deck.tsx) ----------
+let NET = null;
+const GX = { open: null, picked: null, peaks: new Map(), slots: {}, held: { uplink: null, pc: null }, flapCur: {}, flapRun: {}, flapFits: {}, armed: null, dragging: null, over: null };
+const num3 = v => v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
+const gAgo = t => { const s = Math.max(0, Date.now() / 1000 - t); return s < 60 ? 'just now' : s < 3600 ? `${Math.floor(s / 60)} min ago` : s < 86400 ? `${Math.floor(s / 3600)} h ago` : `${Math.floor(s / 86400)} d ago`; };
+const lasted = t => { const s = Math.max(0, Math.floor(Date.now() / 1000 - t)); return s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min` : s < 86400 ? `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min` : `${Math.floor(s / 86400)} d ${Math.floor((s % 86400) / 3600)} h`; };
+const gUptime = s => { if (s == null) return null; const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60); return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`; };
+const LEVEL_COLOR = { ok: 'var(--good)', warn: 'var(--warn)', crit: 'var(--crit)' };
+const shortPort = name => (name.match(/(\d+)$/) || [, name.slice(-3)])[1];
+const worst = levels => levels.includes('crit') ? 'crit' : levels.includes('warn') ? 'warn' : 'ok';
+const sty = o => Object.entries(o).filter(([, v]) => v != null).map(([k, v]) => `${k}:${v}`).join(';');
+
+// DOM patcher: keeps elements in place between readings, so needles swing instead of jumping
+function morph(el, html) {
+  const t = document.createElement(el.tagName === 'TBODY' ? 'tbody' : 'div');
+  t.innerHTML = html;
+  patchKids(el, t);
+}
+function patchKids(a, b) {
+  const an = [...a.childNodes], bn = [...b.childNodes];
+  bn.forEach((y, i) => { const x = an[i]; if (!x) a.appendChild(y); else patchNode(x, y, a); });
+  for (let i = bn.length; i < an.length; i++) a.removeChild(an[i]);
+}
+function patchNode(x, y, parent) {
+  if (x.nodeType !== y.nodeType || x.nodeName !== y.nodeName) { parent.replaceChild(y, x); return; }
+  if (x.nodeType !== 1) { if (x.nodeValue !== y.nodeValue) x.nodeValue = y.nodeValue; return; }
+  for (const at of [...x.attributes]) if (!y.hasAttribute(at.name)) x.removeAttribute(at.name);
+  for (const at of [...y.attributes]) if (x.getAttribute(at.name) !== at.value) x.setAttribute(at.name, at.value);
+  patchKids(x, y);
+}
+
+// seven-segment readout with ":" and coloured by --c
+function gSeg(text, cells = 0, color, height) {
+  const g = [];
+  for (const ch of String(text)) ch === '.' && g.length ? g[g.length - 1].dot = true : g.push({ ch, dot: false });
+  while (g.length < cells) g.unshift({ ch: ' ', dot: false });
+  let x = 0, out = '';
+  for (const c of g) {
+    if (c.ch === ':') { out += `<circle class="on" cx="${x + 2}" cy="11" r="1.7"/><circle class="on" cx="${x + 2}" cy="24" r="1.7"/>`; x += 8; continue; }
+    const lit = SEG[c.ch] ?? '';
+    for (const k in SEGP) out += `<polygon class="${lit.includes(k) ? 'on' : 'off'}" points="${SEGP[k]}" transform="translate(${x})"/>`;
+    out += `<circle class="${c.dot ? 'on' : 'off'}" cx="${x + 17.8}" cy="32" r="1.5"/>`;
+    x += 21;
+  }
+  return `<svg class="seg7" viewBox="-5 -1 ${x + 5} 36" role="img" aria-label="${esc(String(text).trim())}" style="${sty({ '--c': color, height: height ? height + 'px' : null })}"><g transform="skewX(-6)">${out}</g></svg>`;
+}
+const gLeds = (value, count = 30, { thin, color } = {}) => {
+  const lit = Math.round(Math.max(0, Math.min(1, value || 0)) * count);
+  return `<div class="leds${thin ? ' thin' : ''}" style="${sty({ '--c': color })}" aria-hidden="true">${Array.from({ length: count }, (_, i) => `<i${i < lit ? ' class="on"' : ''}></i>`).join('')}</div>`;
+};
+// analog panel meter (Perf-Deck's): log scales by tens; warn/crit light the top of the scale
+function gNeedle({ title, value, max, readout, unit, warn, crit, color = 'var(--good)', peak, cells = 4, log, under = '' }) {
+  const at = v => log ? Math.log10(1 + Math.max(0, v)) / Math.log10(1 + max) : v / max;
+  const valueAt = f => log ? 10 ** (f * Math.log10(1 + max)) - 1 : max * f;
+  const cx = 100, cy = 118, R = 84, A = 46;
+  const deg = f => -A + 2 * A * Math.max(0, Math.min(1, f));
+  const pt = (r, f) => { const a = (deg(f) - 90) * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)].map(v => v.toFixed(2)); };
+  const arc = (r, f0, f1) => `M${pt(r, f0).join(' ')}A${r} ${r} 0 0 1 ${pt(r, f1).join(' ')}`;
+  let ticks = '';
+  for (let i = 0; i <= 20; i++) { const a = pt(R, i / 20), b = pt(R - (i % 5 ? 5 : i % 10 ? 8 : 11), i / 20); ticks += `<line class="tk${i % 5 ? '' : ' maj'}" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`; }
+  const fmt = v => v >= 1000 ? `${Math.round(v / 100) / 10}k` : String(Math.round(v));
+  const labels = [0, .5, 1].map(f => { const [x, y] = pt(R + 13, f); return `<text class="vl" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle">${fmt(valueAt(f))}</text>`; }).join('');
+  const off = value == null, f = off ? 0 : at(value);
+  return `<div class="vu${off ? ' off' : ''}" style="--c:${color}" role="meter" aria-label="${esc(title)}"><div class="face"><svg class="vf" viewBox="0 0 200 128" aria-hidden="true">
+    <path class="arc" d="${arc(R, 0, 1)}"/>${warn !== undefined ? `<path class="band warn" d="${arc(R + 3.5, at(warn), at(crit ?? max))}"/>` : ''}${crit !== undefined ? `<path class="band crit" d="${arc(R + 3.5, at(crit), 1)}"/>` : ''}
+    ${ticks}${labels}<text class="vn" x="100" y="92" text-anchor="middle">${esc(unit.toUpperCase())}</text>
+    <g class="pkd" style="transform:rotate(${deg(at(peak ?? 0))}deg);opacity:${peak ? 1 : 0}"><circle cx="100" cy="${cy - R + 17}" r="2.4"/></g>
+    <g class="ndl" style="transform:rotate(${off ? -A - 6 : deg(f)}deg)"><line x1="100" y1="${cy + 4}" x2="100" y2="${cy - R + 3}"/></g>
+    <circle class="hub" cx="100" cy="${cy}" r="10"/></svg></div>
+    <div class="foot"><span class="k">${esc(title)}</span>${gSeg(readout, cells, off ? undefined : color)}</div>${under ? `<div class="underfoot">${under}</div>` : ''}</div>`;
+}
+// backlit VU meter for the busiest ports
+function gBlm({ value, max, label, sub, readout, click, title }) {
+  const cx = 120, cy = 172, R = 132, A = 44;
+  const at = v => Math.max(0, Math.min(1, Math.log10(1 + Math.max(0, v)) / Math.log10(1 + max)));
+  const deg = f => -A + 2 * A * f;
+  const pt = (r, f) => { const a = (deg(f) - 90) * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)].map(v => v.toFixed(2)); };
+  const arc = (r, f0, f1) => `M${pt(r, f0).join(' ')}A${r} ${r} 0 0 1 ${pt(r, f1).join(' ')}`;
+  const marks = [{ v: 0, major: true }];
+  for (let d = 1; d <= max; d *= 10) for (const m of [1, 2, 5]) if (d * m <= max) marks.push({ v: d * m, major: m === 1 });
+  const red = at(max * .25), fmt = v => v >= 1000 ? `${v / 1000}G` : String(v);
+  const off = value == null, f = off ? 0 : at(value), lit = off ? .18 : .55 + .45 * f, rot = off ? -A - 4 : deg(f);
+  return `<div class="blm${off ? ' off' : ''}${click ? ' click' : ''}" style="--lit:${lit}" ${click ? `data-talk="${esc(click)}"` : ''} title="${esc(title || '')}" role="meter" aria-label="${esc(label + (sub ? ' ' + sub : ''))}">
+    <div class="bezel"><svg viewBox="0 0 240 132" aria-hidden="true"><defs>
+      <radialGradient id="blm-lamp" cx="50%" cy="100%" r="95%"><stop offset="0" stop-color="#fff3cf"/><stop offset=".55" stop-color="#f2d58f"/><stop offset="1" stop-color="#a9802f"/></radialGradient>
+      <linearGradient id="blm-glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".38" stop-color="#fff" stop-opacity=".05"/><stop offset=".39" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      <filter id="blm-soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.4"/></filter></defs>
+      <rect class="lamp" x="0" y="0" width="240" height="132" fill="url(#blm-lamp)"/><path class="redzone" d="${arc(R - 4, red, 1)}"/><path class="scale" d="${arc(R, 0, 1)}"/>
+      ${marks.map(({ v, major }) => { const [x1, y1] = pt(R, at(v)), [x2, y2] = pt(R + (major ? 9 : 5), at(v)); return `<line class="tk${at(v) >= red ? ' hot' : ''}${major ? ' maj' : ''}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`; }).join('')}
+      ${marks.filter(m => m.major).map(({ v }) => { const [x, y] = pt(R + 15, at(v)); return `<text class="num${at(v) >= red ? ' hot' : ''}" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle">${fmt(v)}</text>`; }).join('')}
+      <text class="unit" x="120" y="91" text-anchor="middle">MBPS</text><text class="legend" x="120" y="104" text-anchor="middle">${esc((sub || (off ? 'idle' : '')).toUpperCase().slice(0, 22))}</text>
+      <g class="needle shadow" style="transform:rotate(${rot}deg)" filter="url(#blm-soft)"><line x1="${cx + 3}" y1="${cy + 2}" x2="${cx + 3}" y2="${cy - R + 6}"/></g>
+      <g class="needle" style="transform:rotate(${rot}deg)"><line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy - R + 2}"/></g>
+      <path class="pivot" d="M74 132 A46 22 0 0 1 166 132 Z"/><rect class="glass" x="0" y="0" width="240" height="132" fill="url(#blm-glass)"/></svg>
+      <i class="screw tl"></i><i class="screw tr"></i><i class="screw bl"></i><i class="screw br"></i></div>
+    <div class="plate"><span class="name">${esc(label)}</span>${gSeg(readout, 4, off ? undefined : '#ffb000', 16)}</div></div>`;
+}
+// split-flap board: each tile flips through letters before landing, left to right
+const FLAP_CHARS = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-./@:_';
+function gFlap(key, text) {
+  const size = Math.max(Math.min(26, text.length), GX.flapFits[key] || 0, 1);
+  const target = text.toUpperCase().replace(/[^ A-Z0-9\-./@:_]/g, '-').slice(0, size).padStart(size, ' ');
+  let cur = GX.flapCur[key] ?? ' '.repeat(size);
+  if (cur.length !== size) cur = GX.flapCur[key] = cur.padStart(size, ' ').slice(-size);
+  if (cur !== target && !GX.flapRun[key]) setTimeout(() => flapRun(key, target), 0);
+  return `<span class="flap" data-flap="${esc(key)}" role="text" aria-label="${esc(text)}">${[...cur].map(c => `<i>${c === ' ' ? '&nbsp;' : esc(c)}</i>`).join('')}</span>`;
+}
+function flapRun(key, target) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { GX.flapCur[key] = target; return; }
+  GX.flapRun[key] = true;
+  const start = Date.now();
+  const step = setInterval(() => {
+    const t = Date.now() - start, cur = GX.flapCur[key] || ' '.repeat(target.length);
+    let done = true;
+    const next = [...target].map((want, i) => { if (cur[i] === want || t > 260 + i * 90) return want; done = false; return FLAP_CHARS[Math.floor(Math.random() * FLAP_CHARS.length)]; }).join('');
+    GX.flapCur[key] = next;
+    const el = document.querySelector(`[data-flap="${CSS.escape(key)}"]`);
+    if (el) [...el.children].forEach((ch, i) => { ch.textContent = next[i] === ' ' ? ' ' : next[i]; ch.className = next[i] === target[i] ? '' : 'flip'; });
+    if (done) { clearInterval(step); GX.flapRun[key] = false; }
+  }, 70);
+}
+function flapMeasure() {  // fill: as many tiles as fit across
+  for (const el of document.querySelectorAll('#gx-root [data-flap]')) {
+    const fits = Math.floor((el.clientWidth - 6 + 2) / 19), key = el.dataset.flap;
+    if (fits > 0 && GX.flapFits[key] !== fits && !GX.flapRun[key]) { GX.flapFits[key] = fits; GX.remeasure = true; }
+  }
+}
+// phosphor trace
+function niceMax(v) { if (!(v > 0)) return 1; const p = 10 ** Math.floor(Math.log10(v)); return ([1, 2, 5, 10].find(m => m * p >= v) ?? 10) * p; }
+function gScope({ down, up, height = 120, max, points = 90, grid = true }) {
+  const W = 600, H = 100, top = max ?? niceMax(Math.max(1, ...down, ...up) * 1.1);
+  const x = (i, n) => W - (n - 1 - i) * (W / (points - 1)), y = v => H - (Math.max(0, v) / top) * (H - 4) - 2;
+  const line = vals => vals.map((v, i) => `${i ? 'L' : 'M'}${x(i, vals.length).toFixed(1)} ${y(v).toFixed(1)}`).join('');
+  const area = vals => vals.length > 1 ? `${line(vals)}L${x(vals.length - 1, vals.length)} ${H}L${x(0, vals.length)} ${H}Z` : '';
+  let g = '';
+  if (grid) { for (let i = 0; i < 9; i++) g += `<line class="gr" x1="${(i + 1) * 60}" x2="${(i + 1) * 60}" y1="0" y2="${H}"/>`; for (const v of [25, 50, 75]) g += `<line class="gr" x1="0" x2="${W}" y1="${v}" y2="${v}"/>`; }
+  return `<div class="scope" style="height:${height}px"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${g}
+    ${down.length > 1 ? `<path class="area" d="${area(down)}" style="fill:#ffb000"/><path class="trace" d="${line(down)}" style="stroke:#ffb000;color:#ffb000"/>` : ''}
+    ${up.length > 1 ? `<path class="trace" d="${line(up)}" style="stroke:#3dd6ff;color:#3dd6ff"/>` : ''}</svg>
+    ${grid ? `<span class="scale">${num3(top)} Mbps</span>` : ''}${down.length < 2 ? '<span class="wait">ACQUIRING SIGNAL…</span>' : ''}</div>`;
+}
+
+// ---------- the switch pieces ----------
+function hottest(temps) { const rank = { ok: 0, warn: 1, crit: 2 }, near = t => t.celsius / (t.limit || 100); return temps.reduce((a, b) => rank[b.level] > rank[a.level] || (rank[b.level] === rank[a.level] && near(b) > near(a)) ? b : a); }
+function envChips(env, up) {
+  const chips = [], cpu = env.cpu_1m ?? env.cpu_5s;
+  if (cpu != null) chips.push({ text: `CPU ${cpu}%`, level: env.cpu_level, title: `CPU load: ${env.cpu_5s}% over 5 seconds, ${env.cpu_1m ?? '?'}% over 1 minute, ${env.cpu_5m ?? '?'}% over 5 minutes` });
+  if (env.memory_pct != null) chips.push({ text: `MEM ${Math.round(env.memory_pct)}%`, level: env.memory_level, title: 'Processor memory in use' });
+  const temps = env.temps || [];
+  if (temps.length) { const t = hottest(temps); chips.push({ text: `TEMP ${t.celsius}°C${t.limit ? `/${t.limit}` : ''}`, level: worst(temps.map(t => t.level)), title: temps.map(t => `${t.name}: ${t.celsius}°C${t.limit ? ` (limit ${t.limit}°C)` : ''}`).join('\n') }); }
+  if (env.poe) chips.push({ text: `POE ${Math.round(env.poe.used_w)}/${Math.round(env.poe.budget_w)}W`, level: env.poe.level, title: `Power over Ethernet: ${env.poe.used_w} W of ${env.poe.budget_w} W in use (${Math.round(env.poe.pct)}%)` });
+  const fans = env.fans || [];
+  if (fans.length) { const bad = fans.filter(f => f.level !== 'ok'); chips.push({ text: bad.length ? `FAN ${bad.length} BAD` : `FAN${fans.length > 1 ? `S ${fans.length}` : ''} OK`, level: worst(fans.map(f => f.level)), title: fans.map(f => `${f.name}: ${f.level}`).join('\n') }); }
+  const power = env.power || [];
+  if (power.length) { const bad = power.filter(p => p.level !== 'ok'); chips.push({ text: bad.length ? `PSU ${bad.length} BAD` : `PSU${power.length > 1 ? ` ${power.length}` : ''} OK`, level: worst(power.map(p => p.level)), title: power.map(p => `${p.name}: ${p.level}`).join('\n') }); }
+  const u = gUptime(up);
+  if (u) chips.push({ text: `UP ${u}`, title: 'Time since the switch last started' });
+  return chips;
+}
+const envLine = sw => { const c = envChips(sw.environment || {}, sw.uptime_s); return c.length ? `<div class="envline">${c.map(x => `<span class="chip ${x.level || ''}" title="${esc(x.title || '')}">${esc(x.text)}</span>`).join('')}</div>` : ''; };
+const downNote = sw => `<div class="downnote" role="alert"><div class="dhead"><span class="dtag">DOWN</span><b>${sw.down_since ? `for ${lasted(sw.down_since)}` : 'not answering'}</b>
+  ${sw.down_since ? `<span class="k" style="text-transform:none">since ${new Date(sw.down_since * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>` : ''}</div>
+  <div class="dwhy">${esc(sw.down_reason || sw.error || '')}</div><div class="k" style="text-transform:none">${sw.last_ok_at ? `Last good reading ${gAgo(sw.last_ok_at)}. ` : ''}The ports shown are from that reading.</div></div>`;
+function portClass(p, sw) {
+  const lit = ['ok', 'warn', 'crit'].includes(p.level) ? p.level : '';
+  return ['pt', lit, p.uplink && 'uplink', p.uplink_kind === 'switch' && 'known', p.role && `role-${p.role}`, sw && sw.id === NET.probe_switch && p.name === NET.probe_port && 'me'].filter(Boolean).join(' ');
+}
+function portTip(p) {
+  const n = p.neighbor;
+  return [p.role === 'firewall' ? 'EVENT FIREWALL' : p.role === 'cache' ? 'LAN CACHE' : null, `${p.name}${p.alias ? ` (${p.alias})` : ''}`,
+    p.up ? `${p.speed_mbps ?? '?'} Mbps` : p.level === 'off' ? 'shut down' : 'nothing plugged in',
+    n ? `to ${n.name}${n.their_port ? ` ${n.their_port}` : ''}${n.switch ? (n.added ? ' (added here)' : ' (a switch, not added)') : ''}` : null,
+    p.uplink_kind === 'unknown' ? `${p.mac_count} addresses behind it, no switch known: an uplink?` : null,
+    p.uplink_kind !== 'unknown' && p.mac_count > 0 ? `${p.mac_count} address${p.mac_count > 1 ? 'es' : ''}` : null, ...p.reasons].filter(Boolean).join(' · ');
+}
+const portStrip = sw => `<div class="ports${sw.status === 'error' ? ' stale' : ''}">${(sw.ports || []).map(p => `<span class="${portClass(p, sw)} click" data-goport="${esc(sw.id)}|${esc(p.name)}" title="${esc(portTip(p))}"><i></i><span>${esc(shortPort(p.name))}</span></span>`).join('')}</div>`;
+const talkerLoad = p => (p.in_mbps ?? 0) + (p.out_mbps ?? 0);
+const topTalkers = sw => (sw.ports || []).filter(p => p.up && !p.uplink && !p.role && p.in_mbps !== null && talkerLoad(p) >= 0.01).sort((a, b) => talkerLoad(b) - talkerLoad(a)).slice(0, 5);
+function keepSlots(previous, top) { const slots = previous.map(n => n && top.includes(n) ? n : null); for (const n of top) if (!slots.includes(n)) slots[slots.indexOf(null)] = n; return slots; }
+function talkersHtml(sw) {
+  const top = topTalkers(sw);
+  GX.slots[sw.id] = keepSlots(GX.slots[sw.id] || Array(5).fill(null), top.map(p => p.name));
+  const byName = new Map(top.map(p => [p.name, p]));
+  return `<div class="talkers">${GX.slots[sw.id].map(name => {
+    const p = name && byName.get(name);
+    if (!p) return gBlm({ value: null, max: 1000, label: '—', readout: '-', title: 'Not enough ports busy on this switch' });
+    const load = talkerLoad(p), who = p.neighbor?.name?.split('.')[0] ?? (p.macs[0] || '');
+    return gBlm({ value: load, max: p.speed_mbps ?? 1000, label: p.name, sub: who, readout: num3(load), click: `${sw.id}|${p.name}`,
+      title: `${p.name}: ${num3(p.out_mbps ?? 0)} Mbps down, ${num3(p.in_mbps ?? 0)} Mbps up, on a ${p.speed_mbps ?? '?'} Mbps link` });
+  }).join('')}</div>`;
+}
+const uplinkLegend = () => `<div class="uleg"><span><span class="pt uplink known" style="width:22px"><i></i></span>To a known switch (CDP)</span>
+  <span><span class="pt uplink" style="width:22px"><i></i></span>Uplink to something unknown</span><span><span class="pt ok role-firewall" style="width:22px"><i></i></span>Event firewall</span>
+  <span><span class="pt ok role-cache" style="width:22px"><i></i></span>LAN cache</span><span><span class="pt ok me" style="width:22px"><i></i></span>This probe</span></div>`;
+const pct = n => Math.max(0, Math.min(1, (n ?? 0) / 100));
+const gauge = (label, value, text, level) => { const color = LEVEL_COLOR[level || 'ok']; return `<div class="gauge"><span class="k">${label}</span>${gLeds(value, 20, { thin: true, color })}<span class="gv" style="color:${color}">${esc(text)}</span></div>`; };
+function gauges(env) {
+  const out = [], cpu = env.cpu_1m ?? env.cpu_5s;
+  if (cpu != null) out.push(gauge('CPU', pct(cpu), `${cpu}%`, env.cpu_level));
+  if (env.memory_pct != null) out.push(gauge('MEM', pct(env.memory_pct), `${Math.round(env.memory_pct)}%`, env.memory_level));
+  const temps = env.temps || [];
+  if (temps.length) { const t = hottest(temps); out.push(gauge('TEMP', t.limit ? t.celsius / t.limit : t.celsius / 100, `${t.celsius}°C`, worst(temps.map(x => x.level)))); }
+  if (env.poe) out.push(gauge('POE', pct(env.poe.pct), `${Math.round(env.poe.used_w)}W`, env.poe.level));
+  return out.join('');
+}
+const portLoad = p => !p.up || !p.speed_mbps ? 0 : Math.min(1, Math.max(p.in_mbps ?? 0, p.out_mbps ?? 0) / p.speed_mbps);
+
+// ---------- hall readouts (Bandwidth.tsx) ----------
+function sumHistory(sws, col) {
+  const longest = Math.max(0, ...sws.map(s => (s.history || []).length)), out = new Array(longest).fill(0);
+  for (const s of sws) { const h = s.history || []; h.forEach((pt, i) => { out[longest - h.length + i] += pt[col]; }); }
+  return out;
+}
+const EDGE_MAX_MACS = 4;
+const isUplink = p => p.uplink_kind !== null || p.mac_count > EDGE_MAX_MACS;
+const busiestKey = (sw, p) => `${sw.id}|${p.name}`;
+function hallStats(sws, keep = {}) {
+  const live = sws.filter(s => s.status === 'ok'), ports = live.flatMap(s => s.ports || []);
+  const sum = key => live.some(s => s.rates?.[key] !== undefined) ? live.reduce((t, s) => t + (s.rates?.[key] ?? 0), 0) : null;
+  const up = ports.filter(p => p.up), load = p => Math.max(p.in_mbps ?? -1, p.out_mbps ?? -1);
+  const top = (uplinks, kept) => {
+    let best = null, held = null;
+    for (const sw of live) for (const port of sw.ports || []) {
+      if (!port.up || port.role || isUplink(port) !== uplinks) continue;
+      if (kept && busiestKey(sw, port) === kept) held = { sw, port };
+      if (!best || load(port) > load(best.port) || (load(port) === load(best.port) && (port.busy_pct ?? 0) > (best.port.busy_pct ?? 0))) best = { sw, port };
+    }
+    if (held && best && (load(held.port) >= load(best.port) * .8 || load(best.port) - load(held.port) < .05)) return held;
+    return best;
+  };
+  const topUplink = top(true, keep.uplink), topPc = top(false, keep.pc);
+  return { switchesUp: live.length, switches: sws.length, portsUp: up.length, ports: ports.length,
+    pcs: up.filter(p => !isUplink(p) && !p.role).length, neighbors: ports.filter(p => p.neighbor).length,
+    vlans: new Set(ports.filter(p => p.up && !p.trunk && p.vlan !== null).map(p => p.vlan)).size,
+    withErrors: ports.filter(p => p.level === 'crit' || p.level === 'warn').length, flapping: ports.filter(p => p.flaps >= 2).length,
+    slow: up.filter(p => p.duplex === 'half' || (p.speed_mbps !== null && p.speed_mbps < 1000 && !isUplink(p))).length,
+    bcast: sum('bcast_pps'), mcast: sum('mcast_pps'), errors: sum('errors_pm'), discards: sum('discards_pm'),
+    busiestUplink: topUplink?.port.busy_pct ?? 0, busiestPc: topPc?.port.busy_pct ?? 0, topUplink, topPc };
+}
+const shortSw = n => (n || '').split('.')[0];
+function hallNeedles(sws) {
+  const down = sumHistory(sws, 3), up = sumHistory(sws, 4), last = v => v.length ? v[v.length - 1] : null;
+  const st = hallStats(sws, GX.held);
+  GX.held = { uplink: st.topUplink ? busiestKey(st.topUplink.sw, st.topUplink.port) : null, pc: st.topPc ? busiestKey(st.topPc.sw, st.topPc.port) : null };
+  const anyLive = st.switchesUp > 0, lvl = v => v >= 90 ? 'var(--crit)' : v >= 70 ? 'var(--warn)' : 'var(--good)';
+  const pcName = (sw, p) => { const who = p.neighbor?.name?.split('.')[0] || p.macs[0] || ''; return who ? `${who} @ ${p.name}` : `${shortSw(sw.name)} ${p.name}`; };
+  return `<div class="vus hall" style="margin-bottom:14px">
+    ${gNeedle({ title: 'HALL DOWNLOAD', value: last(down), max: 10000, log: true, unit: 'Mbps · log', readout: last(down) === null ? '-' : num3(last(down)), cells: 5, color: '#ffb000', peak: down.length ? Math.max(...down) : null })}
+    ${gNeedle({ title: 'HALL UPLOAD', value: last(up), max: 10000, log: true, unit: 'Mbps · log', readout: last(up) === null ? '-' : num3(last(up)), cells: 5, color: '#3dd6ff', peak: up.length ? Math.max(...up) : null })}
+    ${gNeedle({ title: 'BUSIEST UPLINK', value: anyLive ? st.busiestUplink : null, max: 100, unit: '% of its speed', readout: anyLive ? String(st.busiestUplink) : '-', cells: 3, warn: 70, crit: 90, color: lvl(st.busiestUplink),
+      under: st.topUplink ? gFlap('uplink', `${shortSw(st.topUplink.sw.name)} ${st.topUplink.port.name}`) : '' })}
+    ${gNeedle({ title: 'BUSIEST PC PORT', value: anyLive ? st.busiestPc : null, max: 100, unit: '% of its speed', readout: anyLive ? String(st.busiestPc) : '-', cells: 3, warn: 70, crit: 90, color: lvl(st.busiestPc),
+      under: st.topPc ? gFlap('pc', pcName(st.topPc.sw, st.topPc.port)) : '' })}</div>`;
+}
+function bandwidthMonitor(sws) {
+  const down = sumHistory(sws, 3), up = sumHistory(sws, 4), now = v => v.length ? v[v.length - 1] : null, peak = Math.max(0, ...down, ...up);
+  return `<section class="bwmon" aria-label="Bandwidth monitor"><div class="bwhead"><span class="bwtitle">BANDWIDTH MONITOR</span><span class="bwsub">HALL · ALL PCS · LAST ${Math.round(down.length * (NET.every || 20) / 60)} MIN</span><span class="spacer"></span><span class="rec"><i></i>LIVE</span></div>
+    <div class="bwbody"><div class="bwread">
+      <div><span class="lbl" style="color:#ffb000">▼ DOWN</span>${gSeg(now(down) === null ? '-' : num3(now(down)), 5, '#ffb000', 34)}<span class="u">MBPS</span></div>
+      <div><span class="lbl" style="color:#3dd6ff">▲ UP</span>${gSeg(now(up) === null ? '-' : num3(now(up)), 5, '#3dd6ff', 34)}<span class="u">MBPS</span></div>
+      <div><span class="lbl">PEAK</span>${gSeg(down.length ? num3(peak) : '-', 5, '#e9e8e2', 22)}<span class="u">MBPS</span></div></div>
+      ${gScope({ down, up, height: 150 })}</div>
+    <div class="bwch">${sws.filter(s => s.status === 'ok').map(s => { const h = s.history || []; return `<div class="ch"><span class="chname" title="${esc(s.name)}">${esc(s.name)}</span>${gScope({ down: h.map(p => p[1]), up: h.map(p => p[2]), height: 30, grid: false })}
+      <span class="chv" style="color:#ffb000">▼${s.uplink_in_mbps === null ? ' -' : num3(s.uplink_in_mbps)}</span><span class="chv" style="color:#3dd6ff">▲${s.uplink_out_mbps === null ? ' -' : num3(s.uplink_out_mbps)}</span></div>`; }).join('')}</div>
+    <div class="bwfoot">Top: traffic to and from every PC (ports that are not uplinks). Below: each switch's uplinks. One reading every ${NET.every || 20} s.</div></section>`;
+}
+function networkStats(sws) {
+  const s = hallStats(sws), reading = v => v === null ? '-' : num3(v), lv = (v, w, c) => v === null ? 'var(--muted)' : v >= c ? 'var(--crit)' : v >= w ? 'var(--warn)' : 'var(--good)';
+  const counts = [[`SWITCHES UP · OF ${s.switches}`, String(s.switchesUp), s.switchesUp < s.switches ? 'var(--crit)' : null], ['PORTS UP', String(s.portsUp)], ['PCS PLUGGED IN', String(s.pcs)],
+    ['NEIGHBORS', String(s.neighbors)], ['VLANS IN USE', String(s.vlans)], ['PORTS IN TROUBLE', String(s.withErrors), s.withErrors ? 'var(--warn)' : null],
+    ['FLAPPING', String(s.flapping), s.flapping ? 'var(--crit)' : null], ['SLOW OR HALF DUPLEX', String(s.slow), s.slow ? 'var(--warn)' : null]];
+  return `<section class="netstats" aria-label="Network stats"><div class="bwhead"><span class="bwtitle">NETWORK STATS</span><span class="bwsub">ALL SWITCHES · LAST READING</span></div>
+    <div class="vus">${gNeedle({ title: 'BROADCASTS / S', value: s.bcast, max: 10000, log: true, unit: 'from PCs · log', readout: reading(s.bcast), cells: 4, warn: 500, crit: 2000, color: lv(s.bcast, 500, 2000) })}
+      ${gNeedle({ title: 'MULTICASTS / S', value: s.mcast, max: 10000, log: true, unit: 'from PCs · log', readout: reading(s.mcast), cells: 4, warn: 2000, crit: 8000, color: lv(s.mcast, 2000, 8000) })}
+      ${gNeedle({ title: 'ERRORS / MIN', value: s.errors, max: 1000, log: true, unit: 'all ports · log', readout: reading(s.errors), cells: 4, warn: 1, crit: 50, color: lv(s.errors, 1, 50) })}
+      ${gNeedle({ title: 'DISCARDS / MIN', value: s.discards, max: 100000, log: true, unit: 'all ports · log', readout: reading(s.discards), cells: 5, warn: 500, crit: 5000, color: lv(s.discards, 500, 5000) })}</div>
+    <div class="counters">${counts.map(([l, v, c]) => `<div class="ctr">${gSeg(v, Math.max(3, v.length), c || '#7dffa0', 24)}<span>${l}</span></div>`).join('')}</div>
+    <div class="bwfoot">Broadcasts and multicasts count what PCs send (not uplinks). A storm shows here first: amber at 500 broadcasts a second, red at 2000.</div></section>`;
+}
+function neighborDisplay(ports) {
+  const rows = ports.filter(p => p.neighbor);
+  return `<div class="vfd" aria-label="CDP and LLDP neighbors"><div class="vfdhead"><span>NEIGHBORS · CDP/LLDP</span><span>${String(rows.length).padStart(2, '0')} FOUND<i class="cur"></i></span></div>
+    ${rows.length === 0 ? '<div class="vfdrow empty">NO NEIGHBORS SEEN</div>' : `<table><thead><tr><th>PORT</th><th>DEVICE</th><th>THEIR PORT</th><th>ADDRESS</th><th>PLATFORM</th><th>VIA</th></tr></thead><tbody>
+    ${rows.map(p => { const n = p.neighbor; return `<tr class="${GX.picked === p.name ? 'sel' : ''} ${n.switch ? 'swr' : ''}" data-pick="${esc(p.name)}"><td>${esc(p.name)}</td><td>${esc((n.name || '(unnamed)').split('.')[0])}</td>
+      <td>${esc(n.their_port || '-')}</td><td>${esc(n.ip || '-')}</td><td title="${esc(n.platform)}">${esc((n.platform || '').replace(/^cisco\s+/i, '') || '-')}</td><td>${esc((n.protocol || 'cdp').toUpperCase())}</td></tr>`; }).join('')}</tbody></table>`}</div>`;
+}
+
+// ---------- the overview and one switch close up ----------
+function switchesView(sws) {
+  if (!sws.length) return '<div class="sub">No switches yet. Add one on the left, or pick one under "found but not added".</div>';
+  const admin = isAdmin();
+  return hallNeedles(sws) + bandwidthMonitor(sws) + networkStats(sws) + `<div class="swgrid">${sws.map(s => {
+    const env = s.environment || {}, up = (s.ports || []).filter(p => p.up);
+    const busiest = up.reduce((a, p) => !a || portLoad(p) > portLoad(a) ? p : a, null);
+    const level = s.status === 'error' ? 'crit' : env.level || '';
+    const drag = admin ? ` draggable="${GX.armed === s.id}" data-drag="${s.id}"` : '';
+    const dcls = GX.dragging === s.id ? ' dragging' : GX.over === s.id && GX.dragging && GX.dragging !== s.id ? ' droptarget' : '';
+    return `<div class="well swcard ${level}${dcls}"${drag}><div class="swhead">${admin ? `<span class="grip" title="Drag to change the order" data-grip="${s.id}">⠿</span>` : ''}
+      <span class="sled ${s.status === 'ok' ? (level === 'crit' ? 'live' : level === 'warn' ? 'busy' : 'ready') : s.status === 'error' ? 'live' : ''}"></span>
+      <b class="swname" data-open="${s.id}" title="Show this switch's ports">${esc(s.name)}</b><span class="spacer"></span>
+      ${admin ? `<button type="button" class="key" data-rmdev="${s.id}" data-name="${esc(s.name)}">Remove</button>` : ''}<button type="button" class="key" data-open="${s.id}">Ports</button></div>
+      <div class="k" style="text-transform:none;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis">${esc(s.host)}${s.model ? ` · ${esc(s.model)}` : ''}${s.polled_at ? ` · read ${gAgo(s.polled_at)}` : ''}${s.id === NET.probe_switch ? ' · the probe is plugged in here' : ''}</div>
+      <div class="swbody"><div class="swside">${s.status === 'pending' || s.status == null ? '<div class="sub">Reading…</div>' : s.status === 'error' ? downNote(s) : `
+        <div class="gauges">${gauges(env)}</div>
+        <div class="swnums"><div>${gSeg(String(up.length), 2, undefined, 20)}<span class="k">of ${(s.ports || []).length} up</span></div>
+          <div>${gSeg(s.uplink_in_mbps === null ? '-' : num3(s.uplink_in_mbps), 4, '#5aa9ff', 20)}<span class="k">Mbps down</span></div>
+          <div>${gSeg(s.uplink_out_mbps === null ? '-' : num3(s.uplink_out_mbps), 4, '#5aa9ff', 20)}<span class="k">Mbps up</span></div></div>
+        ${env.reasons && env.reasons.length ? `<ul class="issues" style="margin-top:8px">${env.reasons.map(r => `<li><span class="chip" style="color:${LEVEL_COLOR[r.level]}">${r.level.toUpperCase()}</span>${esc(r.text)}</li>`).join('')}</ul>` : ''}
+        ${(s.history || []).length > 1 ? `<div style="margin-top:8px">${gScope({ down: s.history.map(h => h[1]), up: s.history.map(h => h[2]), height: 46, grid: false })}</div>` : ''}
+        ${busiest && portLoad(busiest) > .01 ? `<div class="k" style="text-transform:none;margin-top:6px">busiest: ${esc(busiest.name)} at ${Math.round(portLoad(busiest) * 100)}%</div>` : ''}`}</div>
+      <div class="swmain">${portStrip(s)}${s.status === 'ok' ? talkersHtml(s) : ''}</div></div></div>`;
+  }).join('')}</div>` + uplinkLegend() + `<div class="sub" style="margin-top:10px">${admin ? 'Drag a switch by its ⠿ handle to change the order. ' : ''}Click a port, or a meter, to see it close up; Ports shows the switch close up.</div>`;
+}
+function frontPanel(ports) {
+  const groups = new Map();
+  for (const p of ports) { const k = p.name.replace(/\d+$/, ''); groups.set(k, [...(groups.get(k) || []), p]); }
+  return [...groups].map(([group, list]) => {
+    const sorted = [...list].sort((a, b) => Number(shortPort(a.name)) - Number(shortPort(b.name)));
+    if (sorted.length <= 4) return { group, top: sorted, bottom: [] };
+    return { group, top: sorted.filter(p => Number(shortPort(p.name)) % 2 === 1), bottom: sorted.filter(p => Number(shortPort(p.name)) % 2 === 0) };
+  });
+}
+function portTile(p, sw) {
+  const load = portLoad(p);
+  return `<button type="button" class="${portClass(p, sw)} big${GX.picked === p.name ? ' sel' : ''}" title="${esc(portTip(p))}" data-pick="${esc(p.name)}">
+    <span class="pn">${esc(shortPort(p.name))}</span><i></i><span class="ps">${p.up ? (p.speed_mbps ? (p.speed_mbps >= 1000 ? `${p.speed_mbps / 1000}G` : `${p.speed_mbps}M`) : 'UP') : p.level === 'off' ? 'OFF' : ''}</span>
+    <b class="load" style="width:${Math.round(load * 100)}%"></b><span class="ps seat">${esc(p.neighbor?.switch ? p.neighbor.name.split('.')[0].slice(0, 8) : '')}</span></button>`;
+}
+function peaks(key, values) {
+  const out = {};
+  for (const [name, v] of Object.entries(values)) { const k = `${key}:${name}`; if (typeof v === 'number') GX.peaks.set(k, Math.max(GX.peaks.get(k) ?? 0, v)); out[name] = GX.peaks.get(k) ?? 0; }
+  return out;
+}
+function envNeedles(sw) {
+  const env = sw.environment || {}, cpu = env.cpu_1m ?? env.cpu_5s ?? null, temps = env.temps || [], t = temps.length ? hottest(temps) : null;
+  const tMax = t ? (t.limit ? Math.ceil((t.limit + 10) / 10) * 10 : 100) : 100;
+  const pk = peaks(sw.id, { cpu, mem: env.memory_pct, temp: t?.celsius, poe: env.poe?.used_w });
+  const color = level => LEVEL_COLOR[level || 'ok'];
+  if (cpu === null && env.memory_pct == null && !t && !env.poe) return '';
+  return `<div class="vus" style="margin-bottom:12px">${gNeedle({ title: 'CPU 1 MIN', value: cpu, max: 100, unit: '% busy', readout: cpu === null ? '-' : String(cpu), cells: 3, warn: 60, crit: 85, color: color(env.cpu_level), peak: pk.cpu })}
+    ${gNeedle({ title: 'MEMORY', value: env.memory_pct ?? null, max: 100, unit: '% used', readout: env.memory_pct == null ? '-' : String(Math.round(env.memory_pct)), cells: 3, warn: 75, crit: 90, color: color(env.memory_level), peak: pk.mem })}
+    ${t ? gNeedle({ title: `TEMP${t.limit ? ` · LIMIT ${t.limit}` : ''}`, value: t.celsius, max: tMax, unit: '°C', readout: String(t.celsius), cells: 3, warn: t.limit ? t.limit - 8 : undefined, crit: t.limit ?? undefined, color: color(worst(temps.map(x => x.level))), peak: pk.temp }) : ''}
+    ${env.poe ? gNeedle({ title: 'POE POWER', value: env.poe.used_w, max: env.poe.budget_w, unit: 'watts', readout: String(Math.round(env.poe.used_w)), warn: env.poe.budget_w * .8, crit: env.poe.budget_w * .95, color: color(env.poe.level), peak: pk.poe }) : ''}</div>`;
+}
+const dur = s => s >= 86400 ? `${Math.floor(s / 86400)}d ${Math.floor((s % 86400) / 3600)}h` : s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.floor(s / 60)}m ${s % 60}s`;
+function portInfo(p, sw) {
+  const n = p.neighbor, admin = isAdmin(), t = p.totals || {};
+  const kv = (dt, dd, color, title) => `<div${title ? ` title="${esc(title)}"` : ''}><dt>${dt}</dt><dd${color ? ` style="color:${color}"` : ''}>${esc(dd)}</dd></div>`;
+  return `<div class="swhead"><span class="sled ${p.level === 'ok' ? 'ready' : p.level === 'warn' ? 'busy' : p.level === 'crit' ? 'live' : ''}"></span><b>${esc(p.name)}</b>
+    ${p.role ? `<span class="rolebadge ${p.role}">${p.role === 'firewall' ? 'EVENT FIREWALL' : 'LAN CACHE'}</span>` : ''}${p.alias ? `<span class="k" style="text-transform:none">${esc(p.alias)}</span>` : ''}<span class="spacer"></span>
+    <a class="key" href="#trace?q=${encodeURIComponent(p.macs[0] || '')}" style="text-decoration:none${p.macs.length ? '' : ';display:none'}" title="Trace the address on this port">Trace</a></div>
+    ${admin ? `<div class="srow" style="margin-bottom:10px"><span class="k">This port is</span>
+      <button type="button" class="key${p.role === 'firewall' ? ' act' : ''}" data-role="${p.role === 'firewall' ? '' : 'firewall'}">${p.role === 'firewall' ? '✓ ' : ''}The event firewall</button>
+      <button type="button" class="key${p.role === 'cache' ? ' act' : ''}" data-role="${p.role === 'cache' ? '' : 'cache'}">${p.role === 'cache' ? '✓ ' : ''}The LAN cache</button>
+      ${p.role ? '<span class="sub">Not counted as the busiest port or as a PC. Click again to unmark.</span>' : ''}</div>` : ''}
+    ${p.up && p.speed_mbps ? `<div class="vus" style="margin:4px 0 10px">${gNeedle({ title: 'IN', value: p.in_mbps ?? 0, max: p.speed_mbps, unit: 'Mbps · log', log: true, readout: num3(p.in_mbps ?? 0), warn: p.speed_mbps * .7, crit: p.speed_mbps * .9, color: '#3dd6ff' })}
+      ${gNeedle({ title: 'OUT', value: p.out_mbps ?? 0, max: p.speed_mbps, unit: 'Mbps · log', log: true, readout: num3(p.out_mbps ?? 0), warn: p.speed_mbps * .7, crit: p.speed_mbps * .9, color: '#ffb000' })}</div>` : ''}
+    ${p.up ? `<div class="gauges">${gauge('IN', p.speed_mbps ? (p.in_mbps ?? 0) / p.speed_mbps : 0, `${num3(p.in_mbps ?? 0)}M`)}${gauge('OUT', p.speed_mbps ? (p.out_mbps ?? 0) / p.speed_mbps : 0, `${num3(p.out_mbps ?? 0)}M`)}</div>` : ''}
+    <dl class="kv" style="margin-top:10px">
+      ${kv('Link', p.up ? `${p.speed_mbps ?? '?'} Mbps${p.duplex ? `, ${p.duplex} duplex` : ''}` : p.level === 'off' ? 'shut down' : 'nothing plugged in')}
+      ${kv('Errors seen', p.errors, p.errors ? 'var(--warn)' : null)}${kv('VLAN', p.trunk ? 'trunk' : p.vlan ?? '—')}
+      ${kv('Busy', p.busy_pct === null ? '—' : `${p.busy_pct}%`, (p.busy_pct ?? 0) >= 90 ? 'var(--crit)' : (p.busy_pct ?? 0) >= 70 ? 'var(--warn)' : null)}
+      ${kv('Link up for', p.link_s === null ? '—' : dur(p.link_s))}${kv('Flaps, 10 min', p.flaps, p.flaps >= 2 ? 'var(--crit)' : p.flaps ? 'var(--warn)' : null)}
+      ${kv('CRC errors', t.crc ?? 0, t.crc ? 'var(--warn)' : null, 'Bad cable or connector')}${kv('In / out errors', `${t.in_errors ?? 0} / ${t.out_errors ?? 0}`)}
+      ${kv('Discards', t.discards ?? 0, null, 'Packets thrown away: usually a congested port')}${kv('Collisions', t.collisions ?? 0, t.collisions ? 'var(--warn)' : null, 'Late and excess collisions: usually a duplex mismatch')}
+      ${kv('Addresses seen', p.mac_count)}
+      ${n ? `<div><dt>${(n.protocol || 'cdp').toUpperCase()} neighbour</dt><dd title="${esc(n.platform)}">${esc(n.name)}${n.their_port ? ` · ${esc(n.their_port)}` : ''}</dd></div>` : ''}
+      ${n?.ip ? kv('Neighbour address', n.ip) : ''}
+      ${p.uplink_kind ? kv('Uplink', p.uplink_kind === 'switch' ? (n?.added ? 'to a switch added here' : 'to a switch seen over CDP') : 'many addresses, no known switch', p.uplink_kind === 'switch' ? '#b07cff' : '#ff8a3d') : ''}</dl>
+    ${p.reasons.length ? `<ul class="issues" style="margin-top:10px">${p.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
+    ${p.macs.length ? `<div class="k" style="text-transform:none;margin-top:10px;line-height:1.6;white-space:normal;overflow-wrap:anywhere">${p.macs.map(esc).join(' · ')}${p.mac_count > p.macs.length ? ` · and ${p.mac_count - p.macs.length} more` : ''}</div>` : ''}`;
+}
+function envTable(env, up) {
+  const rows = [];
+  if (env.cpu_5s != null) rows.push(['CPU load', `${env.cpu_5s}% · ${env.cpu_1m ?? '?'}% 1 min · ${env.cpu_5m ?? '?'}% 5 min`, env.cpu_level]);
+  if (env.memory_pct != null) rows.push(['Memory', `${env.memory_pct}% used`, env.memory_level]);
+  for (const t of env.temps || []) rows.push([t.name || 'Temperature', `${t.celsius}°C${t.limit ? ` (limit ${t.limit}°C)` : ''}`, t.level]);
+  for (const f of env.fans || []) rows.push([f.name || 'Fan', f.level === 'ok' ? 'normal' : f.level === 'warn' ? 'warning' : 'failed', f.level]);
+  for (const p of env.power || []) rows.push([p.name || 'Power supply', p.level === 'ok' ? 'normal' : p.level === 'warn' ? 'warning' : 'failed', p.level]);
+  if (env.poe) rows.push(['PoE', `${env.poe.used_w} W of ${env.poe.budget_w} W (${Math.round(env.poe.pct)}%)`, env.poe.level]);
+  const u = gUptime(up);
+  if (u) rows.push(['Up for', u]);
+  if (!rows.length) return '<div class="sub" style="margin-top:8px">This switch has not said anything about its health yet.</div>';
+  return `<dl class="envtable">${rows.map(([k, v, l]) => `<div><dt>${esc(k)}</dt><dd${l ? ` style="color:${LEVEL_COLOR[l]}"` : ''}>${esc(v)}</dd></div>`).join('')}</dl>
+    ${env.reasons && env.reasons.length ? `<ul class="issues" style="margin-top:10px">${env.reasons.map(r => `<li style="color:${LEVEL_COLOR[r.level]}">${esc(r.text)}</li>`).join('')}</ul>` : ''}`;
+}
+function switchDetail(sw) {
+  const port = (sw.ports || []).find(p => p.name === GX.picked) || null;
+  return `<div class="swdetail"><div class="swhead"><button type="button" class="key" data-back="1">‹ All switches</button><b>${esc(sw.name)}</b>
+    <span class="k" style="text-transform:none">${esc(sw.host)}${sw.model ? ` · ${esc(sw.model)}` : ''}${sw.polled_at ? ` · read ${gAgo(sw.polled_at)}` : ''}${sw.vtp_domain ? ` · VTP ${esc(sw.vtp_domain)} ${esc(sw.vtp_mode)}` : ''}</span></div>
+    ${envLine(sw)}${sw.status === 'error' ? downNote(sw) : ''}${sw.status === 'ok' ? envNeedles(sw) : ''}
+    <div class="faceplate${sw.status === 'error' ? ' stale' : ''}">${frontPanel(sw.ports || []).map(g => `<div class="fgroup"><span class="k">${esc(g.group)}</span>
+      <div class="frow">${g.top.map(p => portTile(p, sw)).join('')}</div>${g.bottom.length ? `<div class="frow">${g.bottom.map(p => portTile(p, sw)).join('')}</div>` : ''}</div>`).join('')}</div>
+    ${uplinkLegend()}<div style="margin-top:14px">${neighborDisplay(sw.ports || [])}</div>
+    <div class="grid2" style="margin-top:14px"><div class="well">${port ? portInfo(port, sw) : '<div class="sub">Click a port to see everything about it.</div>'}</div>
+      <div class="well"><span class="k bright">Environment</span>${envTable(sw.environment || {}, sw.uptime_s)}</div></div></div>`;
+}
+
+// ---------- page glue ----------
 async function netRefresh() {
   try {
     const r = await fetch('/api/net', { cache: 'no-store' });
@@ -1634,92 +2192,82 @@ async function netRefresh() {
   renderNet();
 }
 setInterval(() => { if (view === 'net' && ME) netRefresh(); }, 5000);
-const portNum = n => (n.match(/(\d+)$/) || [, n.slice(-3)])[1];
-function portTip(p) {
-  return `${p.name}${p.alias ? ' · ' + p.alias : ''}\n${!p.admin ? 'shut down' : p.up ? `up · ${p.speed >= 1000 ? p.speed / 1000 + ' G' : p.speed + ' M'} ${p.duplex}` : 'down'}`
-    + `${p.trunk ? ' · trunk' : p.vlan ? ' · VLAN ' + p.vlan : ''}${p.cdp ? `\nCDP: ${p.cdp.short} ${p.cdp.port} (${p.cdp.platform})` : ''}`;
-}
 function renderNet() {
-  netFill();
   const n = NET;
   if (!n) return;
-  const devs = n.devices, down = devs.filter(d => d.status === 'error');
+  if (!$('#f-snmp')._filled) { $('#sn-ver').value = n.version; $('#sn-comm').placeholder = n.community_set ? '•••••••• (set: type to change)' : 'e.g. the one your switches use'; $('#f-snmp')._filled = true; }
+  const down = n.devices.filter(d => d.status === 'error');
   $('#t-net').hidden = !down.length; $('#t-net').textContent = down.length;
   if (view !== 'net') return;
-  const sws = devs.filter(d => d.kind !== 'wlc'), wlcs = devs.filter(d => d.kind === 'wlc');
-  const allPorts = sws.flatMap(d => d.ports || []).filter(p => !p.po);
-  const up = allPorts.filter(p => p.up).length;
-  const poe = sws.reduce((a, d) => a + ((d.poe || {}).used || 0), 0), budget = sws.reduce((a, d) => a + ((d.poe || {}).budget || 0), 0);
-  const clients = wlcs.reduce((a, d) => a + (d.clients || 0), 0);
-  setSeg('#net-ndev', devs.length, 2); $('#nw-dev').classList.toggle('off', !devs.length);
-  $('#net-ndev2').textContent = `${sws.length} switch${sws.length === 1 ? '' : 'es'} · ${wlcs.length} WLC`;
-  setSeg('#net-ndown', down.length, 2); $('#nw-down').classList.toggle('alarm', down.length > 0); $('#nw-down').classList.toggle('off', !down.length);
-  setSeg('#net-nports', up, 3); $('#nw-ports').classList.toggle('off', !allPorts.length); $('#net-nports2').textContent = `of ${allPorts.length}`;
-  setSeg('#net-poe', poe, 4); $('#nw-poe').classList.toggle('off', !budget); $('#net-poe2').textContent = budget ? `of ${budget} W` : 'watts';
-  setSeg('#net-wifi', wlcs.length ? clients : '---', 3); $('#nw-wifi').classList.toggle('off', !wlcs.length);
-  $('#net-wifi2').textContent = wlcs.length ? `${wlcs.reduce((a, d) => a + (d.aps || []).length, 0)} access points` : 'add a controller';
-  $('#net-lamp').innerHTML = !n.community_set ? '<span class="dot warn"></span>no community set' : down.length ? `<span class="dot err"></span>${down.length} not answering`
-    : devs.length ? '<span class="dot on"></span>all answering' : '<span class="dot"></span>no devices';
-  $('#net-empty').hidden = n.community_set && devs.length;
-  $('#net-empty').textContent = !n.community_set ? (isAdmin() ? 'Start by setting the read-only SNMP community on the left, then add your switches or press Scan.' : 'An admin needs to set up SNMP here first.')
-    : 'No devices yet. Add a switch by IP, or press Scan to look for them.';
+  const sws = n.devices.filter(d => d.kind !== 'wlc'), wlcs = n.devices.filter(d => d.kind === 'wlc');
+  $('#net-empty').hidden = n.community_set;
+  $('#net-empty').textContent = isAdmin() ? 'Start by setting the read-only SNMP community on the left, then add your switches.' : 'An admin needs to set up SNMP here first.';
+  const sw = sws.find(s => s.id === GX.open);
+  if (GX.open && !sw) GX.open = null;
+  $('#gx-title').textContent = sw ? 'Switches · ports' : 'Switches';
+  $('#gx-count').textContent = sws.length;
+  morph($('#gx-root'), sw ? switchDetail(sw) : switchesView(sws));
+  flapMeasure();
+  if (GX.remeasure) { GX.remeasure = false; morph($('#gx-root'), sw ? switchDetail(sw) : switchesView(sws)); }
+  $('#gx-wlc-card').hidden = !wlcs.length; $('#gx-wcount').textContent = wlcs.length;
+  morph($('#gx-wlc'), wlcs.map(w => `<div class="well swcard ${w.status === 'error' ? 'crit' : ''}"><div class="swhead"><span class="sled ${w.status === 'ok' ? 'ready' : w.status === 'error' ? 'live' : ''}"></span><b>${esc(w.name)}</b>
+    <span class="spacer"></span>${w.clients != null ? `<span class="chip ok">${w.clients} CLIENTS</span>` : ''}<span class="chip">${(w.aps || []).length} APS</span>${isAdmin() ? `<button type="button" class="key" data-rmdev="${w.id}" data-name="${esc(w.name)}">Remove</button>` : ''}</div>
+    <div class="k" style="text-transform:none;margin-bottom:8px">${esc(w.host)}${w.model ? ` · ${esc(w.model)}` : ''}${w.polled_at ? ` · read ${gAgo(w.polled_at)}` : ''}</div>
+    ${w.status === 'error' ? downNote(w) : `<div class="aplist">${(w.aps || []).map(a => `<div><b title="${esc(a.mac)}">${esc(a.name)}</b><span class="k">${a.clients} client${a.clients === 1 ? '' : 's'}</span></div>`).join('') || '<span class="sub">No access points joined.</span>'}</div>`}</div>`).join(''));
+  $('#gx-fcount').textContent = n.discovered.length;
+  morph($('#gx-found'), n.discovered.map(d => `<div class="well" style="padding:10px 12px"><div class="swhead" style="margin:0"><span class="sled info"></span><b>${esc(d.name)}</b>
+    <span class="k" style="text-transform:none">${esc(d.ip)} · ${esc(d.platform || '')}${d.kind === 'wlc' ? ' · wireless controller' : ''}</span><span class="spacer"></span>
+    <span class="k" style="text-transform:none">${d.via === 'scan' ? 'found by the scan' : esc(d.via.replace(/^CDP on (\S+) (\S+)$/, 'seen by $1 on $2'))}</span>
+    ${isAdmin() ? `<button type="button" class="key" data-addip="${esc(d.ip)}">Add</button>` : ''}</div></div>`).join('') || '<div class="sub">Nothing new.</div>');
   const scan = n.scan || {};
-  $('#scan-note').textContent = scan.running ? `Scanning ${scan.net}…` : scan.error ? 'Scan failed: ' + scan.error : scan.at ? `Last scan of ${scan.net}: ${scan.found} answered SNMP.` : 'Neighbors of your devices (CDP) that aren’t added yet. Scan looks for more on the probe’s subnet.';
+  $('#scan-note').textContent = scan.running ? `Scanning ${scan.net}…` : scan.error ? 'Scan failed: ' + scan.error : scan.at ? `Last scan of ${scan.net}: ${scan.found} answered SNMP.` : 'Asks every address on the probe’s subnet for its SNMP name, with your community.';
   $('#b-scan').disabled = !!scan.running || !n.community_set;
-  setHTML('#disc', n.discovered.map(d => `<tr><td class="l"><b>${esc(d.name)}</b><div class="sub mono">${esc(d.ip)} · ${esc(d.platform || '')}</div><div class="sub">${esc(d.via)}</div></td>
-    <td><span class="chip ${d.kind === 'wlc' ? 'ok' : ''}">${d.kind === 'wlc' ? 'WLC' : 'switch'}</span></td>
-    <td><button class="btn ghost admin-only" data-addip="${esc(d.ip)}">Add</button></td></tr>`).join('') || '<tr><td class="sub">Nothing new.</td></tr>');
-  const me = n.probe_switch, myPort = (S && S.neighbor || {}).port;
-  setHTML('#dev-list', devs.map(d => {
-    const chips = [];
-    if (d.status === 'error') chips.push(`<span class="chip bad">DOWN ${d.down_since ? fmtDur(Date.now() / 1000 - d.down_since) : ''}</span>`);
-    if (d.uptime != null) chips.push(`<span class="chip">UP ${esc(fmtDur(d.uptime))}</span>`);
-    if (d.cpu != null) chips.push(`<span class="chip ${d.cpu > 80 ? 'bad' : d.cpu > 50 ? 'warn' : ''}">CPU ${d.cpu}%</span>`);
-    if (d.poe) chips.push(`<span class="chip ${d.poe.used / d.poe.budget > .9 ? 'bad' : ''}">POE ${d.poe.used}/${d.poe.budget} W</span>`);
-    if (d.kind === 'wlc' && d.clients != null) chips.push(`<span class="chip ok">${d.clients} CLIENTS</span>`);
-    if (d.own_community) chips.push('<span class="chip">OWN COMMUNITY</span>');
-    let body = '';
-    if (d.status === 'pending') body = '<div class="sub">Reading…</div>';
-    else if (d.kind === 'wlc') body = `<div class="aplist">${(d.aps || []).map(a => `<div><b title="${esc(a.mac)}">${esc(a.name)}</b><span class="k">${a.clients} client${a.clients === 1 ? '' : 's'}</span></div>`).join('') || '<span class="sub">No access points joined.</span>'}</div>`;
-    else {
-      const sel = netSel[d.id];
-      let grp = null;
-      const groups = new Set((d.ports || []).map(p => p.po ? 'Po' : p.name.replace(/\d+$/, '')));
-      body = `<div class="ports">${(d.ports || []).map(p => {
-        const g = p.po ? 'Po' : p.name.replace(/\d+$/, '');
-        const head = groups.size > 1 && g !== grp ? `<div class="pgrp">${esc(g === 'Po' ? 'PORT-CHANNELS' : g)}</div>` : '';
-        grp = g;
-        const cls = ['pt', !p.admin ? 'off' : p.up ? 'up' : '', p.cdp && p.cdp.kind === 'switch' ? 'upl' : '', p.cdp && p.cdp.kind === 'ap' ? 'ap' : '',
-          d.id === me && p.name === myPort ? 'me' : '', sel === p.name ? 'sel' : ''].join(' ');
-        return head + `<button type="button" class="${cls}" data-dev="${d.id}" data-port="${esc(p.name)}" title="${esc(portTip(p))}">${esc(p.po ? 'Po' + portNum(p.name) : portNum(p.name))}</button>`;
-      }).join('')}</div>`;
-      const p = sel && (d.ports || []).find(x => x.name === sel);
-      if (p) body += `<div class="portinfo"><b>${esc(p.name)}</b>${p.alias ? ' · ' + esc(p.alias) : ''} — ${!p.admin ? 'shut down' : p.up ? `up, ${p.speed} Mbps ${esc(p.duplex)}` : 'down'}${p.trunk ? ', trunk' : p.vlan ? ', VLAN ' + p.vlan : ''}
-        ${p.cdp ? `<div class="sub" style="margin-top:4px">CDP neighbor: <b>${esc(p.cdp.short)}</b> ${esc(p.cdp.port)} · ${esc(p.cdp.platform)}${p.cdp.ip ? ' · ' + esc(p.cdp.ip) : ''}</div>` : ''}
-        ${p.members && p.members.length ? `<div class="sub">${p.members.length} member links</div>` : ''}</div>`;
-    }
-    return `<section class="card dev"><div class="devhead"><span class="sled ${d.status === 'ok' ? 'ready' : d.status === 'error' ? 'testing' : 'busy'}"></span>
-      <div class="who"><b>${esc(d.name)}</b><span class="k" style="letter-spacing:.06em;text-transform:none">${esc(d.model || '')} · ${esc(d.host)}${d.kind === 'wlc' ? ' · wireless controller' : ''}${d.id === me ? ' · the probe is plugged in here' : ''}</span></div>
-      <div class="chips">${chips.join('')}</div><button class="btn ghost admin-only" data-rmdev="${d.id}" data-name="${esc(d.name)}">Remove</button></div>
-      ${d.status === 'error' ? `<div class="note crit">${esc(d.error || 'Not answering')}</div>` : ''}${body}</section>`;
-  }).join(''));
 }
-$('#dev-list').onclick = async e => {
-  const pt = e.target.closest('[data-port]'), rm = e.target.closest('[data-rmdev]');
-  if (pt) { netSel[pt.dataset.dev] = netSel[pt.dataset.dev] === pt.dataset.port ? null : pt.dataset.port; renderNet(); return; }
-  if (rm && confirm(`Stop managing ${rm.dataset.name}?`)) { await api('/api/net/remove', { id: rm.dataset.rmdev }).catch(err => alert(err.message)); netRefresh(); }
-};
-$('#disc').onclick = async e => {
-  const b = e.target.closest('[data-addip]');
-  if (!b) return;
-  b.disabled = true; b.textContent = 'Adding…';
-  try { await api('/api/net/add', { host: b.dataset.addip }); } catch (err) { alert(err.message); }
-  setTimeout(netRefresh, 600);
-};
+$('#v-net').addEventListener('click', async e => {
+  const t = e.target.closest('[data-open],[data-back],[data-pick],[data-goport],[data-talk],[data-role],[data-rmdev],[data-addip]');
+  if (!t) return;
+  if (t.dataset.open) { GX.open = t.dataset.open; GX.picked = null; window.scrollTo({ top: 0 }); }
+  else if (t.dataset.back) GX.open = null;
+  else if (t.dataset.pick) GX.picked = GX.picked === t.dataset.pick ? null : t.dataset.pick;
+  else if (t.dataset.goport || t.dataset.talk) { const [id, name] = (t.dataset.goport || t.dataset.talk).split('|'); GX.open = id; GX.picked = name; window.scrollTo({ top: 0 }); }
+  else if (t.dataset.role !== undefined) {
+    try { await api('/api/net/role', { id: GX.open, port: GX.picked, role: t.dataset.role || null }); } catch (err) { alert(err.message); }
+    return netRefresh();
+  } else if (t.dataset.rmdev) {
+    if (!confirm(`Stop reading ${t.dataset.name}?`)) return;
+    await api('/api/net/remove', { id: t.dataset.rmdev }).catch(err => alert(err.message));
+    return netRefresh();
+  } else if (t.dataset.addip) {
+    t.disabled = true; t.textContent = 'Adding…';
+    try { await api('/api/net/add', { host: t.dataset.addip }); } catch (err) { alert(err.message); }
+    return setTimeout(netRefresh, 600);
+  }
+  renderNet();
+});
+// drag a switch by its grip to reorder (as GXL)
+const gxRoot = $('#gx-root');
+gxRoot.addEventListener('pointerdown', e => { const g = e.target.closest('[data-grip]'); if (g) { GX.armed = g.dataset.grip; renderNet(); } });
+gxRoot.addEventListener('dragstart', e => { const c = e.target.closest('[data-drag]'); if (!c) return; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.dataset.drag); GX.dragging = c.dataset.drag; renderNet(); });
+gxRoot.addEventListener('dragover', e => { const c = e.target.closest('[data-drag]'); if (c && GX.dragging) { e.preventDefault(); if (GX.over !== c.dataset.drag) { GX.over = c.dataset.drag; renderNet(); } } });
+gxRoot.addEventListener('dragend', () => { GX.dragging = GX.over = GX.armed = null; renderNet(); });
+gxRoot.addEventListener('drop', async e => {
+  e.preventDefault();
+  const c = e.target.closest('[data-drag]'), moved = GX.dragging;
+  GX.dragging = GX.over = GX.armed = null;
+  if (!c || !moved || moved === c.dataset.drag) return renderNet();
+  const ids = NET.devices.map(d => d.id), target = c.dataset.drag, rest = ids.filter(i => i !== moved), after = ids.indexOf(moved) < ids.indexOf(target);
+  rest.splice(rest.indexOf(target) + (after ? 1 : 0), 0, moved);
+  NET.devices.sort((a, b) => rest.indexOf(a.id) - rest.indexOf(b.id));
+  renderNet();
+  await api('/api/net/order', { ids: rest }).catch(() => {});
+  netRefresh();
+});
+$('#gx-fold').onclick = () => { const l = $('#v-net'); l.classList.toggle('folded'); lsSet('pd-gx-fold', l.classList.contains('folded') ? '1' : ''); setTimeout(renderNet, 300); };
+if (lsGet('pd-gx-fold', '')) $('#v-net').classList.add('folded');
 $('#b-scan').onclick = async () => { try { await api('/api/net/scan'); } catch (err) { alert(err.message); } netRefresh(); setTimeout(netRefresh, 6000); };
 $('#f-snmp').onsubmit = async e => {
   e.preventDefault();
-  try { await api('/api/net/settings', { community: $('#sn-comm').value, version: +$('#sn-ver').value }); $('#sn-comm').value = ''; flash($('#sn-msg'), 'Saved', true); }
+  try { await api('/api/net/settings', { community: $('#sn-comm').value, version: +$('#sn-ver').value }); $('#sn-comm').value = ''; flash($('#sn-msg'), 'Saved', true); $('#f-snmp')._filled = false; }
   catch (err) { flash($('#sn-msg'), err.message); }
   netRefresh();
 };
@@ -1731,7 +2279,6 @@ $('#f-devadd').onsubmit = async e => {
   $('#da-go').disabled = false;
   setTimeout(netRefresh, 600);
 };
-const netFill = () => { if (NET && !$('#f-snmp')._filled) { $('#sn-ver').value = NET.version; $('#sn-comm').placeholder = NET.community_set ? '•••••••• (set: type to change)' : 'e.g. the one your switches use'; $('#f-snmp')._filled = true; } };
 
 // ---------- trace ----------
 let TR = null, trTimer = null;
