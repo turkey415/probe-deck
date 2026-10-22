@@ -7,6 +7,7 @@ It also does three other jobs, each on its own tab:
 - **Watchdog**: catches rogue DHCP servers, IP conflicts, gateway spoofing, broadcast storms, spanning tree changes and rogue IPv6 routers.
 - **Wake**: Wake-on-LAN for every machine in the room, with a staggered "wake all".
 - **HTTPS**: the page is served over HTTPS with a certificate the probe makes itself, and this tab shows it and regenerates it.
+- **Users**: everyone logs in. **Admins** can change anything; **viewers** see everything but change nothing.
 
 It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same look as [iPerf Deck](https://github.com/turkey415/Perf-Deck). The probe joins Perf-Deck's network of stations, so the two can test each other.
 
@@ -64,7 +65,7 @@ It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same l
 - **Session logs**: everything the switch prints is saved, one file per time the cable is plugged in, and can be downloaded from the page.
 - Several people can watch the same console. The last 128 KB of output is replayed to anyone who opens it.
 - **Telnet port** (off by default, port 2001): what ser2net does. PuTTY, SecureCRT or `telnet probe-01 2001` reach the same console. In telnet, `Ctrl-]` then `send brk` sends a Break.
-- **Console password.** The console, its settings and the logs sit behind a password (the telnet port asks for it too). Until you set one, the page warns that anyone can use it. The telnet port can't be turned on without one.
+- **Who can use it:** admins type, paste, send Break and change console settings. Viewers watch the same live screen and can download the logs, but what they type goes nowhere. The telnet port asks for an **admin** user name and password.
 
 ### Watchdog (what is wrong with this LAN?)
 A kernel filter passes only broadcast and multicast frames to the watchdog, so speed tests don't load it.
@@ -86,9 +87,17 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - The page is on **https://** (port 443). On first start the probe makes a **self-signed** certificate (ECDSA P-256, 10 years) for its host name, `<host>.local` and its IP. Plain **http://** visits move to HTTPS, except `GET /api/probe`, which stays on HTTP because the T-Displays poll it (an ESP32 can't check a self-signed certificate). The redirect can be turned off.
 - The **HTTPS tab** shows the certificate (names, expiry, key, SHA-256 fingerprint), warns when it doesn't cover the probe's current IP (after a move to another VLAN), **regenerates** it with the names you give, and downloads it so you can trust it on your PCs and stop the browser warning.
 - The certificate is plain PEM in `/etc/probe-deck/tls/` (`cert.pem`, `key.pem`), so one signed by your own root CA can replace it.
-- The console cookie is marked `Secure` over HTTPS. The password screens warn when the page is on plain HTTP.
+- The login cookie is marked `Secure` over HTTPS. The login screen warns when the page is on plain HTTP.
 
-**Login.** Only the console has a password. It also guards the HTTPS settings. The rest of the page has none, like Perf-Deck, so only use it on networks you trust.
+### Users and login
+- **Everything needs a login**, except `GET /api/probe` (status for the T-Displays). Perf-Deck discovery and the UDP broadcasts are unchanged.
+- **First visit:** with no users yet, the page asks you to create the **admin** account. A probe that had the old console password (0.4–0.5) asks for it once, to prove the probe is yours.
+- **Roles:**
+  - **admin**: everything, including users, the certificate, the console and the telnet console.
+  - **viewer**: every tab, live. Can watch the console and download its logs, and change their own password. Buttons that change things are hidden, and the server refuses them anyway.
+- **Users tab:** add users, change roles, reset passwords, delete. The last admin can't be demoted or deleted, and you can't delete yourself.
+- Passwords are salted PBKDF2 hashes in `/etc/probe-deck/users.json`. Logins last 12 hours and survive a restart. 10 wrong passwords from one address in 5 minutes lock that address out for 5 minutes.
+- **Locked out?** Over SSH on the probe: `python3 /opt/probe-deck/auth.py passwd <name>`, `add <name> admin`, `del <name>` or `list`. The running page picks the change up by itself, and a reset logs that user out. The rest of the page has none, like Perf-Deck, so only use it on networks you trust.
 
 ## Hardware
 
@@ -151,6 +160,7 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 - **`watchdog.py`**: a raw packet socket with a BPF filter (broadcast/multicast only), plus the DHCP scan.
 - **`wake.py`**: saved machines, magic packets and the ping checks.
 - **`index.html`**: one file. It polls `/api/state` every second (twice a second during a test). The console loads `vendor/xterm.js` the first time you open it.
+- **`auth.py`**: users, roles and sessions (and the `passwd`/`add`/`del` command for SSH).
 - **`tls.py`**: makes the certificate with `openssl` and holds the SSL context. The HTTPS server does each handshake in the request's thread and picks up a new certificate on the next connection.
 - **Files on the probe:** settings in `/etc/probe-deck/config.json`, the certificate in `/etc/probe-deck/tls/`; in `/var/lib/probe-deck`: test history `history.json`, watchdog events `events.json`, saved machines `wol.json`, console logs `console/`.
 
@@ -167,20 +177,23 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 | POST | `/api/recheck` | Run the checks now |
 | POST | `/api/renew` | Drop the address and renew DHCP |
 | POST | `/api/history/clear` | Clear the speed test history |
-| GET | `/api/console` | Console status, ports, and (when logged in) macros and logs |
+| GET | `/api/auth` | `{setup, legacy, user}`: is setup needed, who am I |
+| POST | `/api/auth/setup`, `/login`, `/logout`, `/password` | First admin; log in (`{name, password}`); log out; change my password |
+| GET | `/api/users` | Users (admin) |
+| POST | `/api/users/add`, `/update`, `/delete` | `{name, role, password}` (admin) |
+| GET | `/api/console` | Console status, ports, macros and logs |
 | WS | `/ws/console` | The terminal: binary frames are serial output; JSON `{t: in\|paste\|paste_stop\|break\|macro\|clear}` |
-| POST | `/api/console/login`, `/logout`, `/password` | Console password (a cookie, 12 h) |
-| POST | `/api/console/settings` | Port, baud, paste delay, telnet, macros (logged in) |
-| GET | `/api/console/log/<name>` | Download a session log (logged in) |
+| POST | `/api/console/settings` | Port, baud, paste delay, telnet, macros |
+| GET | `/api/console/log/<name>` | Download a session log |
 | GET | `/api/tls`, `/api/tls/cert.pem` | Certificate details; download the certificate |
-| POST | `/api/tls/generate` | `{names: "probe-01, probe-01.local, 192.168.1.221", days?}`: new self-signed certificate (logged in) |
-| POST | `/api/tls/settings` | `{https_redirect}` (logged in) |
+| POST | `/api/tls/generate` | `{names: "probe-01, probe-01.local, 192.168.1.221", days?}`: new self-signed certificate (admin) |
+| POST | `/api/tls/settings` | `{https_redirect}` (admin) |
 | POST | `/api/watch/trust` | `{value: IP or MAC, remove?}` |
 | POST | `/api/watch/scan`, `/api/watch/clear` | DHCP scan now; clear the events |
 | POST | `/api/wol/save`, `/delete`, `/import` | Saved machines |
 | POST | `/api/wol/wake` | `{ids?: [...]}` (none = all), or `{mac}` for a one-off; `/api/wol/stop` |
 
-Cross-site POSTs and WebSockets are refused (an `Origin` header must match `Host`).
+Every call needs a login cookie except `/api/probe` and `/api/auth*`. Every POST needs an admin, except `/api/auth/password`. Cross-site POSTs and WebSockets are refused (an `Origin` header must match `Host`).
 
 To try it on a PC without a cable or root: `socat -d pty,raw,echo=0,link=/tmp/ttyPD pty,raw,echo=0,link=/tmp/ttySW`, then `PROBE_DECK_TEST_SERIAL=/tmp/ttyPD python3 server.py --port 8580 --iface <your NIC> --data /tmp/pd --conf /tmp/pd/config.json` and talk to `/tmp/ttySW`. The watchdog needs root.
 

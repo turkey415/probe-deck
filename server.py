@@ -28,13 +28,14 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+import auth as auth_mod
 import console as console_mod
 import tls as tls_mod
 import wake as wake_mod
 import watchdog as watch_mod
 import ws as ws_mod
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -67,7 +68,10 @@ DEFAULTS = {
     **tls_mod.DEFAULTS,
 }
 HTTPS_PORT = 443
-PLAIN_OK = ("/api/probe",)  # the displays poll this over plain HTTP (an ESP32 can't check a self-signed cert)
+PLAIN_OK = ("/api/probe",)
+OPEN_GET = ("/", "/index.html", "/api/probe", "/api/auth")      # no login needed (the page shell, the displays, login state)
+OPEN_POST = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
+ANY_USER_POST = ("/api/auth/password",)                        # viewers may change their own password  # the displays poll this over plain HTTP (an ESP32 can't check a self-signed cert)
 VENDOR = {"xterm.js": "text/javascript", "xterm.css": "text/css", "addon-fit.js": "text/javascript"}
 
 HOST_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.\-:]{0,252}")
@@ -132,7 +136,7 @@ class Probe:
         self.iperf_srv = None
         self.speed_proc = None
         self.wake_ev = threading.Event()
-        self.watch = self.wake = self.console = self.tls = None
+        self.watch = self.wake = self.console = self.tls = self.auth = None
         DATA.mkdir(parents=True, exist_ok=True)
         try:
             self.history = json.loads((DATA / "history.json").read_text())[-HISTORY_MAX:]
@@ -770,22 +774,47 @@ class Handler(BaseHTTPRequestHandler):
     def tls_info(self):
         p = self.probe
         return {"info": p.tls.info(), "error": p.tls.error, "redirect": p.conf.get("https_redirect"), "https": self.is_https(),
-                "port": HTTPS_PORT, "authed": p.console.authed(self.headers), "need_auth": p.console.need_auth(),
+                "port": HTTPS_PORT, "admin": self.user["role"] == "admin",
                 "default_names": ", ".join(p.tls.default_names())}
 
     def same_origin(self):
         origin = self.headers.get("Origin")
         return not origin or re.sub(r"^https?://", "", origin) == self.headers.get("Host")
 
+    def client_ip(self):
+        return self.client_address[0]
+
+    def gate(self, path, post):
+        """Sets self.user. Answers 401/403 and returns False when this request isn't allowed."""
+        self.user = self.probe.auth.user(self.headers)
+        if (OPEN_POST if post else OPEN_GET).count(path) or (not post and path.startswith("/vendor/")):
+            return True
+        if not self.user:
+            self.send_body(401, {"error": "log in first", "login": True})
+            return False
+        if post and self.user["role"] != "admin" and path not in ANY_USER_POST:
+            self.send_body(403, {"error": "viewers can't change things"})
+            return False
+        return True
+
     def do_GET(self):
         if self.to_https(301):
             return
         path = self.path.split("?")[0]
         p = self.probe
+        if not self.gate(path, False):
+            return
+        if path == "/api/auth":
+            return self.send_body(200, {"setup": p.auth.needs_setup(), "legacy": bool(p.auth.legacy), "user": self.user,
+                                        "https": self.is_https()})
+        if path == "/api/users":
+            if self.user["role"] != "admin":
+                return self.send_body(403, {"error": "admins only"})
+            return self.send_body(200, p.auth.listing())
         if path in ("/", "/index.html"):
             return self.send_body(200, (ROOT / "index.html").read_bytes(), "text/html; charset=utf-8")
         if path == "/api/state":
-            return self.send_body(200, p.snapshot())
+            return self.send_body(200, {**p.snapshot(), "me": self.user})
         if path == "/api/probe":
             return self.send_body(200, p.probe_message())
         if path.startswith("/vendor/") and path[8:] in VENDOR:
@@ -798,10 +827,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(200, p.tls.cert.read_bytes(), "application/x-pem-file",
                                   [("Content-Disposition", f'attachment; filename="{socket.gethostname()}.crt"')])
         if path == "/api/console":
-            return self.send_body(200, p.console.info(p.console.authed(self.headers)))
+            return self.send_body(200, p.console.info(self.user["role"] == "admin"))
         if path.startswith("/api/console/log/"):
-            if not p.console.authed(self.headers):
-                return self.send_body(401, {"error": "log in to the console first"})
             f = p.console.log_path(path.rsplit("/", 1)[1])
             if not f:
                 return self.send_body(404, {"error": "no such log"})
@@ -811,12 +838,10 @@ class Handler(BaseHTTPRequestHandler):
             # A WebSocket has no CORS: without these checks any web page could type into the switch.
             if not self.same_origin():
                 return self.send_body(403, {"error": "cross-site request"})
-            if not p.console.authed(self.headers):
-                return self.send_body(401, {"error": "log in to the console first"})
             self.protocol_version = "HTTP/1.1"
             sock = ws_mod.WebSocket.accept(self)
             if sock:
-                p.console.serve_ws(sock)
+                p.console.serve_ws(sock, admin=self.user["role"] == "admin")
             return
         self.send_body(404, {"error": "not found"})
 
@@ -825,6 +850,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if not self.same_origin():
             return self.send_body(403, {"error": "cross-site request"})
+        if not self.gate(self.path.split("?")[0], True):
+            return
         headers = []
         try:
             n = int(self.headers.get("Content-Length") or 0)
@@ -833,7 +860,6 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Expected a JSON object")
             path = self.path.split("?")[0]
             p = self.probe
-            con = p.console
             reply = {"ok": True}
             if path == "/api/settings":
                 p.save_conf(body)
@@ -853,30 +879,35 @@ class Handler(BaseHTTPRequestHandler):
                 with p.lock:
                     p.history = []
                 (DATA / "history.json").write_text("[]")
+            # ----- users -----
+            elif path == "/api/auth/login":
+                tok = p.auth.login(body.get("name"), body.get("password"), self.client_ip())
+                headers.append(("Set-Cookie", p.auth.cookie(tok, self.is_https())))
+            elif path == "/api/auth/setup":
+                tok = p.auth.setup(body.get("name"), body.get("password"), body.get("legacy"), self.client_ip())
+                if p.auth.legacy:  # the old console password has done its job
+                    p.save_conf({"console_pw": ""}, internal=True)
+                    p.auth.legacy = ""
+                headers.append(("Set-Cookie", p.auth.cookie(tok, self.is_https())))
+            elif path == "/api/auth/logout":
+                p.auth.logout(self.headers)
+                headers.append(("Set-Cookie", p.auth.cookie(None, self.is_https())))
+            elif path == "/api/auth/password":
+                p.auth.change_own(self.user["name"], body.get("current"), body.get("new"), p.auth.token(self.headers))
+            elif path == "/api/users/add":
+                p.auth.add(body.get("name"), body.get("role"), body.get("password"))
+            elif path == "/api/users/update":
+                p.auth.update(str(body.get("name")), role=body.get("role"), pw=body.get("password"))
+            elif path == "/api/users/delete":
+                p.auth.delete(str(body.get("name")), self.user["name"])
             # ----- console -----
-            elif path == "/api/console/login":
-                tok = con.login(body.get("password", ""))
-                if tok:
-                    headers.append(("Set-Cookie", con.cookie(tok, self.is_https())))
-            elif path == "/api/console/logout":
-                tok = SimpleCookie(self.headers.get("Cookie") or "").get(console_mod.COOKIE)
-                if tok:
-                    con.tokens.pop(tok.value, None)
-                headers.append(("Set-Cookie", con.cookie(None, self.is_https())))
-            elif path == "/api/console/password":
-                tok = con.set_password(body.get("current"), body.get("new"), con.authed(self.headers) and con.need_auth())
-                headers.append(("Set-Cookie", con.cookie(tok, self.is_https())))
             elif path in ("/api/console/settings", "/api/console/logs/clear"):
-                if not con.authed(self.headers):
-                    return self.send_body(401, {"error": "log in to the console first"})
                 if path.endswith("clear"):
-                    con.clear_logs()
+                    p.console.clear_logs()
                 else:
-                    con.save(body)
+                    p.console.save(body)
             # ----- HTTPS (behind the console password, when one is set) -----
             elif path in ("/api/tls/generate", "/api/tls/settings"):
-                if not con.authed(self.headers):
-                    return self.send_body(401, {"error": "log in to the console first"})
                 if path.endswith("generate"):
                     p.tls.generate(body.get("names") or ", ".join(p.tls.default_names()), body.get("days") or 3650)
                 else:
@@ -961,6 +992,8 @@ def main():
     probe.watch = watch_mod.Watchdog(probe, IFACE, DATA, on_alert=probe.on_alert)
     probe.wake = wake_mod.Wake(probe, IFACE, DATA, watchdog=probe.watch)
     probe.console = console_mod.Console(probe, DATA)
+    probe.auth = auth_mod.Auth(CONF.parent, DATA, legacy_hash=probe.conf.get("console_pw", ""))
+    probe.console.auth = probe.auth
     probe.tls = tls_mod.TLS(probe, CONF.parent)
     if HTTPS_PORT:
         probe.tls.ensure()

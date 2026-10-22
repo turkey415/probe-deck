@@ -5,17 +5,13 @@ every attached client (each client has its own queue and sender thread, so a slo
 port). Clients send keystrokes, Break, paced pastes and macros.
 """
 import glob
-import hashlib
-import hmac
 import json
 import os
 import queue
 import re
-import secrets
 import socket
 import threading
 import time
-from http.cookies import SimpleCookie
 from pathlib import Path
 
 import ws as wsmod
@@ -29,8 +25,6 @@ BAUDS = (1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400)
 SCROLL_MAX = 128 * 1024
 LOG_MAX = 10 * 1024 * 1024
 LOGS_KEEP = 50
-TOKEN_SECS = 12 * 3600
-COOKIE = "pd_console"
 LOG_RE = re.compile(r"[\w.\-]{1,80}\.log")
 
 DEFAULT_MACROS = """No paging = terminal length 0
@@ -50,21 +44,8 @@ DEFAULTS = {
     "console_telnet": False,
     "console_telnet_port": 2001,
     "console_macros": DEFAULT_MACROS,
-    "console_pw": "",              # pbkdf2 hash, never sent to the page
+    "console_pw": "",              # the old console password (before user accounts): only used for the first setup
 }
-
-
-def hash_pw(pw, salt=None, iters=120_000):
-    salt = salt or secrets.token_bytes(16)
-    return f"pbkdf2${iters}${salt.hex()}${hashlib.pbkdf2_hmac('sha256', pw.encode(), salt, iters).hex()}"
-
-
-def check_pw(pw, stored):
-    try:
-        _, iters, salt, want = stored.split("$")
-        return hmac.compare_digest(hash_pw(pw, bytes.fromhex(salt), int(iters)), stored)
-    except ValueError:
-        return False
 
 
 def parse_macros(text):
@@ -155,7 +136,7 @@ class Console:
         self.rx_total = 0
         self.last_rx = 0.0
         self.paste = None
-        self.tokens = {}
+        self.auth = None                  # set by the server: users for the telnet login
         self.reopen = threading.Event()
         self.tel_sock = None
         threading.Thread(target=self.loop, daemon=True).start()
@@ -193,8 +174,6 @@ class Console:
         if "console_macros" in new:
             parse_macros(new["console_macros"])
             c["console_macros"] = str(new["console_macros"])[:8000]
-        if c.get("console_telnet") and not self.conf.get("console_pw"):
-            raise ValueError("Set a console password before opening the telnet port")
         old = dict(self.conf)
         self.p.save_conf(c, internal=True)
         if c.get("console_port", old["console_port"]) != old["console_port"]:
@@ -205,57 +184,6 @@ class Console:
             except Exception as e:
                 self.error = str(e)[:120]
         self.push_status()
-
-    # ---------- password ----------
-    def need_auth(self):
-        return bool(self.conf.get("console_pw"))
-
-    def authed(self, headers):
-        if not self.need_auth():
-            return True
-        try:
-            tok = SimpleCookie(headers.get("Cookie") or "").get(COOKIE)
-        except Exception:
-            return False
-        if not tok:
-            return False
-        exp = self.tokens.get(tok.value)
-        return bool(exp and exp > time.time())
-
-    def login(self, pw):
-        if not self.need_auth():
-            return None
-        if not check_pw(str(pw), self.conf["console_pw"]):
-            time.sleep(1)  # slow down guessing
-            raise ValueError("Wrong password")
-        now = time.time()
-        self.tokens = {k: v for k, v in self.tokens.items() if v > now}
-        tok = secrets.token_urlsafe(24)
-        self.tokens[tok] = now + TOKEN_SECS
-        return tok
-
-    def set_password(self, current, new, authed):
-        if self.need_auth() and not (authed or check_pw(str(current or ""), self.conf["console_pw"])):
-            time.sleep(1)
-            raise ValueError("Current password is wrong")
-        new = str(new or "")
-        if new and len(new) < 6:
-            raise ValueError("Use at least 6 characters")
-        changes = {"console_pw": hash_pw(new) if new else ""}
-        if not new:
-            changes["console_telnet"] = False
-        self.p.save_conf(changes, internal=True)
-        self.tokens = {}
-        for c in list(self.clients):  # everyone logs in again with the new password
-            c.stop()
-        return self.login(new) if new else None
-
-    @staticmethod
-    def cookie(tok, secure=False):
-        sec = "; Secure" if secure else ""  # over HTTPS the browser never sends it back over plain HTTP
-        if tok is None:
-            return f"{COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict{sec}"
-        return f"{COOKIE}={tok}; Path=/; Max-Age={TOKEN_SECS}; HttpOnly; SameSite=Strict{sec}"
 
     # ---------- the serial port ----------
     def pick(self):
@@ -455,14 +383,14 @@ class Console:
             "paste": {k: pj[k] for k in ("total", "done", "done_at")} if pj else None,
         }
 
-    def info(self, authed):
-        """For the page: what it may know before and after logging in."""
-        out = {"need_auth": self.need_auth(), "authed": authed, "pyserial": bool(serial), "ports": list_ports(),
+    def info(self, admin):
+        """For the page. Viewers can watch and read the logs; only admins see the settings."""
+        out = {"admin": admin, "pyserial": bool(serial), "ports": list_ports(),
                "telnet": self.conf["console_telnet"], "telnet_port": self.conf["console_telnet_port"],
-               "telnet_up": bool(self.tel_sock), "bauds": BAUDS, **self.status()}
-        if authed:
-            out.update(macros=parse_macros(self.conf["console_macros"]), macros_text=self.conf["console_macros"],
-                       line_delay=self.conf["console_line_delay"], logs=self.logs())
+               "telnet_up": bool(self.tel_sock), "bauds": BAUDS, "logs": self.logs(),
+               "macros": parse_macros(self.conf["console_macros"]), **self.status()}
+        if admin:
+            out.update(macros_text=self.conf["console_macros"], line_delay=self.conf["console_line_delay"])
         return out
 
     def push_status(self):
@@ -485,13 +413,16 @@ class Console:
         self.push_status()
 
     # ---------- web terminal ----------
-    def serve_ws(self, sock):
+    def serve_ws(self, sock, admin=True):
+        """admin=False: a viewer. They see everything the switch prints; what they send is dropped."""
         c = Client("web", sock.send_bytes, sock.send_json, sock.close)
-        c.put({**self.status(), "t": "hello"})
+        c.put({**self.status(), "t": "hello", "readonly": not admin})
         self.attach(c)
         try:
             while c.alive:
                 msg = sock.recv()
+                if not admin:
+                    continue
                 if isinstance(msg, bytes):
                     self.write(msg)
                     continue
@@ -526,7 +457,7 @@ class Console:
     # ---------- telnet port (what ser2net would give you) ----------
     def telnet_loop(self):
         while True:
-            want = self.conf["console_telnet"] and self.need_auth()
+            want = self.conf["console_telnet"] and self.auth and not self.auth.needs_setup()
             port = self.conf["console_telnet_port"]
             if want and (not self.tel_sock or self.tel_sock.getsockname()[1] != port):
                 self.telnet_close()
@@ -640,35 +571,50 @@ class Console:
         finally:
             self.detach(c)
 
+    @staticmethod
+    def telnet_line(conn, echo):
+        """One line typed in telnet. We told the client we echo, so echo the name but not the password."""
+        line, state = bytearray(), 0
+        while True:
+            chunk = conn.recv(1)
+            if not chunk:
+                return None
+            b = chunk[0]
+            if b in (0, 10) and not line and state == 0:
+                continue  # the LF or NUL telnet sends after the CR of the last line
+            if state == 1:
+                state = 2 if 251 <= b <= 254 else 0
+                continue
+            if state == 2:
+                state = 0
+                continue
+            if b == 255:
+                state = 1
+            elif b in (13, 10):
+                conn.sendall(b"\r\n")
+                return line.decode("utf-8", "replace")
+            elif b in (8, 127):
+                if line and echo:
+                    conn.sendall(b"\b \b")
+                line = line[:-1]
+            elif b >= 32 and len(line) < 128:
+                line.append(b)
+                if echo:
+                    conn.sendall(bytes([b]))
+
     def telnet_login(self, conn):
+        """Admins only: typing into a switch console is a change."""
         for _ in range(3):
-            conn.sendall(b"Probe Deck console password: ")
-            line = bytearray()
-            state = 0
-            while True:
-                chunk = conn.recv(1)
-                if not chunk:
-                    return False
-                b = chunk[0]
-                if b in (0, 10) and not line and state == 0:
-                    continue  # the LF or NUL telnet sends after the CR of the last line
-                if state == 1:
-                    state = 2 if 251 <= b <= 254 else 0
-                    continue
-                if state == 2:
-                    state = 0
-                    continue
-                if b == 255:
-                    state = 1
-                elif b in (13, 10):
-                    break
-                elif b in (8, 127):
-                    line = line[:-1]
-                elif b >= 32 and len(line) < 128:
-                    line.append(b)
-            conn.sendall(b"\r\n")
-            if check_pw(line.decode("utf-8", "replace"), self.conf["console_pw"]):
+            conn.sendall(b"Probe Deck user: ")
+            name = self.telnet_line(conn, True)
+            if name is None:
+                return False
+            conn.sendall(b"Password: ")
+            pw = self.telnet_line(conn, False)
+            if pw is None:
+                return False
+            if self.auth and self.auth.check(name, pw, role="admin"):
                 return True
             time.sleep(1)
-            conn.sendall(b"Wrong password.\r\n")
+            conn.sendall(b"Wrong user name or password (the telnet console is for admins).\r\n")
         return False

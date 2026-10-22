@@ -189,7 +189,6 @@ a.btn { text-decoration: none; color: var(--text); text-transform: none; letter-
 .screen:fullscreen { border-radius: 0; padding: 16px; }
 .screen:fullscreen .term { height: calc(100vh - 32px); }
 .term { height: max(380px, calc(100vh - 250px)); }
-#v-console:has(#con-nopw:not([hidden])) .term { height: max(380px, calc(100vh - 315px)); }
 .term .xterm-rows { text-shadow: 0 0 5px color-mix(in srgb, var(--ph) 55%, transparent); }
 .term .xterm-viewport { background: transparent !important; }
 .term .xterm-viewport::-webkit-scrollbar { width: 8px; } .term .xterm-viewport::-webkit-scrollbar-thumb { background: #2e2e2b; border-radius: 4px; }
@@ -209,11 +208,49 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 .mrow .num small, .mrow .who small { display: block; color: var(--muted); font-size: 11px; }
 .mrow input[type=checkbox] { accent-color: var(--amber); width: 15px; height: 15px; margin: 0; }
 .sled.waking { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: pulse .8s ease-in-out infinite; }
+.ro .mrow { grid-template-columns: 12px minmax(110px, 1.4fr) minmax(60px, .6fr) 130px minmax(110px, 1fr) 70px; }
 @media (max-width: 760px) { .mrow { grid-template-columns: 22px 12px minmax(0, 1fr) auto; } .mrow .grp, .mrow .macc, .mrow .ipc, .mrow .ping { display: none; } }
 @media (prefers-reduced-motion: reduce) { .sled.waking { animation: none; } }
+/* ---------- login + roles ---------- */
+.gate { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; overflow: auto;
+  background: radial-gradient(ellipse at center, #1a1a19 0%, #0b0b0a 70%); }
+.gate::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .25) 0 1px, transparent 1px 3px); }
+.gate .card { width: min(380px, 100%); position: relative; z-index: 1; box-shadow: 0 0 0 4px #161615, 0 0 0 5px #2e2e2b, 0 20px 60px rgba(0, 0, 0, .6); }
+.gate .big-port { text-align: center; font-size: 22px; letter-spacing: .14em; margin: 4px 0 2px; }
+.gate .brand { justify-content: center; margin-bottom: 8px; }
+body.gated > :not(.gate):not(dialog) { visibility: hidden; }
+.ro .admin-only { display: none !important; }
+.ro :is(button, input, select, textarea):not(.ro-ok):not(.ro-ok *):not(.gate *) { pointer-events: none; opacity: .45; }
+.userpill { gap: 9px; }
+.userpill button { background: none; border: 0; padding: 0; color: var(--muted); cursor: pointer; font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
+.userpill button:hover { color: var(--text); }
+.role { font: 600 9.5px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--amber); }
+.role.viewer { color: #8fb8ff; }
 </style>
 </head>
-<body>
+<body class="gated">
+<div class="gate" id="gate">
+  <section class="card">
+    <div class="brand"><svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#212120"/><path d="M9 7h14v9H9z M12 16v5 M16 16v5 M20 16v5 M7 25h18" fill="none" stroke="#ffb000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Probe Deck</div>
+    <div class="big-port" id="g-title">CONNECTING</div>
+    <p class="sub" id="g-sub" style="text-align:center;margin:4px 0 14px"></p>
+    <div class="note crit plainwarn" hidden style="margin-bottom:12px">This page isn't encrypted, so your password would cross the network in clear text. <a class="httpslink" href="#">Use the HTTPS page</a>.</div>
+    <form class="form" id="f-signin" hidden>
+      <label class="f">User name <input type="text" id="g-name" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
+      <label class="f">Password <input type="password" id="g-pw" autocomplete="current-password"></label>
+      <button class="btn primary" type="submit">Log in</button>
+    </form>
+    <form class="form" id="f-setup" hidden>
+      <label class="f">Admin user name <input type="text" id="s1-name" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. admin"></label>
+      <label class="f">Password <input type="password" id="s1-pw" autocomplete="new-password" placeholder="8 characters or more"></label>
+      <label class="f">Password again <input type="password" id="s1-pw2" autocomplete="new-password"></label>
+      <label class="f" id="s1-legacy-l" hidden>Old console password <span class="sub">This probe had a console password. Type it to prove the probe is yours.</span>
+        <input type="password" id="s1-legacy" autocomplete="off"></label>
+      <button class="btn primary" type="submit">Create admin</button>
+    </form>
+    <div class="msg" id="g-err" hidden style="margin-top:10px"></div>
+  </section>
+</div>
 <header class="top">
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#212120"/><path d="M9 7h14v9H9z M12 16v5 M16 16v5 M20 16v5 M7 25h18" fill="none" stroke="#ffb000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -225,18 +262,20 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
     <a href="#watch" data-view="watch">Watchdog <span class="badge" id="t-watch" hidden></span></a>
     <a href="#wake" data-view="wake">Wake</a>
     <a href="#https" data-view="https">HTTPS <span class="dot" id="t-https"></span></a>
+    <a href="#users" data-view="users">Users</a>
   </nav>
   <span class="pill"><span class="dot" id="h-dot"></span><span id="h-name">connecting…</span></span>
   <span class="spacer"></span>
   <span class="pill" id="h-link">link —</span>
   <span class="pill" id="h-pd" title="Perf-Deck stations heard on this network">Perf-Deck —</span>
   <span class="pill" id="h-temp">— °C</span>
+  <span class="pill userpill ro-ok" id="h-user"><span id="h-uname">—</span><span class="role" id="h-role"></span><button type="button" id="b-logout">Log out</button></span>
 </header>
 
 <div class="banner" id="offline" hidden style="margin:14px 20px 0">Lost contact with the probe. Retrying…</div>
 <div class="layout view" id="v-probe">
 <aside>
-  <section class="card">
+  <section class="card admin-only">
     <h2>Speed test</h2>
     <form class="form" id="f-speed">
       <label class="f">iperf3 server
@@ -257,7 +296,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
     </form>
   </section>
 
-  <section class="card">
+  <section class="card admin-only">
     <h2>Settings</h2>
     <form class="form" id="f-set">
       <label class="f">Probe name <input type="text" id="s-name" maxlength="32"></label>
@@ -279,7 +318,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
   <section class="card">
     <h2>Probe</h2>
     <dl class="kv" id="sys"></dl>
-    <div class="row" style="margin-top:14px">
+    <div class="row admin-only" style="margin-top:14px">
       <button class="btn" id="b-recheck">Check now</button>
       <button class="btn" id="b-renew">Renew DHCP</button>
     </div>
@@ -325,7 +364,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
   <section class="card">
     <h2>Stations <span class="spacer"></span><span class="sub" id="st-count"></span></h2>
     <div class="sweepbar">
-      <button class="btn" id="b-sweep">Sweep all</button>
+      <button class="btn admin-only" id="b-sweep">Sweep all</button>
       <span class="sub" id="sw-note"></span>
     </div>
     <div class="stlist" id="st-list"></div>
@@ -342,7 +381,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
   </section>
 
   <section class="card">
-    <h2>Speed test history <span class="spacer"></span><button class="btn ghost" id="b-hclear">Clear</button></h2>
+    <h2>Speed test history <span class="spacer"></span><button class="btn ghost admin-only" id="b-hclear">Clear</button></h2>
     <div class="tablewrap"><table>
       <thead><tr><th>When</th><th class="l">Station</th><th class="l">Port</th><th>Download</th><th>Upload</th><th>Retries</th></tr></thead>
       <tbody id="hist"></tbody>
@@ -356,36 +395,25 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 <div class="layout r view" id="v-console" hidden>
 <main>
 
-  <div class="note crit" id="con-nopw" hidden>No console password is set, so anyone who can open this page can type into the switch console. Set one under <b>Password</b>.</div>
 
   <section class="card">
     <div class="toolbar" style="margin-bottom:12px">
-      <button class="key hot" id="c-break" title="Send a serial Break: Cisco password recovery and ROMMON need one in the first 60 s of boot">Break</button>
-      <button class="key" id="c-paste" title="Send a config one line at a time, waiting for the switch each line">Paste config…</button>
+      <button class="key hot admin-only" id="c-break" title="Send a serial Break: Cisco password recovery and ROMMON need one in the first 60 s of boot">Break</button>
+      <button class="key admin-only" id="c-paste" title="Send a config one line at a time, waiting for the switch each line">Paste config…</button>
       <button class="key" id="c-stoppaste" hidden>Stop paste</button>
       <span class="sub" id="c-pastest"></span>
       <span class="spacer"></span>
-      <span class="keys" id="c-ph" role="group" aria-label="Screen colour">
+      <span class="keys ro-ok" id="c-ph" role="group" aria-label="Screen colour">
         <button class="key" data-ph="green" title="Green phosphor">Grn</button><button class="key" data-ph="amber" title="Amber phosphor">Amb</button><button class="key" data-ph="white" title="White phosphor">Wht</button>
       </span>
-      <button class="key" id="c-fminus" title="Smaller text">A−</button><button class="key" id="c-fplus" title="Bigger text">A+</button>
-      <button class="key" id="c-clear" title="Clear the screen and the saved scrollback">Clear</button>
-      <button class="key" id="c-full" title="Full screen">Full</button>
+      <button class="key ro-ok" id="c-fminus" title="Smaller text">A−</button><button class="key ro-ok" id="c-fplus" title="Bigger text">A+</button>
+      <button class="key ro-ok" id="c-clear" title="Clear the screen and the saved scrollback">Clear</button>
+      <button class="key ro-ok" id="c-full" title="Full screen">Full</button>
     </div>
     <div class="screen" id="screen">
       <div class="term" id="term"></div>
-      <div class="lock" id="c-lock" hidden>
-        <form id="f-login">
-          <div class="big-port">CONSOLE LOCKED</div>
-          <span class="sub">Enter the console password to use the switch console.</span>
-          <div class="note crit plainwarn" hidden style="text-align:left">This page isn't encrypted, so the password crosses the network in clear text. <a class="httpslink" href="#">Use the HTTPS page</a>.</div>
-          <input type="password" id="c-pw" autocomplete="current-password" placeholder="Console password">
-          <button class="btn primary" type="submit">Unlock</button>
-          <div class="msg" id="c-loginerr" hidden></div>
-        </form>
-      </div>
     </div>
-    <div class="keys" id="c-macros" style="margin-top:12px"></div>
+    <div class="keys admin-only" id="c-macros" style="margin-top:12px"></div>
   </section>
 
   <section class="card deck">
@@ -399,7 +427,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
   </section>
 </main>
 <aside>
-  <section class="card" id="c-setcard">
+  <section class="card admin-only" id="c-setcard">
     <h2>Console settings</h2>
     <form class="form" id="f-con">
       <div class="row">
@@ -408,27 +436,15 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
       </div>
       <label class="f">Paste: least wait per line (ms) <span class="sub">Each line also waits for the switch's echo, up to 1.5 s.</span>
         <input type="number" id="cs-delay" min="0" max="2000"></label>
-      <label class="chk"><input type="checkbox" id="cs-telnet"><span>Telnet port, like ser2net<small>PuTTY / SecureCRT / telnet to the probe reach the same console. Asks for the console password.</small></span></label>
+      <label class="chk"><input type="checkbox" id="cs-telnet"><span>Telnet port, like ser2net<small>PuTTY / SecureCRT / telnet to the probe reach the same console. Asks for an admin's user name and password.</small></span></label>
       <label class="f">Telnet port <input type="number" id="cs-tport" min="1024" max="65535"></label>
       <label class="f">Macro keys <span class="sub">One per line: Label = command</span>
         <textarea id="cs-macros" rows="9" spellcheck="false"></textarea></label>
       <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="cs-msg"></span></div>
     </form>
   </section>
-  <section class="card">
-    <h2>Password</h2>
-    <form class="form" id="f-pw">
-      <div class="note crit plainwarn" hidden>This page isn't encrypted. <a class="httpslink" href="#">Switch to HTTPS</a> before you type a password.</div>
-      <span class="sub">Protects the console, its telnet port, and the HTTPS settings.</span>
-      <label class="f" id="pw-cur-l">Current password <input type="password" id="pw-cur" autocomplete="current-password"></label>
-      <label class="f">New password <input type="password" id="pw-new" autocomplete="new-password" placeholder="6 characters or more"></label>
-      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none" id="pw-go">Set password</button>
-        <button class="btn ghost" type="button" id="pw-remove" style="flex:none">Remove</button><button class="btn ghost" type="button" id="pw-logout" style="flex:none">Lock</button></div>
-      <span id="pw-msg"></span>
-    </form>
-  </section>
   <section class="card" id="c-logcard">
-    <h2>Session logs <span class="spacer"></span><button class="btn ghost" id="c-logclear">Clear</button></h2>
+    <h2>Session logs <span class="spacer"></span><button class="btn ghost admin-only" id="c-logclear">Clear</button></h2>
     <div class="tablewrap"><table><tbody id="c-logs"></tbody></table></div>
   </section>
 </aside>
@@ -447,7 +463,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 <!-- ================= WATCHDOG ================= -->
 <div class="layout view" id="v-watch" hidden>
 <aside>
-  <section class="card">
+  <section class="card admin-only">
     <h2>Watchdog settings</h2>
     <form class="form" id="f-watch">
       <label class="chk"><input type="checkbox" id="ws-on"><span>Watch the network<small>Listens to broadcast and multicast traffic on the port.</small></span></label>
@@ -484,7 +500,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
   <div class="note" id="w-err" hidden></div>
 
   <section class="card">
-    <h2>DHCP servers <span class="spacer"></span><span class="sub" id="w-scan"></span><button class="btn ghost" id="w-scannow">Scan now</button></h2>
+    <h2>DHCP servers <span class="spacer"></span><span class="sub" id="w-scan"></span><button class="btn ghost admin-only" id="w-scannow">Scan now</button></h2>
     <div class="tablewrap"><table>
       <thead><tr><th>Server</th><th class="l">MAC</th><th class="l">Offers</th><th class="l">Router</th><th class="l">DNS</th><th>Last heard</th><th class="l">Status</th><th></th></tr></thead>
       <tbody id="wd-dhcp"></tbody>
@@ -504,7 +520,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
   </section>
 
   <section class="card">
-    <h2>Events <span class="spacer"></span><button class="btn ghost" id="w-clear">Clear</button></h2>
+    <h2>Events <span class="spacer"></span><button class="btn ghost admin-only" id="w-clear">Clear</button></h2>
     <div class="evlist" id="w-events"></div>
   </section>
 </main>
@@ -513,7 +529,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 <!-- ================= WAKE ================= -->
 <div class="layout view" id="v-wake" hidden>
 <aside>
-  <section class="card">
+  <section class="card admin-only">
     <h2 id="m-title">Add a machine</h2>
     <form class="form" id="f-mach">
       <input type="hidden" id="m-id">
@@ -526,7 +542,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
         <button class="btn ghost" type="button" id="m-cancel" style="flex:none" hidden>Cancel</button><span id="m-msg"></span></div>
     </form>
   </section>
-  <section class="card">
+  <section class="card admin-only">
     <h2>Import</h2>
     <form class="form" id="f-imp">
       <span class="sub">One per line: <code>name, MAC, IP, group</code> (IP and group optional). A CSV export works too.</span>
@@ -534,7 +550,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
       <div class="row" style="align-items:center"><button class="btn" type="submit" style="flex:none">Import</button><span id="imp-msg" class="sub"></span></div>
     </form>
   </section>
-  <section class="card">
+  <section class="card admin-only">
     <h2>Wake any MAC</h2>
     <form class="row" id="f-adhoc"><input type="text" id="ah-mac" spellcheck="false" placeholder="aa:bb:cc:dd:ee:ff"><button class="btn" type="submit" style="flex:none">Wake</button></form>
     <span id="ah-msg"></span>
@@ -557,14 +573,14 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
   </section>
   <section class="card">
     <div class="toolbar" style="margin-bottom:12px">
-      <button class="btn primary" id="wk-all">Wake all</button>
-      <button class="btn" id="wk-sel" disabled>Wake selected</button>
-      <button class="btn danger" id="wk-stop" hidden>Stop</button>
+      <button class="btn primary admin-only" id="wk-all">Wake all</button>
+      <button class="btn admin-only" id="wk-sel" disabled>Wake selected</button>
+      <button class="btn danger admin-only" id="wk-stop" hidden>Stop</button>
       <span class="keys" id="wk-groups"></span>
       <span class="spacer"></span>
-      <label class="sub" style="display:flex;gap:8px;align-items:center">Stagger <input type="number" id="wk-stagger" min="0" max="60" step="0.5" style="width:70px"> s apart</label>
+      <label class="sub admin-only" style="display:flex;gap:8px;align-items:center">Stagger <input type="number" id="wk-stagger" min="0" max="60" step="0.5" style="width:70px"> s apart</label>
     </div>
-    <div class="sub" id="wk-note" style="margin-bottom:10px"></div>
+    <div class="sub admin-only" id="wk-note" style="margin-bottom:10px"></div>
     <div class="stlist" id="wk-list"></div>
   </section>
 </main>
@@ -573,7 +589,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 <!-- ================= HTTPS ================= -->
 <div class="layout view" id="v-https" hidden>
 <aside>
-  <section class="card">
+  <section class="card admin-only">
     <h2>New certificate</h2>
     <form class="form" id="f-cert">
       <label class="f">Names and IPs <span class="sub">Every name or address you'll type in the browser, comma separated. The first one is the certificate's name.</span>
@@ -584,7 +600,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
       <span class="sub">Self-signed, ECDSA P-256. Browsers warn again after a new certificate until you trust the new one.</span>
     </form>
   </section>
-  <section class="card">
+  <section class="card admin-only">
     <h2>HTTPS settings</h2>
     <form class="form" id="f-tlsset">
       <label class="chk"><input type="checkbox" id="ts-redirect"><span>Send HTTP visitors to HTTPS<small>http:// pages move to https://. <code>/api/probe</code> stays on HTTP for the T-Displays.</small></span></label>
@@ -594,7 +610,7 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 </aside>
 <main>
   <div class="note crit" id="tls-plain" hidden></div>
-  <div class="note" id="tls-locked" hidden>Changes here need the console password. <a href="#console">Unlock the console</a> first.</div>
+  <div class="note" id="tls-locked" hidden>You're a viewer: only admins can change the certificate.</div>
   <section class="card deck">
     <h2>HTTPS <span class="spacer"></span><span class="lamp" id="tls-lamp"></span></h2>
     <div class="wells">
@@ -616,6 +632,48 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
       <b>Linux:</b> <code>sudo cp probe-01.crt /etc/pki/ca-trust/source/anchors/ &amp;&amp; sudo update-ca-trust</code> (Fedora/Nobara), then restart the browser.<br>
       <b>Firefox:</b> Settings → Privacy &amp; Security → Certificates → View Certificates → Authorities → Import.<br>
       Check the SHA-256 fingerprint above matches what the browser shows before you trust it.
+    </div>
+  </section>
+</main>
+</div>
+
+<!-- ================= USERS ================= -->
+<div class="layout view" id="v-users" hidden>
+<aside>
+  <section class="card ro-ok">
+    <h2>My account</h2>
+    <dl class="kv" style="margin-bottom:14px"><div><dt>User</dt><dd id="me-name">—</dd></div><div><dt>Role</dt><dd><span class="role" id="me-role"></span></dd></div></dl>
+    <form class="form" id="f-mypw">
+      <label class="f">Current password <input type="password" id="mp-cur" autocomplete="current-password"></label>
+      <label class="f">New password <input type="password" id="mp-new" autocomplete="new-password" placeholder="8 characters or more"></label>
+      <label class="f">New password again <input type="password" id="mp-new2" autocomplete="new-password"></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Change password</button><span id="mp-msg"></span></div>
+    </form>
+  </section>
+  <section class="card admin-only">
+    <h2>Add a user</h2>
+    <form class="form" id="f-uadd">
+      <div class="row"><label class="f">User name <input type="text" id="ua-name" autocapitalize="none" spellcheck="false" autocomplete="off"></label>
+        <label class="f" style="flex:none;width:110px">Role <select id="ua-role"><option value="viewer">viewer</option><option value="admin">admin</option></select></label></div>
+      <label class="f">Password <input type="password" id="ua-pw" autocomplete="new-password" placeholder="8 characters or more"></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Add</button><span id="ua-msg"></span></div>
+    </form>
+  </section>
+</aside>
+<main>
+  <section class="card admin-only">
+    <h2>Users</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>User</th><th class="l">Role</th><th>Last login</th><th>Logged in</th><th></th></tr></thead>
+      <tbody id="u-list"></tbody>
+    </table></div>
+  </section>
+  <section class="card">
+    <h2>Roles</h2>
+    <div class="sub" style="line-height:1.7">
+      <b class="role">admin</b> can do everything: change settings, run tests, type into the switch console, wake machines, manage the certificate and users. The telnet console is for admins only.<br>
+      <b class="role viewer">viewer</b> sees every tab live, can watch the console and download its logs, and can change their own password. Nothing else.<br>
+      Locked out? Over SSH on the probe: <code>python3 /opt/probe-deck/auth.py passwd &lt;name&gt;</code> (or <code>add &lt;name&gt; admin</code>).
     </div>
   </section>
 </main>
@@ -734,6 +792,7 @@ const legend = (id, items) => { const h = items.map(i => `<span><i class="sw" st
 async function api(path, body) {
   const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
   const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && !path.startsWith('/api/auth/')) { showGate(); throw new Error('Logged out'); }
   if (!r.ok) throw new Error(j.error || r.statusText);
   return j;
 }
@@ -873,7 +932,7 @@ function renderStations() {
       <div class="num ping">${p.ping_ms == null ? '—' : esc(p.ping_ms < 10 ? p.ping_ms.toFixed(2) : p.ping_ms.toFixed(0))}<small>ms ping</small></div>
       <div class="bar">${Array.from({ length: 20 }, (_, i) => `<i${i < lit ? ' class="on"' : ''}></i>`).join('')}</div>
       <div class="num">${rate}</div><span class="k state">${word}</span>
-      <div class="dirs" role="group" aria-label="Test ${esc(p.name)}">${[['up', 'Send', 'Probe sends to this station'], ['down', 'Receive', 'This station sends to the probe'], ['both', 'Both', 'Receive, then send']]
+      <div class="dirs admin-only" role="group" aria-label="Test ${esc(p.name)}">${[['up', 'Send', 'Probe sends to this station'], ['down', 'Receive', 'This station sends to the probe'], ['both', 'Both', 'Receive, then send']]
         .map(([d, label, tip]) => `<button type="button" data-ip="${esc(p.ip)}" data-port="${p.port}" data-name="${esc(p.name)}" data-dir="${d}" title="${tip} (${QUICK} s)"${dis}>${label}</button>`).join('')}</div></div>`;
   }).join('') || `<div class="empty">${s.conf.perfdeck ? 'No Perf-Deck stations heard yet. Any machine running Perf-Deck (or another probe) on this network appears here within a few seconds.' : 'Perf-Deck discovery is off in Settings.'}</div>`;
   if ($('#st-list')._h !== html) { $('#st-list').innerHTML = html; $('#st-list')._h = html; }
@@ -944,7 +1003,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 
 // ---------- views (tabs) ----------
-const VIEWS = ['probe', 'console', 'watch', 'wake', 'https'];
+const VIEWS = ['probe', 'console', 'watch', 'wake', 'https', 'users'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -953,6 +1012,7 @@ function showView() {
   for (const a of document.querySelectorAll('.tabs a')) a.classList.toggle('on', a.dataset.view === view);
   if (view === 'console') conInit().then(fitTerm);
   if (view === 'https') tlsRefresh();
+  if (view === 'users') usersRefresh();
   if (S) render();
 }
 addEventListener('hashchange', showView);
@@ -988,16 +1048,19 @@ async function conInit() {
   CON.term = term; CON.fit = fit;
   new ResizeObserver(fitTerm).observe($('#term'));
   // A multi-line paste (Ctrl+Shift+V, right-click) goes out paced, like the Paste config button.
-  term.onData(d => { if (d.length > 24 && /[\r\n]/.test(d.slice(0, -1))) conSend({ t: 'paste', d }); else conSend({ t: 'in', d }); });
+  term.onData(d => { if (!isAdmin()) return; if (d.length > 24 && /[\r\n]/.test(d.slice(0, -1))) conSend({ t: 'paste', d }); else conSend({ t: 'in', d }); });
   term.writeln('\x1b[2mProbe Deck console\x1b[0m');
   await conRefresh();
 }
 function conSend(m) { if (CON.ws && CON.ws.readyState === 1) CON.ws.send(JSON.stringify(m)); }
 async function conRefresh() {
-  try { CON.info = await (await fetch('/api/console', { cache: 'no-store' })).json(); } catch { return; }
+  try {
+    const r = await fetch('/api/console', { cache: 'no-store' });
+    if (r.status === 401) return showGate();
+    CON.info = await r.json();
+  } catch { return; }
   renderConsole();
-  if (CON.info.authed && !CON.ws && CON.term) conConnect();
-  if (!CON.info.authed && CON.ws) CON.ws.close();
+  if (!CON.ws && CON.term && ME) conConnect();
 }
 function conConnect() {
   const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/console');
@@ -1014,7 +1077,7 @@ function conConnect() {
   ws.onclose = () => {
     if (CON.ws === ws) CON.ws = null;
     CON.st = null; renderConDeck();
-    setTimeout(conRefresh, Math.min(10000, 800 * 2 ** CON.retry++));
+    if (ME) setTimeout(conRefresh, Math.min(10000, 800 * 2 ** CON.retry++));
   };
 }
 function setPhosphor(name) {
@@ -1039,30 +1102,26 @@ function renderConDeck() {
   $('#cw-up').classList.toggle('off', !st.open);
   $('#con-up').textContent = st.open && st.opened ? fmtDur(Date.now() / 1000 - st.opened) : '—';
   $('#con-log').textContent = st.log ? 'logging' : 'no log';
-  $('#con-lamp').innerHTML = !info.authed && info.need_auth ? '<span class="dot warn"></span>locked'
+  $('#con-lamp').innerHTML = live && !isAdmin() ? `<span class="dot ${st.open ? 'on' : 'warn'}"></span>${st.open ? 'live · watch only' : 'waiting for cable'}`
     : live ? `<span class="dot ${st.open ? 'on' : 'warn'}"></span>${st.open ? 'live' : 'waiting for cable'}` : '<span class="dot err"></span>not connected';
   const pj = st.paste, pasting = pj && !pj.done_at;
   $('#c-stoppaste').hidden = !pasting;
   $('#c-pastest').textContent = pasting ? `Pasting line ${pj.done} of ${pj.total}…` : pj && pj.done_at && Date.now() / 1000 - pj.done_at < 8 ? `Pasted ${pj.done} of ${pj.total} lines` : '';
-  for (const id of ['#c-break', '#c-paste']) $(id).disabled = !live || !st.open;
-  for (const b of document.querySelectorAll('#c-macros button')) b.disabled = !live || !st.open;
+  const can = live && st.open && isAdmin();
+  for (const id of ['#c-break', '#c-paste']) $(id).disabled = !can;
+  for (const b of document.querySelectorAll('#c-macros button')) b.disabled = !can;
 }
 function renderConsole() {
   const i = CON.info;
   if (!i) return;
-  $('#c-lock').hidden = !(i.need_auth && !i.authed);
-  $('#con-nopw').hidden = i.need_auth;
-  $('#c-setcard').hidden = $('#c-logcard').hidden = !i.authed;
-  $('#pw-cur-l').hidden = !i.need_auth || i.authed;
-  $('#pw-go').textContent = i.need_auth ? 'Change password' : 'Set password';
-  $('#pw-remove').hidden = $('#pw-logout').hidden = !(i.need_auth && i.authed);
-  if (i.authed) {
+  if (CON.term) CON.term.options.disableStdin = !i.admin;
+  {
     setHTML('#c-macros', (i.macros || []).map(m => `<button class="key" data-cmd="${esc(m.cmd)}" title="${esc(m.cmd)}">${esc(m.label)}</button>`).join(''));
     const ports = [['auto', 'Auto (first USB cable)'], ...i.ports.map(p => [p.path, p.path.replace('/dev/', '') + (p.name ? ' · ' + p.name : '')])];
     if (i.want !== 'auto' && !i.ports.some(p => p.path === i.want)) ports.push([i.want, i.want.replace('/dev/', '') + ' (not plugged in)']);
     setHTML('#cs-port', ports.map(([v, t]) => `<option value="${esc(v)}"${v === i.want ? ' selected' : ''}>${esc(t)}</option>`).join(''));
     setHTML('#cs-baud', i.bauds.map(b => `<option${b === i.baud ? ' selected' : ''}>${b}</option>`).join(''));
-    if (!$('#f-con')._filled) {
+    if (i.admin && !$('#f-con')._filled) {
       $('#cs-delay').value = i.line_delay; $('#cs-telnet').checked = i.telnet; $('#cs-tport').value = i.telnet_port; $('#cs-macros').value = i.macros_text;
       $('#f-con')._filled = true;
     }
@@ -1078,18 +1137,13 @@ $('#c-fminus').onclick = () => setFont(-1);
 $('#c-fplus').onclick = () => setFont(1);
 $('#c-full').onclick = () => { const el = $('#screen'); document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen && el.requestFullscreen().then(() => setTimeout(fitTerm, 100)); };
 document.addEventListener('fullscreenchange', () => setTimeout(fitTerm, 100));
-$('#c-clear').onclick = () => { if (CON.term) CON.term.clear(); conSend({ t: 'clear' }); CON.term && CON.term.focus(); };
+$('#c-clear').onclick = () => { if (CON.term) CON.term.clear(); if (isAdmin()) conSend({ t: 'clear' }); CON.term && CON.term.focus(); };
 $('#c-break').onclick = () => { conSend({ t: 'break' }); CON.term && CON.term.focus(); };
 $('#c-stoppaste').onclick = () => conSend({ t: 'paste_stop' });
 $('#c-macros').onclick = e => { const b = e.target.closest('[data-cmd]'); if (b && !b.disabled) { conSend({ t: 'macro', d: b.dataset.cmd }); CON.term && CON.term.focus(); } };
 $('#c-paste').onclick = () => { $('#pa-text').value = ''; $('#pa-count').textContent = ''; $('#d-paste').showModal(); $('#pa-text').focus(); };
 $('#pa-text').oninput = () => { const n = $('#pa-text').value.split(/\r\n|\r|\n/).filter((l, i, a) => l || i < a.length - 1).length; $('#pa-count').textContent = n ? `${n} line${n === 1 ? '' : 's'}` : ''; };
 $('#d-paste').onclose = () => { if ($('#d-paste').returnValue === 'send' && $('#pa-text').value.trim()) conSend({ t: 'paste', d: $('#pa-text').value }); CON.term && CON.term.focus(); };
-$('#f-login').onsubmit = async e => {
-  e.preventDefault();
-  try { await api('/api/console/login', { password: $('#c-pw').value }); $('#c-pw').value = ''; $('#c-loginerr').hidden = true; $('#f-con')._filled = false; await conRefresh(); CON.term && CON.term.focus(); }
-  catch (err) { $('#c-loginerr').textContent = err.message; $('#c-loginerr').hidden = false; }
-};
 $('#f-con').onsubmit = async e => {
   e.preventDefault();
   try {
@@ -1099,19 +1153,6 @@ $('#f-con').onsubmit = async e => {
   } catch (err) { flash($('#cs-msg'), err.message); }
   conRefresh();
 };
-$('#f-pw').onsubmit = async e => {
-  e.preventDefault();
-  if (!$('#pw-new').value) return flash($('#pw-msg'), 'Type a new password');
-  try { await api('/api/console/password', { current: $('#pw-cur').value, new: $('#pw-new').value }); flash($('#pw-msg'), 'Password saved. Other open consoles must unlock again.', true); $('#pw-cur').value = $('#pw-new').value = ''; }
-  catch (err) { flash($('#pw-msg'), err.message); }
-  conRefresh();
-};
-$('#pw-remove').onclick = async () => {
-  if (!confirm('Remove the console password? Anyone who can open this page could then use the switch console, and the telnet port turns off.')) return;
-  try { await api('/api/console/password', { new: '' }); flash($('#pw-msg'), 'Password removed', true); } catch (err) { flash($('#pw-msg'), err.message); }
-  conRefresh();
-};
-$('#pw-logout').onclick = async () => { await api('/api/console/logout').catch(() => {}); if (CON.ws) CON.ws.close(); conRefresh(); };
 $('#c-logclear').onclick = async () => { if (confirm('Delete all saved console logs (except the one being written)?')) { await api('/api/console/logs/clear').catch(() => {}); conRefresh(); } };
 setInterval(() => { if (view === 'console' && CON.info) { renderConDeck(); } }, 1000);
 setInterval(() => { if (view === 'console' && CON.started) conRefresh(); }, 15000);
@@ -1151,7 +1192,7 @@ function renderWatch() {
   $('#w-scan').textContent = !sc.every ? 'scan off, listening only' : sc.last ? `scan every ${sc.every} s · last ${fmtDur(now - sc.last.t)} ago: ${sc.last.answers} answer${sc.last.answers === 1 ? '' : 's'}` : `scan every ${sc.every} s`;
   setHTML('#wd-dhcp', w.dhcp.map(d => {
     const status = d.lease ? '<span class="chip ok">lease server</span>' : d.trusted ? '<span class="chip ok">trusted</span>' : '<span class="chip bad">rogue</span>';
-    const btn = d.lease ? '' : `<button class="btn ghost" data-trust="${esc(d.id)}" data-remove="${d.trusted ? 1 : ''}">${d.trusted ? 'Untrust' : 'Trust'}</button>`;
+    const btn = d.lease ? '' : `<button class="btn ghost admin-only" data-trust="${esc(d.id)}" data-remove="${d.trusted ? 1 : ''}">${d.trusted ? 'Untrust' : 'Trust'}</button>`;
     return `<tr><td class="mono">${esc(d.id)}${d.relay ? `<div class="sub">via relay ${esc(d.relay)}</div>` : ''}</td><td class="l mono">${esc(d.mac)}</td>
       <td class="l mono">${esc(d.offered || '—')}${d.prefix != null ? '/' + d.prefix : ''}</td><td class="l mono">${esc(d.router || '—')}</td>
       <td class="l mono">${esc((d.dns || []).join(', ') || '—')}</td><td>${ago(d.last)}</td><td class="l">${status}</td><td>${btn}</td></tr>`;
@@ -1163,7 +1204,7 @@ function renderWatch() {
   setHTML('#w-dups', w.conflicts.map(c => `<tr><td class="mono">${esc(c.ip)}</td><td class="l mono">${c.macs.map(esc).join('<br>')}</td><td>${c.n}</td><td>${ago(c.t)}</td></tr>`).join('') || '<tr><td colspan="4" class="sub">None.</td></tr>');
   $('#w-racard').hidden = !w.ra.length;
   setHTML('#w-ra', w.ra.map(r => `<tr><td class="mono">${esc(r.ip)}</td><td class="l mono">${esc(r.mac)}</td><td class="l mono">${esc((r.prefixes || []).join(', ') || '—')}</td><td>${ago(r.last)}</td>
-    <td class="l">${r.trusted ? '<span class="chip ok">trusted</span>' : '<span class="chip warn">unknown</span>'}</td><td><button class="btn ghost" data-trust="${esc(r.mac)}" data-remove="${r.trusted ? 1 : ''}">${r.trusted ? 'Untrust' : 'Trust'}</button></td></tr>`).join(''));
+    <td class="l">${r.trusted ? '<span class="chip ok">trusted</span>' : '<span class="chip warn">unknown</span>'}</td><td><button class="btn ghost admin-only" data-trust="${esc(r.mac)}" data-remove="${r.trusted ? 1 : ''}">${r.trusted ? 'Untrust' : 'Trust'}</button></td></tr>`).join(''));
   setHTML('#w-stp', [['Root bridge', st.root], ['Heard from', st.bridge], ['Root path cost', st.cost], ['Protocol', st.proto], ['Topology changes', st.tc], ['Root changes', st.roots],
     ['Last BPDU', st.seen ? ago(st.seen) : null], ['Gateway MAC', w.gw_mac]]
     .map(([k, v]) => `<div><dt>${k}</dt><dd title="${esc(v ?? '')}">${esc(v ?? '—')}</dd></div>`).join(''));
@@ -1223,14 +1264,14 @@ function renderWake() {
     const wk = h.waking, wakingNow = wk && wk.up_in == null && !h.up;
     const state = wakingNow ? 'waking' : h.up ? 'ready' : h.up === false ? 'off' : '';
     const word = wakingNow ? `waking · ${wk.ago} s` : h.up ? (wk && wk.up_in != null ? `up · booted in ${wk.up_in} s` : 'up') : h.up === false ? 'down' : h.cur_ip ? 'checking' : 'no IP yet';
-    return `<div class="mrow"><input type="checkbox" data-sel="${h.id}"${selected.has(h.id) ? ' checked' : ''} aria-label="Select ${esc(h.name)}">
+    return `<div class="mrow"><input type="checkbox" class="admin-only" data-sel="${h.id}"${selected.has(h.id) ? ' checked' : ''} aria-label="Select ${esc(h.name)}">
       <span class="sled ${state}"></span>
       <div class="who"><b>${esc(h.name)}</b><span class="k">${esc(word)}</span></div>
       <span class="k grp">${esc(h.group || '')}</span>
       <span class="k macc mono">${esc(h.mac)}</span>
       <div class="ipc mono" style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis">${esc(h.cur_ip || '—')}${h.learned ? '<small class="sub" style="display:block">from ARP</small>' : ''}</div>
       <div class="num ping">${h.ms != null ? (h.ms < 10 ? h.ms.toFixed(2) : h.ms.toFixed(0)) : '—'}<small>ms</small></div>
-      <div class="keys"><button class="key" data-wake="${h.id}"${running ? ' disabled' : ''}>Wake</button><button class="key" data-edit="${h.id}">Edit</button><button class="key" data-del="${h.id}" title="Delete">✕</button></div></div>`;
+      <div class="keys admin-only"><button class="key" data-wake="${h.id}"${running ? ' disabled' : ''}>Wake</button><button class="key" data-edit="${h.id}">Edit</button><button class="key" data-del="${h.id}" title="Delete">✕</button></div></div>`;
   }).join('') || '<div class="empty">No machines saved. Add one on the left, import a list, or pick from "Seen on the network".</div>');
   $('#seen-n').textContent = w.seen.length ? w.seen.length : '';
   setHTML('#seen', w.seen.map(x => `<tr><td class="mono">${esc(x.mac)}</td><td class="l mono">${esc(x.ip)}</td><td><button class="btn ghost" data-add="${esc(x.mac)}" data-ip="${esc(x.ip)}">Add</button></td></tr>`).join('')
@@ -1292,14 +1333,18 @@ function plainWarn(port) {
   for (const a of document.querySelectorAll('.httpslink')) a.href = httpsURL(port);
 }
 async function tlsRefresh() {
-  try { TLS = await (await fetch('/api/tls', { cache: 'no-store' })).json(); } catch { return; }
+  try {
+    const r = await fetch('/api/tls', { cache: 'no-store' });
+    if (r.status === 401) return showGate();
+    TLS = await r.json();
+  } catch { return; }
   renderTLS();
 }
 function renderTLS() {
   const t = TLS;
   if (!t) return;
   plainWarn(t.port);
-  const i = t.info, locked = t.need_auth && !t.authed;
+  const i = t.info, locked = !t.admin;
   $('#t-https').className = 'dot ' + (location.protocol === 'https:' ? 'on' : 'warn');
   if (view !== 'https') return;
   $('#tls-locked').hidden = !locked;
@@ -1342,8 +1387,103 @@ $('#f-tlsset').onsubmit = async e => {
   catch (err) { flash($('#ts-msg'), err.message); }
   tlsRefresh();
 };
-tlsRefresh();
-setInterval(() => { if (view === 'https') tlsRefresh(); }, 10000);
+setInterval(() => { if (view === 'https' && ME) tlsRefresh(); }, 10000);
+
+
+// ---------- login, roles ----------
+let ME = null;
+const isAdmin = () => !!ME && ME.role === 'admin';
+function setMe(me) {
+  const changed = !ME || ME.name !== me.name || ME.role !== me.role;
+  ME = me;
+  document.body.classList.toggle('ro', me.role !== 'admin');
+  $('#h-uname').textContent = me.name; $('#h-role').textContent = me.role; $('#h-role').className = 'role ' + me.role;
+  if (changed) { formsFilled = false; for (const f of ['#f-con', '#f-watch', '#f-cert', '#f-tlsset']) $(f)._filled = false; }
+}
+let started = false;
+async function boot() {
+  let a;
+  try { a = await (await fetch('/api/auth', { cache: 'no-store' })).json(); }
+  catch { $('#g-sub').textContent = 'Can’t reach the probe. Retrying…'; return setTimeout(boot, 3000); }
+  plainWarn(443);
+  if (a.setup || !a.user) return showGate(a);
+  setMe(a.user);
+  document.body.classList.remove('gated'); $('#gate').hidden = true;
+  if (!started) { started = true; showView(); }
+  else showView();
+  poll();
+}
+function showGate(a) {
+  ME = null; clearTimeout(timer);
+  if (CON.ws) CON.ws.close();
+  document.body.classList.add('gated'); $('#gate').hidden = false;
+  if (!a) return fetch('/api/auth', { cache: 'no-store' }).then(r => r.json()).then(showGate).catch(() => setTimeout(showGate, 3000));
+  $('#g-err').hidden = true;
+  $('#f-setup').hidden = !a.setup; $('#f-signin').hidden = a.setup;
+  $('#s1-legacy-l').hidden = !a.legacy;
+  $('#g-title').textContent = a.setup ? 'FIRST SETUP' : 'LOG IN';
+  $('#g-sub').textContent = a.setup ? 'No users yet. Create the admin account: it can do everything, and add other users later.' : '';
+  setTimeout(() => (a.setup ? $('#s1-name') : $('#g-name')).focus(), 50);
+}
+const gateErr = m => { $('#g-err').textContent = m; $('#g-err').hidden = false; };
+$('#f-signin').onsubmit = async e => {
+  e.preventDefault();
+  try { await api('/api/auth/login', { name: $('#g-name').value, password: $('#g-pw').value }); $('#g-pw').value = ''; boot(); }
+  catch (err) { gateErr(err.message); $('#g-pw').select(); }
+};
+$('#f-setup').onsubmit = async e => {
+  e.preventDefault();
+  if ($('#s1-pw').value !== $('#s1-pw2').value) return gateErr("The two passwords don't match");
+  try { await api('/api/auth/setup', { name: $('#s1-name').value, password: $('#s1-pw').value, legacy: $('#s1-legacy').value }); boot(); }
+  catch (err) { gateErr(err.message); }
+};
+$('#b-logout').onclick = async () => { await api('/api/auth/logout').catch(() => {}); showGate(); };
+
+// ---------- users tab ----------
+let USERS = [];
+async function usersRefresh() {
+  renderUsers();
+  if (!isAdmin()) return;
+  try { const r = await fetch('/api/users', { cache: 'no-store' }); if (r.ok) USERS = await r.json(); } catch {}
+  renderUsers();
+}
+function renderUsers() {
+  if (!ME) return;
+  $('#me-name').textContent = ME.name; $('#me-role').textContent = ME.role; $('#me-role').className = 'role ' + ME.role;
+  setHTML('#u-list', USERS.map(u => `<tr><td class="mono">${esc(u.name)}${u.name === ME.name ? ' <span class="chip ok">you</span>' : ''}</td>
+    <td class="l"><select data-urole="${esc(u.name)}" aria-label="Role for ${esc(u.name)}"><option value="admin"${u.role === 'admin' ? ' selected' : ''}>admin</option><option value="viewer"${u.role === 'viewer' ? ' selected' : ''}>viewer</option></select></td>
+    <td>${u.last ? ago(u.last) : 'never'}</td><td>${u.sessions}</td>
+    <td><button class="btn ghost" data-upw="${esc(u.name)}">Reset password</button>${u.name === ME.name ? '' : `<button class="btn ghost" data-udel="${esc(u.name)}">Delete</button>`}</td></tr>`).join('')
+    || '<tr><td colspan="5" class="sub">Loading…</td></tr>');
+}
+$('#u-list').onchange = async e => {
+  const sel = e.target.closest('[data-urole]');
+  if (!sel) return;
+  try { await api('/api/users/update', { name: sel.dataset.urole, role: sel.value }); } catch (err) { alert(err.message); }
+  usersRefresh();
+};
+$('#u-list').onclick = async e => {
+  const pw = e.target.closest('[data-upw]'), del = e.target.closest('[data-udel]');
+  try {
+    if (pw) {
+      const v = prompt(`New password for ${pw.dataset.upw} (8 characters or more). They'll be logged out everywhere.`);
+      if (v) { await api('/api/users/update', { name: pw.dataset.upw, password: v }); if (pw.dataset.upw === ME.name) return showGate(); }
+    } else if (del && confirm(`Delete ${del.dataset.udel}? They're logged out at once.`)) await api('/api/users/delete', { name: del.dataset.udel });
+  } catch (err) { alert(err.message); }
+  usersRefresh();
+};
+$('#f-uadd').onsubmit = async e => {
+  e.preventDefault();
+  try { await api('/api/users/add', { name: $('#ua-name').value, role: $('#ua-role').value, password: $('#ua-pw').value }); flash($('#ua-msg'), 'Added', true); $('#ua-name').value = $('#ua-pw').value = ''; }
+  catch (err) { flash($('#ua-msg'), err.message); }
+  usersRefresh();
+};
+$('#f-mypw').onsubmit = async e => {
+  e.preventDefault();
+  if ($('#mp-new').value !== $('#mp-new2').value) return flash($('#mp-msg'), "The new passwords don't match");
+  try { await api('/api/auth/password', { current: $('#mp-cur').value, new: $('#mp-new').value }); flash($('#mp-msg'), 'Password changed. Your other browsers are logged out.', true); $('#mp-cur').value = $('#mp-new').value = $('#mp-new2').value = ''; }
+  catch (err) { flash($('#mp-msg'), err.message); }
+};
 
 // ---------- polling ----------
 let timer = null;
@@ -1351,7 +1491,9 @@ async function poll() {
   clearTimeout(timer);
   try {
     const r = await fetch('/api/state', { cache: 'no-store' });
+    if (r.status === 401) return showGate();
     S = await r.json();
+    if (S.me) setMe(S.me);
     $('#offline').hidden = true;
   } catch (err) {
     $('#offline').hidden = false;
@@ -1360,8 +1502,7 @@ async function poll() {
   if (S) try { render(); } catch (err) { console.error(err, err.stack); }
   timer = setTimeout(poll, S && S.speed.running ? 500 : 1000);
 }
-showView();
-poll();
+boot();
 </script>
 </body>
 </html>
