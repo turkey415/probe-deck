@@ -982,6 +982,16 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
     </div>
   </section>
   <section class="card admin-only">
+    <h2>Add a Headscale server</h2>
+    <form class="form" id="f-hs">
+      <label class="f">Server <span class="sub">Your Headscale's URL. It's saved as its own connection next to your tailnet, so you can switch back and forth.</span>
+        <input type="text" id="hs-url" spellcheck="false" placeholder="https://headscale.example.com"></label>
+      <label class="f">Pre-auth key (optional) <span class="sub">From <code>headscale preauthkeys create</code>. Left empty, a login link shows here instead. Not stored by the page.</span>
+        <input type="password" id="hs-key" autocomplete="off" spellcheck="false"></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Connect</button><span id="hs-msg"></span></div>
+    </form>
+  </section>
+  <section class="card admin-only">
     <h2>Settings</h2>
     <form class="form" id="f-ts">
       <label class="f">Name on the tailnet <span class="sub">The device name, and the start of its MagicDNS name.</span><input type="text" id="tsx-host" spellcheck="false"></label>
@@ -1014,6 +1024,10 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
   <section class="card">
     <h2>This probe on the tailnet <span class="spacer"></span><button class="btn ghost admin-only" id="tsx-cert">Add these names to the HTTPS certificate</button></h2>
     <dl class="kv" id="ts-kv"></dl><span id="tsx-cmsg"></span>
+  </section>
+  <section class="card">
+    <h2>Connections <span class="spacer"></span><span class="sub">one in use at a time · each keeps its own login</span></h2>
+    <div class="tablewrap"><table><tbody id="ts-prof"></tbody></table></div><span id="ts-pmsg"></span>
   </section>
   <section class="card">
     <h2>Devices <span class="spacer"></span><span class="sub" id="ts-psub"></span></h2>
@@ -2689,6 +2703,12 @@ function renderTS() {
     ['IP forwarding', t.forwarding ? 'on' : 'off']].map(([k, v]) => `<div><dt>${k}</dt><dd title="${esc(v || '')}">${esc(v || '—')}</dd></div>`).join('')
     : '<div><dd class="sub">Not connected.</dd></div>');
   $('#tsx-cert').hidden = !run;
+  const host = u => { try { return new URL(u).host; } catch { return u; } };
+  setHTML('#ts-prof', (t.profiles || []).map(p => `<tr><td class="l"><span class="dot ${p.current ? (run ? 'on' : 'warn') : ''}"></span> <b>${esc(p.name || (p.pending ? 'Waiting for login' : '(not logged in yet)'))}</b>
+    ${p.headscale ? `<span class="chip">Headscale</span>` : '<span class="chip ok">Tailscale</span>'}${p.current ? ' <span class="chip ok">in use</span>' : ''}
+    <div class="sub mono">${esc(host(p.control))}${p.user && p.user !== p.name ? ' · ' + esc(p.user) : ''}${p.dns ? ' · ' + esc(p.dns) : ''}</div></td>
+    <td class="admin-only" style="white-space:nowrap">${p.current || !p.id ? '' : `<button class="btn ghost" data-tsswitch="${esc(p.id)}">Switch to</button> <button class="btn ghost" data-tsrm="${esc(p.id)}" data-name="${esc(p.name || host(p.control))}">Remove</button>`}</td></tr>`).join('')
+    || '<tr><td class="sub">No connections yet. Log in, or add a Headscale server.</td></tr>');
   $('#ts-psub').textContent = run ? `${on} online` : '';
   setHTML('#ts-list', run ? peers.map(p => `<tr class="${p.online ? '' : 'dim'}"><td class="l"><span class="dot ${p.online ? 'on' : ''}"></span> <b>${esc(p.name)}</b>${p.exit ? ' <span class="chip">exit node</span>' : ''}<div class="sub mono">${esc(p.dns)}</div></td>
     <td class="mono">${esc(p.ip || '')}</td><td>${esc(p.os || '')}</td><td>${p.online ? (p.direct ? `direct <span class="sub mono">${esc(p.direct)}</span>` : p.active ? 'relay ' + esc(p.relay) : 'idle') : '—'}</td>
@@ -2717,6 +2737,18 @@ $('#tsx-svc').onchange = e => {
   const on = e.target.checked;
   if (!on && (viaTailnet() || !confirm('Stop the Tailscale service, and keep it off after reboots?'))) { e.target.checked = true; return; }
   tsDo({ action: 'service', on }, on ? 'Service started' : 'Service stopped');
+};
+$('#ts-prof').onclick = e => {
+  const sw = e.target.closest('[data-tsswitch]'), rm = e.target.closest('[data-tsrm]');
+  if (sw && !viaTailnet()) tsDo({ action: 'switch', id: sw.dataset.tsswitch }, 'Switching…', '#ts-pmsg');
+  if (rm && confirm(`Remove the saved connection ${rm.dataset.name}? Coming back to it needs a new login.`)) tsDo({ action: 'remove', id: rm.dataset.tsrm }, 'Removed', '#ts-pmsg');
+};
+$('#f-hs').onsubmit = async e => {
+  e.preventDefault();
+  if (viaTailnet()) return;
+  const key = $('#hs-key').value;
+  await tsDo({ action: 'add_server', url: $('#hs-url').value, key }, key ? 'Connecting with the key…' : 'The login link shows at the top in a moment', '#hs-msg');
+  $('#hs-key').value = ''; $('#f-ts')._filled = false;
 };
 $('#tsx-lan').onclick = () => { if (TS && TS.lan) $('#tsx-routes').value = TS.lan; };
 $('#tsx-cert').onclick = () => { if (confirm('Make a new self-signed certificate that also covers the Tailscale name and IP? Browsers warn again until you trust the new one.')) tsDo({ action: 'cert' }, 'New certificate in use. Reload the page and accept it.', '#tsx-cmsg'); };

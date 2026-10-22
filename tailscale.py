@@ -17,6 +17,10 @@ SYSCTL = Path("/etc/sysctl.d/99-tailscale.conf")
 EXIT_ROUTES = ("0.0.0.0/0", "::/0")
 TS_V4 = ipaddress.ip_network("100.64.0.0/10")
 TS_V6 = ipaddress.ip_network("fd7a:115c:a1e0::/48")
+DEFAULT_CONTROL = "https://controlplane.tailscale.com"
+URL_RE = re.compile(r"https?://[A-Za-z0-9.\-]{1,253}(:\d{1,5})?(/[\w.\-/~%]*)?")
+KEY_RE = re.compile(r"[\w\-:]{8,200}")
+PROFILE_RE = re.compile(r"[0-9a-f]{1,16}")
 HOST_RE = re.compile(r"[A-Za-z0-9]([A-Za-z0-9\-]{0,61}[A-Za-z0-9])?")
 
 
@@ -128,8 +132,50 @@ class Tailscale:
                           "os": p.get("OS"), "online": bool(p.get("Online")), "active": bool(p.get("Active")),
                           "direct": p.get("CurAddr") or "", "relay": p.get("Relay") or "", "last_seen": p.get("LastSeen"),
                           "exit": bool(p.get("ExitNodeOption")), "rx": p.get("RxBytes") or 0, "tx": p.get("TxBytes") or 0})
+        out["control_url"] = pr.get("ControlURL") or DEFAULT_CONTROL
+        out["profiles"] = self.profiles()
+        if not any(p["current"] for p in out["profiles"]):
+            # a new connection isn't saved by Tailscale until its login finishes
+            out["profiles"].insert(0, {"id": None, "name": "", "user": "", "dns": "", "control": out["control_url"],
+                                       "headscale": out["control_url"].rstrip("/") != DEFAULT_CONTROL, "current": True, "pending": True})
         out["peers"] = sorted(peers, key=lambda x: (not x["online"], x["name"].lower()))[:200]
         return out
+
+    @staticmethod
+    def profiles():
+        """Saved logins: your tailnet, Headscale servers. One is in use at a time."""
+        try:
+            cur = (api("GET", "profiles/current") or {}).get("ID")
+            lst = api("GET", "profiles/") or []
+        except ValueError:
+            return []
+        out = []
+        for p in lst:
+            url = p.get("ControlURL") or DEFAULT_CONTROL
+            out.append({"id": p.get("ID"), "name": (p.get("NetworkProfile") or {}).get("DisplayName") or p.get("Name") or "",
+                        "user": (p.get("UserProfile") or {}).get("LoginName") or "", "dns": (p.get("NetworkProfile") or {}).get("MagicDNSName") or "",
+                        "control": url, "headscale": url.rstrip("/") != DEFAULT_CONTROL, "current": p.get("ID") == cur})
+        return out
+
+    def add_server(self, url, key):
+        """Log in to another control server (Headscale) as a new saved profile, and switch to it."""
+        url = str(url or "").strip().rstrip("/")
+        if not URL_RE.fullmatch(url):
+            raise ValueError("Server: a URL like https://headscale.example.com")
+        key = str(key or "").strip()
+        if key and not KEY_RE.fullmatch(key):
+            raise ValueError("That doesn't look like a pre-auth key")
+        host = (api("GET", "prefs") or {}).get("Hostname") or socket.gethostname()
+        api("PUT", "profiles/")                      # a fresh, empty profile becomes the current one
+        prefs = api("GET", "prefs") or {}
+        prefs.update(ControlURL=url, WantRunning=True, Hostname=host, LoggedOut=False)
+        prefs.pop("Config", None)
+        opts = {"UpdatePrefs": prefs}
+        if key:
+            opts["AuthKey"] = key
+        api("POST", "start", opts, timeout=20)
+        if not key:
+            api("POST", "login-interactive")
 
     # ---------- changes (admin only) ----------
     def action(self, body):
@@ -158,6 +204,19 @@ class Tailscale:
             return
         if a == "settings":
             return self.settings(body)
+        if a == "add_server":
+            return self.add_server(body.get("url"), body.get("key"))
+        if a in ("switch", "remove"):
+            pid = str(body.get("id") or "")
+            if not PROFILE_RE.fullmatch(pid):
+                raise ValueError("Bad profile")
+            if a == "switch":
+                api("POST", "profiles/" + pid, timeout=15)
+            else:
+                if any(p["current"] and p["id"] == pid for p in self.profiles()):
+                    raise ValueError("Switch to another connection before removing this one")
+                api("DELETE", "profiles/" + pid)
+            return
         raise ValueError("Unknown action")
 
     def settings(self, b):

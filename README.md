@@ -122,6 +122,7 @@ Everything about the network that decides a Counter-Strike match, measured from 
 Install it once on the probe: `curl -fsSL https://tailscale.com/install.sh | sh`. The **Tailscale tab** does the rest:
 - **Status**: on/off, the probe's Tailscale IP and MagicDNS name, the tailnet, the home relay, Tailscale's own health warnings, and every device on the tailnet (online, direct or relayed, last seen, traffic).
 - **On / off** (like `tailscale up` / `down`: off keeps the login), **log in** (the login link shows on the page) and **log out**, and a switch that stops the `tailscaled` service and keeps it off after reboots.
+- **Headscale**: add your Headscale server (its URL, plus a pre-auth key or a login link) and it's saved as its own **connection** next to your tailnet. The Connections list switches between them in one click (Tailscale's profiles, like `tailscale switch`), each keeping its own login, and removes ones you don't need.
 - **Settings**: the device name, use the tailnet's DNS, accept routes, **share LAN subnets** (subnet router, with a "Use this LAN" button), **offer as an exit node** (IP forwarding is turned on for you; approve both in the Tailscale admin console), Tailscale SSH, shields up, automatic updates.
 - **Add the Tailscale name and IP to the HTTPS certificate** with one button, so `https://probe-01.<your-tailnet>.ts.net/` matches the certificate.
 - Viewers can see it; only admins change it. Turning Tailscale off while you're on the page through Tailscale asks first.
@@ -283,7 +284,7 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 | POST | `/api/net/order`, `/api/net/role` | `{ids}`; `{id, port, role: firewall\|cache\|null}` (admin) |
 | POST | `/api/trace` | `{q: IP, MAC or name}` → `{id}` (any user) |
 | GET | `/api/tailscale` | Tailscale status, settings and devices |
-| POST | `/api/tailscale` | `{action: up\|down\|login\|logout\|service\|settings\|cert, ...}` (admin) |
+| POST | `/api/tailscale` | `{action: up\|down\|login\|logout\|service\|settings\|cert\|add_server\|switch\|remove, ...}` (admin) |
 | GET | `/api/cs` | The CS2 tab: servers, Perf-Deck nodes, stats, path, player PCs, lag events, verdict |
 | POST | `/api/cs/scan` | Scan the LAN for game servers now (any user) |
 | GET | `/api/trace/<id>`, `/api/traces` | A trace's steps and result; recent traces |
