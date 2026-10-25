@@ -32,21 +32,29 @@
     $('#lc-wt').classList.toggle('off', !second);
     $('#lc-wt').classList.toggle('alarm', !!(second && (second.error || (second.cache && second.cache.toUpperCase() !== 'HIT'))));
     const srv = (r && r.dns_servers) || [];
-    $('#lc-dns').textContent = srv.length ? 'asked ' + srv.join(', ') : '';
-    setHTML('#lc-head', `<tr><th class="l">Service</th><th class="l">Name</th>${srv.map(s => `<th class="l">via ${esc(s)}</th>`).join('')}</tr>`);
+    const from = (r && r.dns_from) || [];
+    $('#lc-dnsw').textContent = srv.length ? (r.trial ? 'trial of ' : 'asked ') + srv.join(', ') : '';
+    setHTML('#lc-head', `<tr><th class="l">Service</th><th class="l">Name</th>${srv.map((s, i) => `<th class="l">via ${esc(s)}${from[i] ? ` <span class="chip${from[i] === 'trial' ? ' warn' : ''}">${esc(from[i])}</span>` : ''}</th>`).join('')}</tr>`);
     setHTML('#lc-list', r && r.services ? r.services.flatMap(sv => sv.names.map((n, i) => `<tr>${i ? '<td></td>' : `<td class="l"><span class="dot ${sv.cached ? 'on' : r.cache_ip ? 'warn' : ''}"></span> <b>${esc(sv.name)}</b></td>`}`
       + `<td class="l mono">${esc(n.name)}</td>${n.per.map(p => `<td class="l mono">${p.ip ? `<span class="chip ${p.cached ? 'ok' : p.lan ? 'warn' : ''}">${esc(p.ip)}</span>` : `<span class="chip bad">${esc(p.status)}</span>`}</td>`).join('')}</tr>`)).join('')
       : '<tr><td class="sub">Not checked yet.</td></tr>');
     $('#lc-testcard').hidden = !t;
     if (t) setHTML('#lc-test', t.map((f, i) => `<tr><td class="l">${i ? 'Second' : 'First'}</td>${f.error ? `<td colspan="5" class="l bad">${esc(f.error)}</td>`
       : `<td>${f.code}</td><td class="l">${esc(f.cache || '—')}</td><td>${(f.bytes / 1e6).toFixed(1)} MB</td><td>${f.secs} s</td><td>${f.bps ? fmtBps(f.bps) : '—'}</td>`}</tr>`).join(''));
-    if (!$('#f-cache')._filled) { $('#lc-ip').value = d.cache_ip; $('#lc-every').value = d.every; $('#lc-url').value = d.test_url; $('#f-cache')._filled = true; }
+    if (!$('#f-cache')._filled) { $('#lc-ip').value = d.cache_ip; $('#lc-every').value = d.every; $('#lc-url').value = d.test_url; $('#lc-dns').value = d.dns_extra; $('#lc-dhcp').checked = d.dns_dhcp; $('#f-cache')._filled = true; }
+    $('#lc-dhcp').nextElementSibling.querySelector('small').textContent = d.dhcp_dns.length ? `Now: ${d.dhcp_dns.join(', ')}. Untick to check only the ones above.` : 'DHCP gave none.';
   }
   $('#lc-go').addEventListener('click', async () => { try { await api('/api/x/cache/run'); setTimeout(refresh, 400); } catch (e) { flash($('#lc-msg'), e.message); } });
   $('#f-cache').addEventListener('submit', async e => {
     e.preventDefault();
-    try { await api('/api/x/cache/settings', { cache_ip: $('#lc-ip').value, every: +$('#lc-every').value, test_url: $('#lc-url').value }); flash($('#lc-smsg'), 'Saved: checking', true); setTimeout(refresh, 400); }
+    try { await api('/api/x/cache/settings', { cache_ip: $('#lc-ip').value, every: +$('#lc-every').value, test_url: $('#lc-url').value, dns_extra: $('#lc-dns').value, dns_dhcp: $('#lc-dhcp').checked }); flash($('#lc-smsg'), 'Saved: checking', true); setTimeout(refresh, 400); }
     catch (err) { flash($('#lc-smsg'), err.message); }
+  });
+  $('#f-lctry').addEventListener('submit', async e => {
+    e.preventDefault();
+    const v = $('#lc-try').value.trim();
+    if (!v) return flash($('#lc-msg'), 'Type a DNS server');
+    try { await api('/api/x/cache/run', { dns: v }); flash($('#lc-msg'), 'Checking ' + v, true); setTimeout(refresh, 400); } catch (err) { flash($('#lc-msg'), err.message); }
   });
   PAGES.cache = { show: refresh };
   const tick = () => { if (view === 'cache' && ME) refresh(); setTimeout(tick, poll); };

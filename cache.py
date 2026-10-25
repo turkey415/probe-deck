@@ -49,7 +49,7 @@ def dig(server, name):
 class LanCache(App):
     name = "cache"
     HTTP_PORT = 80   # lancache listens on 80 (tests change it)
-    SETTINGS = {"cache_ip": "", "every": 10, "test_url": ""}
+    SETTINGS = {"cache_ip": "", "every": 10, "test_url": "", "dns_extra": "", "dns_dhcp": True}
     LIMITS = {"every": (0, 1440)}
 
     def __init__(self, probe, conf_dir, data_dir):
@@ -57,8 +57,27 @@ class LanCache(App):
         self.result = None
         self.running = False
         self.wake_ev = threading.Event()
+        self.trial = None     # a DNS server typed for one check, not saved
+
+    @staticmethod
+    def parse_dns(text):
+        out = []
+        for part in re.split(r"[,\s]+", str(text or "").strip()):
+            if not part:
+                continue
+            try:
+                ipaddress.ip_address(part)
+            except ValueError:
+                raise ValueError(f"Not a DNS server address: {part[:40]}") from None
+            if part not in out:
+                out.append(part)
+        if len(out) > 6:
+            raise ValueError("Up to 6 DNS servers")
+        return out
 
     def check(self, k, v):
+        if k == "dns_extra":
+            return ", ".join(self.parse_dns(v))
         if k == "cache_ip":
             v = str(v or "").strip()
             if v and not private(v):
@@ -90,11 +109,18 @@ class LanCache(App):
             return
         self.running = True
         t0 = time.time()
-        res = {"t": t0, "dns_servers": list(self.p.net.get("dns") or [])[:3], "services": [], "error": None}
+        trial, self.trial = self.trial, None
+        if trial:
+            servers = [(x, "trial") for x in trial]
+        else:
+            servers = [(x, "DHCP") for x in (self.p.net.get("dns") or [])[:3]] if self.conf["dns_dhcp"] else []
+            servers += [(x, "added") for x in self.parse_dns(self.conf["dns_extra"]) if x not in [y for y, _ in servers]]
+        res = {"t": t0, "dns_servers": [x for x, _ in servers], "dns_from": [w for _, w in servers], "trial": bool(trial),
+               "services": [], "error": None}
         try:
             servers = res["dns_servers"]
             if not servers:
-                raise RuntimeError("The probe has no DNS servers")
+                raise RuntimeError("No DNS servers to ask: DHCP gave none and none are added")
             jobs = [(svc, name, srv) for svc, names in SERVICES for name in names for srv in servers]
             answers = {}
             ths = []
@@ -203,10 +229,15 @@ class LanCache(App):
 
     def get(self, sub, arg, q, user):
         return {"result": self.result, "running": self.running, "cache_ip": self.conf["cache_ip"], "every": self.conf["every"],
-                "test_url": self.conf["test_url"], "now": time.time()}
+                "test_url": self.conf["test_url"], "dns_extra": self.conf["dns_extra"], "dns_dhcp": self.conf["dns_dhcp"],
+                "dhcp_dns": list(self.p.net.get("dns") or [])[:3], "now": time.time()}
 
     def post(self, action, body, user):
         if action == "run":
+            if body.get("dns"):
+                if self.running:
+                    raise ValueError("A check is running: try again in a moment")
+                self.trial = self.parse_dns(body["dns"])
             self.wake_ev.set()
             return {}
         return super().post(action, body, user)

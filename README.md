@@ -129,6 +129,7 @@ For a [lancache](https://lancache.net) (or any cache that works the same way):
 - **DNS:** looks up the download names of Steam, Battle.net, Epic, Riot, EA, Ubisoft, Xbox and Windows Update through **every** DNS server the probe was given, and shows which ones point at the cache. One DNS server that skips the cache is enough to send half the room to the internet.
 - **The cache answers:** lancache's heartbeat (`/lancache-heartbeat`, which says which cache answered), and whether port 443 is open for HTTPS passthrough.
 - **A test file (optional):** paste an `http://` URL from the cache's access log (a Steam chunk is ideal). It's fetched through the cache twice: the first should say **MISS** and the second **HIT**, and the second shows how fast the cache serves.
+- **Other DNS servers:** add up to 6 DNS servers to be checked every time, next to (or instead of) the ones DHCP hands out, or type one in **Try a DNS server** for a one-off check that isn't saved: test a cache's DNS before it goes into the DHCP config. Each column says where the server came from (DHCP, added, trial).
 - The cache's address is found by itself (the LAN address most game names point at), or set it. Checks run every 10 minutes and on **Check now**. The sidebar light is green when every name goes to the cache, amber when some don't, red when the cache doesn't answer.
 
 ### Capture (packets, as .pcap)

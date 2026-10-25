@@ -1546,11 +1546,18 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
       <li>Optional: a test file fetched through the cache twice should go <b>MISS</b> then <b>HIT</b>.</li>
     </ol>
     <div class="row admin-only" style="margin-top:14px;align-items:center"><button class="btn primary" id="lc-go" type="button" style="flex:none">Check now</button><span id="lc-msg"></span></div>
+    <form class="form admin-only" id="f-lctry" style="margin-top:14px">
+      <label class="f">Try a DNS server <span class="sub">One check against just this server, not saved. For a cache's DNS before it goes into DHCP.</span>
+        <input type="text" id="lc-try" placeholder="e.g. 192.168.1.20" spellcheck="false" autocomplete="off"></label>
+      <button class="btn" type="submit" style="align-self:flex-start">Check this server</button>
+    </form>
   </section>
   <section class="card admin-only">
     <h2>Settings</h2>
     <form class="form" id="f-cache">
       <label class="f">Cache address <span class="sub">Leave empty to use the LAN address most game names point at.</span><input type="text" id="lc-ip" placeholder="e.g. 192.168.1.20" spellcheck="false"></label>
+      <label class="f">Also ask these DNS servers <span class="sub">Comma separated, up to 6. Checked every time, next to DHCP's.</span><input type="text" id="lc-dns" placeholder="e.g. 192.168.1.20, 192.168.1.21" spellcheck="false"></label>
+      <label class="chk"><input type="checkbox" id="lc-dhcp"><span>Ask the DNS servers DHCP gave<small>Untick to check only the ones above.</small></span></label>
       <label class="f">Check every (minutes) <span class="sub">0 = only when you press Check now.</span><input type="number" id="lc-every" min="0" max="1440"></label>
       <label class="f">Test file <span class="sub">An http:// URL from the cache's access log (a Steam chunk is ideal). Fetched twice through the cache.</span><input type="text" id="lc-url" placeholder="http://lancache.steamcontent.com/depot/…" spellcheck="false"></label>
       <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="lc-smsg"></span></div>
@@ -1567,7 +1574,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
     </div>
   </section>
   <section class="card">
-    <h2>Game download names <span class="spacer"></span><span class="sub" id="lc-dns"></span></h2>
+    <h2>Game download names <span class="spacer"></span><span class="sub" id="lc-dnsw"></span></h2>
     <div class="tablewrap"><table>
       <thead id="lc-head"></thead>
       <tbody id="lc-list"></tbody>
