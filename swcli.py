@@ -187,17 +187,38 @@ class Session:
             pass
         self.link.close()
 
-    def until_prompt(self, timeout, answer_logins=True):
-        """Read until a CLI prompt. Answers --More--, and Username:/Password: on the console."""
+    def drain(self, quiet=0.4, most=3.0):
+        """Throw away whatever is still waiting (a banner, a prompt the switch printed on connect),
+        so the next prompt read is the answer to the next command and not an old one."""
+        end = time.time() + most
+        while time.time() < end:
+            if not self.link.read(quiet):
+                return
+
+    def until_prompt(self, timeout, answer_logins=True, echo=None):
+        """Read until a CLI prompt. Answers --More--, and Username:/Password: on the console.
+        With echo, only a prompt after the switch echoed that text counts."""
         buf = ""
-        end = time.time() + timeout
+        t0 = time.time()
+        end = t0 + timeout
         tries = 0
+        base = None if echo else 0
         while time.time() < end:
             d = self.link.read(min(1.0, max(0.1, end - time.time())))
             if not d:
+                if base is None and time.time() - t0 > 3:
+                    base = 0   # no echo (some devices don't): take any prompt
                 continue
             buf += d.decode("utf-8", "replace").replace("\r\n", "\n").replace("\r", "\n")
-            tail = buf[-200:]
+            if base is None:
+                k = buf.find(echo)
+                if k < 0:
+                    if time.time() - t0 <= 3:
+                        continue
+                    base = 0
+                else:
+                    base = k + len(echo)
+            tail = buf[base:][-200:]
             if re.search(r"--More--\s*$", tail):
                 buf = re.sub(r"\s*--More--\s*$", "", buf)
                 self.link.write(b" ")
@@ -217,12 +238,14 @@ class Session:
             m = PROMPT.search(tail)
             if m:
                 self.host, self.priv = m.group(1), m.group(2) == "#"
-                return buf
+                return buf[base:]
         raise CLIError("The switch didn't answer (no prompt)" if not buf.strip() else f"No prompt after: {buf.strip()[-80:]}")
 
     def start(self, enable=True):
+        self.drain(0.6, 4)
         self.link.write(b"\r")
         self.until_prompt(20)
+        self.drain(0.3, 1)
         self.enable_said = None
         if enable and not self.priv:
             self.try_enable()
@@ -238,13 +261,22 @@ class Session:
         If it still doesn't work the session carries on at '>': a command that needs '#' says why."""
         tries = [p for p in (self.login.get("enable"), self.login.get("password"), "") if p is not None]
         tries = [p for i, p in enumerate(tries) if p not in tries[:i]]
+        self.drain(0.3, 2)
         self.link.write(b"enable\r")
         buf, said = "", ""
-        end = time.time() + 15
+        t0 = time.time()
+        end = t0 + 15
+        echoed = False
         while time.time() < end:
             d = self.link.read(1).decode("utf-8", "replace").replace("\r\n", "\n").replace("\r", "\n")
             buf += d
             said += d
+            if not echoed:   # the answer starts after the switch echoes "enable"
+                k = buf.find("enable")
+                if k < 0 and time.time() - t0 < 3:
+                    continue
+                buf = buf[k + 6:] if k >= 0 else buf
+                echoed = True
             if re.search(r"Password: ?$", buf):
                 if not tries:
                     self.link.write(b"\x03\r")   # out of guesses: back to the prompt
@@ -275,11 +307,12 @@ class Session:
                 "the console needs no enable password.")
 
     def run(self, cmd, timeout=60):
+        self.drain(0.2, 2)
         self.link.write(cmd.encode() + b"\r")
-        out = self.until_prompt(timeout, answer_logins=False)
+        out = self.until_prompt(timeout, answer_logins=False, echo=cmd[:24])
         lines = out.split("\n")
-        if lines and cmd[:20] in lines[0]:
-            lines = lines[1:]
+        if lines and not lines[0].strip():
+            lines = lines[1:]   # the rest of the echoed line
         if lines and PROMPT.search(lines[-1]):
             lines = lines[:-1]
         text = "\n".join(lines).strip("\n")
