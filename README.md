@@ -2,7 +2,7 @@
 
 A pocket gigabit **network probe** with its own web page. Plug it into any switch port and it is powered by PoE. Within a few seconds the page shows what is on the other end of the cable: which switch and port, which VLAN, whether DHCP, DNS and the internet work, and how fast the port really is.
 
-It also does three other jobs, each on its own tab:
+Every page is in the **sidebar**, grouped (Port, Network, Watch, Event, Switch tools, System), under a **This jack** card that always shows the port, switch, VLAN and link lights. Besides the Overview, the pages are:
 - **Console**: plug a USB console cable into a switch and use its console from the web page (or over telnet).
 - **Watchdog**: catches rogue DHCP servers, IP conflicts, gateway spoofing, broadcast storms, spanning tree changes and rogue IPv6 routers.
 - **Wake**: Wake-on-LAN for every machine in the room, with a staggered "wake all".
@@ -24,6 +24,11 @@ It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same l
 </table>
 
 ## Features
+
+### The sidebar
+- A **This jack** card at the top: the switch port in big amber letters, the switch, VLAN and link speed, lights for link, DHCP, DNS and internet, and how many Perf-Deck stations are heard. It's on every page; click it for the Overview.
+- Pages are grouped in **modules**: Port, Network, Watch, Event, Switch tools and System. Click a module's heading to fold it; the page remembers which are folded. Each module has a light showing the worst state inside it (red when the Watchdog has a problem or a switch port is in trouble, even while folded).
+- On a phone the sidebar slides out from the ☰ button.
 
 ### Port: what is this jack?
 - **Switch, port and VLAN** from **CDP** (Cisco) or **LLDP** (everyone else), e.g. `Gi0/7` on `access-1`. Also shows the switch model, IOS version and management IP.
@@ -119,7 +124,7 @@ Everything about the network that decides a Counter-Strike match, measured from 
 - Limits: a host behind a switch that isn't managed (or doesn't speak CDP) can be traced only to the port that switch is on. The MAC must have been seen in the last ~5 minutes.
 
 ### Power
-The Probe tab's **Power** card shuts the probe down or restarts it, behind the same slide-to-ARM latch as the Tailscale switch. Shut down before pulling the PoE cable: the SD card is safe once the green light on the board stops blinking (about 15 s). After a restart the page waits and reloads by itself.
+The **Settings & power** page (System in the sidebar, admins only) holds the probe's settings and shuts the probe down or restarts it, behind the same slide-to-ARM latch as the Tailscale switch. Shut down before pulling the PoE cable: the SD card is safe once the green light on the board stops blinking (about 15 s). After a restart the page waits and reloads by itself.
 
 ### Tailscale (remote access, optional)
 Install it once on the probe: `curl -fsSL https://tailscale.com/install.sh | sh`. The **Tailscale tab** does the rest:

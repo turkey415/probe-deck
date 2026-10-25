@@ -212,8 +212,49 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 @media (max-width: 760px) { .mrow { grid-template-columns: 22px 12px minmax(0, 1fr) auto; } .mrow .grp, .mrow .macc, .mrow .ipc, .mrow .ping { display: none; } }
 @media (prefers-reduced-motion: reduce) { .sled.waking { animation: none; } }
 
-@media (max-width: 1700px) { #h-pd, #h-link { display: none; } }
-.tabs a { padding: 5px 10px; }
+/* ---------- sidebar: rack modules ---------- */
+.shell { display: grid; grid-template-columns: 262px minmax(0, 1fr); align-items: start; }
+.content { min-width: 0; }
+.side { position: sticky; top: var(--hdr, 57px); height: calc(100vh - var(--hdr, 57px)); overflow-y: auto; scrollbar-width: thin; scrollbar-gutter: stable; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 10px; padding: 14px 12px 18px; background: linear-gradient(180deg, #1e1e1d, #171716); border-right: 1px solid var(--line); }
+.side .dot { width: 7px; height: 7px; background: var(--led-off); }
+.side .dot.on { background: var(--good); box-shadow: 0 0 6px var(--good); }
+.side .dot.warn { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+.side .dot.err { background: var(--crit); box-shadow: 0 0 6px var(--crit); }
+.jack { flex: none; gap: 5px; padding: 12px 14px; text-decoration: none; color: inherit; }
+.jack:hover { border-color: rgba(255, 176, 0, .3); }
+.jack .big-port { font-size: 26px; }
+.jack .lamps { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 2px; }
+.jack .lamp { font-size: 10px; letter-spacing: .12em; gap: 6px; }
+.jack .k.pd { letter-spacing: .06em; text-transform: none; font-size: 11px; }
+.mod { flex: none; background: var(--panel); border: 1px solid rgba(255, 255, 255, .07); border-radius: 9px; overflow: hidden; }
+.mod > button { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 38px; padding: 8px 12px; border: 0; background: transparent; color: var(--text-2); cursor: pointer; text-align: left; }
+.mod > button:hover { color: var(--text); }
+.mod > button svg { flex: none; }
+.mod .mn { flex: 1; font: 600 11px ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; }
+.mod .chev { width: 12px; text-align: center; color: var(--muted); font-size: 11px; transition: transform .15s; }
+.mod.closed .chev { transform: rotate(-90deg); }
+.mod.closed .items { display: none; }
+.mod.has-on > button { color: var(--amber); }
+.mod.closed.has-on > button { background: var(--raised); }
+.items { display: flex; flex-direction: column; gap: 2px; padding: 2px 6px 8px; }
+.items a { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 5px 10px; border: 1px solid transparent; border-radius: 6px; color: var(--text-2); text-decoration: none; font-size: 13px; }
+.items a:hover { color: var(--text); background: rgba(255, 255, 255, .03); }
+.items a.on { color: var(--amber); background: var(--well); border-color: rgba(255, 176, 0, .35); box-shadow: inset 0 0 14px rgba(0, 0, 0, .5); }
+.items a.alert .dot { background: var(--crit); box-shadow: 0 0 6px var(--crit); }
+.items .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.items .badge { font: 700 12px ui-monospace, Menlo, Consolas, monospace; color: #ff7b7b; background: none; box-shadow: none; min-width: 0; height: auto; padding: 0; }
+.items a:focus-visible, .mod > button:focus-visible, .jack:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.side .ver { margin-top: auto; padding: 4px 4px 0; }
+.navbtn, .scrim { display: none; }
+@media (max-width: 960px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .navbtn { display: inline-flex; padding: 6px; }
+  .side { position: fixed; top: 0; left: 0; bottom: 0; height: auto; width: min(290px, 86vw); z-index: 20; transform: translateX(-105%); transition: transform .2s; box-shadow: 8px 0 30px rgba(0, 0, 0, .5); }
+  body.navopen .side { transform: none; }
+  body.navopen .scrim { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, .5); z-index: 19; }
+}
+@media (prefers-reduced-motion: reduce) { .side, .mod .chev { transition: none; } }
 /* ---------- wireless controller AP list ---------- */
 .aplist { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
 .aplist div { background: var(--well); border: 1px solid rgba(255, 255, 255, .06); border-radius: 6px; padding: 6px 10px; display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
@@ -573,30 +614,71 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
   </section>
 </div>
 <header class="top">
+  <button class="btn ghost navbtn ro-ok" id="b-nav" type="button" aria-label="Show the page list" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#212120"/><path d="M9 7h14v9H9z M12 16v5 M16 16v5 M20 16v5 M7 25h18" fill="none" stroke="#ffb000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
     Probe Deck
   </div>
-  <nav class="tabs" aria-label="Views">
-    <a href="#probe" data-view="probe">Probe</a>
-    <a href="#console" data-view="console">Console <span class="dot" id="t-con"></span></a>
-    <a href="#watch" data-view="watch">Watchdog <span class="badge" id="t-watch" hidden></span></a>
-    <a href="#wake" data-view="wake">Wake</a>
-    <a href="#net" data-view="net">Switches <span class="badge" id="t-net" hidden></span></a>
-    <a href="#trace" data-view="trace">Trace</a>
-    <a href="#cs" data-view="cs">CS2 <span class="dot" id="t-cs"></span></a>
-    <a href="#ts" data-view="ts">Tailscale <span class="dot" id="t-ts"></span></a>
-    <a href="#https" data-view="https">HTTPS <span class="dot" id="t-https"></span></a>
-    <a href="#users" data-view="users">Users</a>
-  </nav>
   <span class="pill"><span class="dot" id="h-dot"></span><span id="h-name">connecting…</span></span>
   <span class="spacer"></span>
-  <span class="pill" id="h-link">link —</span>
-  <span class="pill" id="h-pd" title="Perf-Deck stations heard on this network">Perf-Deck —</span>
   <span class="pill" id="h-temp">— °C</span>
   <span class="pill userpill ro-ok" id="h-user"><span id="h-uname">—</span><span class="role" id="h-role"></span><button type="button" id="b-logout">Log out</button></span>
 </header>
 
+<div class="shell">
+<nav class="side ro-ok" id="side" aria-label="Pages">
+  <a class="well jack" href="#probe" title="This jack: open the Overview">
+    <span class="k">This jack</span>
+    <span class="big-port" id="sj-port">—</span>
+    <span class="wsub" id="sj-sub">connecting…</span>
+    <span class="lamps"><span class="lamp"><span class="dot" id="sj-link"></span>Link</span><span class="lamp"><span class="dot" id="sj-dhcp"></span>DHCP</span><span class="lamp"><span class="dot" id="sj-dns"></span>DNS</span><span class="lamp"><span class="dot" id="sj-net"></span>Net</span></span>
+    <span class="k pd" id="sj-pd"></span>
+  </a>
+  <div class="mod" data-mod="port">
+    <button type="button" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v11H5z M8 16v3 M12 16v3 M16 16v3"/></svg><span class="mn">Port</span><span class="dot" data-lamp></span><span class="chev" aria-hidden="true">▾</span></button>
+    <div class="items">
+      <a href="#probe" data-view="probe"><span class="dot" id="t-probe"></span><span class="nm">Overview</span></a>
+    </div>
+  </div>
+  <div class="mod" data-mod="net">
+    <button type="button" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v5H4z M4 14h16v5H4z M7.5 7.5h.01 M7.5 16.5h.01 M12 10v4"/></svg><span class="mn">Network</span><span class="dot" data-lamp></span><span class="chev" aria-hidden="true">▾</span></button>
+    <div class="items">
+      <a href="#net" data-view="net"><span class="dot"></span><span class="nm">Switches</span><span class="badge" id="t-net" hidden></span></a>
+      <a href="#trace" data-view="trace"><span class="dot"></span><span class="nm">Trace</span></a>
+    </div>
+  </div>
+  <div class="mod" data-mod="watch">
+    <button type="button" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z M12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z"/></svg><span class="mn">Watch</span><span class="dot" data-lamp></span><span class="chev" aria-hidden="true">▾</span></button>
+    <div class="items">
+      <a href="#watch" data-view="watch"><span class="dot"></span><span class="nm">Watchdog</span><span class="badge" id="t-watch" hidden></span></a>
+    </div>
+  </div>
+  <div class="mod" data-mod="event">
+    <button type="button" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5 M12 16v5 M3 12h5 M16 12h5 M12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10z"/></svg><span class="mn">Event</span><span class="dot" data-lamp></span><span class="chev" aria-hidden="true">▾</span></button>
+    <div class="items">
+      <a href="#cs" data-view="cs"><span class="dot" id="t-cs"></span><span class="nm">CS2</span></a>
+      <a href="#wake" data-view="wake"><span class="dot"></span><span class="nm">Wake</span></a>
+    </div>
+  </div>
+  <div class="mod" data-mod="tools">
+    <button type="button" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3z M7 10l3 2-3 2 M12 15h5"/></svg><span class="mn">Switch tools</span><span class="dot" data-lamp></span><span class="chev" aria-hidden="true">▾</span></button>
+    <div class="items">
+      <a href="#console" data-view="console"><span class="dot" id="t-con"></span><span class="nm">Console</span></a>
+    </div>
+  </div>
+  <div class="mod" data-mod="sys">
+    <button type="button" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9 M17 7h3 M4 17h3 M11 17h9 M15 5v4 M9 15v4"/></svg><span class="mn">System</span><span class="dot" data-lamp></span><span class="chev" aria-hidden="true">▾</span></button>
+    <div class="items">
+      <a href="#settings" data-view="settings" class="admin-only"><span class="dot"></span><span class="nm">Settings &amp; power</span></a>
+      <a href="#ts" data-view="ts"><span class="dot" id="t-ts"></span><span class="nm">Tailscale</span></a>
+      <a href="#https" data-view="https"><span class="dot" id="t-https"></span><span class="nm">HTTPS</span></a>
+      <a href="#users" data-view="users"><span class="dot"></span><span class="nm">Users</span></a>
+    </div>
+  </div>
+  <span class="k ver" id="sj-ver"></span>
+</nav>
+<div class="scrim" id="scrim"></div>
+<div class="content">
 <div class="banner" id="offline" hidden style="margin:14px 20px 0">Lost contact with the probe. Retrying…</div>
 <div class="layout view" id="v-probe">
 <aside>
@@ -621,24 +703,6 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
     </form>
   </section>
 
-  <section class="card admin-only">
-    <h2>Settings</h2>
-    <form class="form" id="f-set">
-      <label class="f">Probe name <input type="text" id="s-name" maxlength="32"></label>
-      <label class="f">Ping targets <span class="sub">Label=host, comma separated. GW = the gateway. Up to 8.</span>
-        <input type="text" id="s-targets" spellcheck="false"></label>
-      <div class="row">
-        <label class="f">Check every (s) <input type="number" id="s-interval" min="10" max="600"></label>
-        <label class="f">DNS test name <input type="text" id="s-dns" spellcheck="false"></label>
-      </div>
-      <label class="f">Internet check URL <input type="text" id="s-http" spellcheck="false"></label>
-      <label class="chk"><input type="checkbox" id="s-listen"><span>Run an iperf3 server<small>Port 5201, so Perf-Deck and others can test the probe.</small></span></label>
-      <label class="chk"><input type="checkbox" id="s-perfdeck"><span>Show up in Perf-Deck<small>Answers Perf-Deck discovery on UDP 52010.</small></span></label>
-      <label class="chk"><input type="checkbox" id="s-bcast"><span>Broadcast probe results<small>UDP 47474, for the T-Displays and PorkChopCheck.</small></span></label>
-      <label class="chk"><input type="checkbox" id="s-renew"><span>New DHCP lease when re-plugged<small>Moving to another jack (or VLAN) gets a fresh address.</small></span></label>
-      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="s-msg"></span></div>
-    </form>
-  </section>
 
   <section class="card">
     <h2>Probe</h2>
@@ -649,20 +713,6 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
     </div>
   </section>
 
-  <section class="card admin-only">
-    <h2>Power</h2>
-    <div class="form">
-      <div class="arm-sw" id="pw-sw">
-        <button class="arm-latch" id="pw-latch" type="button" aria-label="Slide the safety latch to arm the power buttons"><span class="arm-safe">SAFE</span><span class="arm-arm">ARM</span><span class="arm-knob"></span></button>
-        <div class="arm-row">
-          <button class="arm-korry pw-off" data-pw="poweroff" type="button" aria-label="Shut the probe down"><span class="arm-face"><span class="k1">ARMED</span><span class="k2">SHUT DOWN</span></span></button>
-          <button class="arm-korry pw-re" data-pw="reboot" type="button" aria-label="Restart the probe"><span class="arm-face"><span class="k1">ARMED</span><span class="k2">RESTART</span></span></button>
-        </div>
-      </div>
-      <span class="sub">Slide to ARM, then press. Shut down before unplugging: the SD card is safe once the green light on the board stops blinking (about 15 s).</span>
-      <span id="pw-msg"></span>
-    </div>
-  </section>
 </aside>
 
 <main>
@@ -1169,6 +1219,43 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
 </main>
 </div>
 
+<!-- ================= SETTINGS & POWER ================= -->
+<div class="view" id="v-settings" hidden style="padding:18px 20px 40px;max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:18px">
+  <section class="card admin-only">
+    <h2>Settings</h2>
+    <form class="form" id="f-set">
+      <label class="f">Probe name <input type="text" id="s-name" maxlength="32"></label>
+      <label class="f">Ping targets <span class="sub">Label=host, comma separated. GW = the gateway. Up to 8.</span>
+        <input type="text" id="s-targets" spellcheck="false"></label>
+      <div class="row">
+        <label class="f">Check every (s) <input type="number" id="s-interval" min="10" max="600"></label>
+        <label class="f">DNS test name <input type="text" id="s-dns" spellcheck="false"></label>
+      </div>
+      <label class="f">Internet check URL <input type="text" id="s-http" spellcheck="false"></label>
+      <label class="chk"><input type="checkbox" id="s-listen"><span>Run an iperf3 server<small>Port 5201, so Perf-Deck and others can test the probe.</small></span></label>
+      <label class="chk"><input type="checkbox" id="s-perfdeck"><span>Show up in Perf-Deck<small>Answers Perf-Deck discovery on UDP 52010.</small></span></label>
+      <label class="chk"><input type="checkbox" id="s-bcast"><span>Broadcast probe results<small>UDP 47474, for the T-Displays and PorkChopCheck.</small></span></label>
+      <label class="chk"><input type="checkbox" id="s-renew"><span>New DHCP lease when re-plugged<small>Moving to another jack (or VLAN) gets a fresh address.</small></span></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="s-msg"></span></div>
+    </form>
+  </section>
+
+  <section class="card admin-only">
+    <h2>Power</h2>
+    <div class="form">
+      <div class="arm-sw" id="pw-sw">
+        <button class="arm-latch" id="pw-latch" type="button" aria-label="Slide the safety latch to arm the power buttons"><span class="arm-safe">SAFE</span><span class="arm-arm">ARM</span><span class="arm-knob"></span></button>
+        <div class="arm-row">
+          <button class="arm-korry pw-off" data-pw="poweroff" type="button" aria-label="Shut the probe down"><span class="arm-face"><span class="k1">ARMED</span><span class="k2">SHUT DOWN</span></span></button>
+          <button class="arm-korry pw-re" data-pw="reboot" type="button" aria-label="Restart the probe"><span class="arm-face"><span class="k1">ARMED</span><span class="k2">RESTART</span></span></button>
+        </div>
+      </div>
+      <span class="sub">Slide to ARM, then press. Shut down before unplugging: the SD card is safe once the green light on the board stops blinking (about 15 s).</span>
+      <span id="pw-msg"></span>
+    </div>
+  </section>
+</div>
+
 <!-- ================= USERS ================= -->
 <div class="layout view" id="v-users" hidden>
 <aside>
@@ -1210,6 +1297,8 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
   </section>
 </main>
 </div>
+</div><!-- .content -->
+</div><!-- .shell -->
 <script>
 'use strict';
 const $ = (s, r = document) => r.querySelector(s);
@@ -1336,8 +1425,7 @@ function render() {
   const s = S, nb = s.neighbor, net = s.net || {}, lk = s.link, now = s.now;
   $('#h-dot').className = 'dot ' + (lk.up ? 'on' : 'err');
   $('#h-name').textContent = `${s.conf.name} · ${net.ip || 'no address'}`;
-  $('#h-link').innerHTML = lk.up ? `<span class="dot on"></span>${net.speed ? net.speed + ' Mbps' : 'up'} ${esc(net.duplex || '')}` : '<span class="dot err"></span>no link';
-  $('#h-pd').innerHTML = `<span class="dot ${s.peers.length ? 'on' : ''}"></span>Perf-Deck · ${s.peers.length} station${s.peers.length === 1 ? '' : 's'}`;
+  renderJack(s);
   const t = s.system.temp;
   $('#h-temp').innerHTML = `<span class="dot ${t == null ? '' : t >= 75 ? 'err' : t >= 60 ? 'warn' : 'on'}"></span>${t == null ? '—' : t.toFixed(0)} °C`;
 
@@ -1535,13 +1623,15 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 
 // ---------- views (tabs) ----------
-const VIEWS = ['probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users'];
+const VIEWS = ['probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
   view = VIEWS.includes(v.split('?')[0]) ? v.split('?')[0] : 'probe';
   for (const n of VIEWS) $('#v-' + n).hidden = n !== view;
-  for (const a of document.querySelectorAll('.tabs a')) a.classList.toggle('on', a.dataset.view === view);
+  for (const a of document.querySelectorAll('.side .items a')) a.classList.toggle('on', a.dataset.view === view);
+  for (const m of document.querySelectorAll('.side .mod')) m.classList.toggle('has-on', !!m.querySelector('a.on'));
+  navOpen(false);
   if (view === 'console') conInit().then(fitTerm);
   if (view === 'https') tlsRefresh();
   if (view === 'users') usersRefresh();
@@ -1558,6 +1648,63 @@ const ago = t => t ? fmtDur(Date.now() / 1000 - t) + ' ago' : '—';
 const setHTML = (id, h) => { const el = $(id); if (el._h !== h) { el.innerHTML = h; el._h = h; } };
 const flash = (el, text, ok) => { el.className = ok ? 'ok-msg' : 'msg'; el.textContent = text; clearTimeout(el._t); el._t = setTimeout(() => { el.textContent = ''; el.className = ''; }, 5000); };
 const shortMac = m => m || '—';
+
+// ---------- sidebar ----------
+const ifShort = p => (p || '?').replace(/^GigabitEthernet/, 'Gi').replace(/^FastEthernet/, 'Fa').replace(/^TenGigabitEthernet/, 'Te');
+function renderJack(s) {
+  const nb = s.neighbor, net = s.net || {}, lk = s.link, ck = s.checks || {};
+  $('#sj-port').textContent = nb ? ifShort(nb.port) : '—';
+  $('#sj-port').title = nb ? nb.port || '' : '';
+  $('.jack').classList.toggle('off', !nb);
+  $('#sj-sub').textContent = nb
+    ? [nb.switch || 'unknown switch', nb.vlan ? 'VLAN ' + nb.vlan : '', lk.up && net.speed ? net.speed + ' ' + (net.duplex || '') : ''].filter(Boolean).join(' · ')
+    : lk.up ? 'Waiting for CDP / LLDP' : 'Not plugged in';
+  const dns = ck.dns && ck.dns.length ? (ck.dns.every(r => r.ok) ? 'on' : ck.dns.some(r => r.ok) ? 'warn' : 'err') : '';
+  $('#sj-link').className = 'dot ' + (lk.up ? 'on' : 'err');
+  $('#sj-dhcp').className = 'dot ' + (!lk.up ? '' : net.ip ? 'on' : 'warn');
+  $('#sj-dns').className = 'dot ' + (lk.up ? dns : '');
+  $('#sj-net').className = 'dot ' + (lk.up && ck.http ? lampClass(ck.http.ok) : '');
+  $('#sj-pd').textContent = `Perf-Deck · ${s.peers.length} station${s.peers.length === 1 ? '' : 's'}`;
+  $('#sj-ver').textContent = `${s.conf.name} · ${s.system.version || ''}`;
+  $('#t-probe').className = 'dot ' + (lk.up ? 'on' : 'err');
+}
+// each module's lamp shows the worst light inside it; a shown badge counts as red
+function navLamps() {
+  for (const m of document.querySelectorAll('.side .mod')) {
+    let worst = 0;
+    for (const a of m.querySelectorAll('.items a')) {
+      const b = a.querySelector('.badge');
+      const alert = !!b && !b.hidden && !!b.textContent.trim() && b.textContent.trim() !== '0';
+      a.classList.toggle('alert', alert);
+      const d = a.querySelector('.dot').classList;
+      worst = Math.max(worst, alert || d.contains('err') ? 3 : d.contains('warn') ? 2 : d.contains('on') ? 1 : 0);
+    }
+    m.querySelector('[data-lamp]').className = 'dot ' + ['', 'on', 'warn', 'err'][worst];
+  }
+}
+setInterval(navLamps, 1000);
+let navClosed;
+try { navClosed = new Set(JSON.parse(lsGet('pd-nav-closed', '[]'))); } catch { navClosed = new Set(); }
+for (const m of document.querySelectorAll('.side .mod')) {
+  const btn = m.querySelector('button'), id = m.dataset.mod;
+  const set = closed => { m.classList.toggle('closed', closed); btn.setAttribute('aria-expanded', String(!closed)); };
+  set(navClosed.has(id));
+  btn.addEventListener('click', () => {
+    const closed = !m.classList.contains('closed');
+    set(closed);
+    closed ? navClosed.add(id) : navClosed.delete(id);
+    lsSet('pd-nav-closed', JSON.stringify([...navClosed]));
+  });
+}
+function navOpen(open) {
+  document.body.classList.toggle('navopen', open);
+  $('#b-nav').setAttribute('aria-expanded', String(open));
+}
+$('#b-nav').addEventListener('click', () => navOpen(!document.body.classList.contains('navopen')));
+$('#scrim').addEventListener('click', () => navOpen(false));
+addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('navopen')) navOpen(false); });
+// keep the sidebar just under the sticky header
+{ const hdr = $('header.top'); new ResizeObserver(() => document.documentElement.style.setProperty('--hdr', hdr.offsetHeight + 'px')).observe(hdr); }
 
 // ---------- console ----------
 const CON = { info: null, st: null, term: null, fit: null, ws: null, retry: 0, started: false };
