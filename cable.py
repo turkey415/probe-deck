@@ -56,7 +56,7 @@ class CableTest(App):
         super().__init__(probe, conf_dir, data_dir)
         self.hist_file = self.dir / "history.json"
         self.history = load_json(self.hist_file, [])[-HIST_MAX:]
-        self.run = None
+        self.run = dict(self.history[-1], running=False, log=[]) if self.history else None   # the last test, after a restart too
 
     def own_port(self):
         nb = self.p.neighbor or {}

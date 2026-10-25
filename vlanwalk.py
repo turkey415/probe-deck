@@ -156,7 +156,7 @@ class VlanWalk(App):
         super().__init__(probe, conf_dir, data_dir)
         self.hist_file = self.dir / "history.json"
         self.history = load_json(self.hist_file, [])[-HIST_MAX:]
-        self.walk = None
+        self.walk = self.history[-1] if self.history else None   # the last walk, after a restart too
         self.stop = False
 
     def iface(self):
