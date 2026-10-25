@@ -136,6 +136,8 @@ class Console:
         self.rx_total = 0
         self.last_rx = 0.0
         self.paste = None
+        self.taps = set()                 # queues for swcli jobs reading the switch's answers
+        self.job_lock = threading.Lock()  # one swcli job on the cable at a time
         self.auth = None                  # set by the server: users for the telnet login
         self.reopen = threading.Event()
         self.tel_sock = None
@@ -259,6 +261,9 @@ class Console:
                 del self.scroll[: len(self.scroll) - SCROLL_MAX]
             for c in self.clients:
                 c.put(bytes(data))
+            if log:
+                for q in self.taps:
+                    q.put(bytes(data))
         if log and self.log:
             try:
                 if self.log.tell() < LOG_MAX:
@@ -277,6 +282,16 @@ class Console:
                 return True
             except Exception:
                 return False
+
+    def tap(self):
+        q = queue.Queue()
+        with self.lock:
+            self.taps.add(q)
+        return q
+
+    def untap(self, q):
+        with self.lock:
+            self.taps.discard(q)
 
     def send_break(self):
         s = self.ser

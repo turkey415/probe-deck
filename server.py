@@ -37,8 +37,11 @@ import tls as tls_mod
 import wake as wake_mod
 import watchdog as watch_mod
 import ws as ws_mod
+import appbase
+import logs as logs_mod
+import swcli as swcli_mod
 
-__version__ = "0.16.0"
+__version__ = "0.17.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -80,6 +83,8 @@ OPEN_POST = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
 ANY_USER_POST = ("/api/auth/password", "/api/trace", "/api/cs/scan")          # viewers may change their own password and run traces  # the displays poll this over plain HTTP (an ESP32 can't check a self-signed cert)
 VENDOR = {"xterm.js": "text/javascript", "xterm.css": "text/css", "addon-fit.js": "text/javascript", "us-map.json": "application/json"}
 
+APP_RE = re.compile(r"/api/x/([a-z]+)(?:/([\w.\-]+))?(?:/([\w.\-]+))?")
+WEB_RE = re.compile(r"/web/([a-z0-9_\-]+\.(js|css))")
 HOST_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.\-:]{0,252}")
 
 
@@ -143,6 +148,8 @@ class Probe:
         self.speed_proc = None
         self.wake_ev = threading.Event()
         self.watch = self.wake = self.console = self.tls = self.auth = self.netmap = self.cs = None
+        self.logins = None
+        self.apps = {}                               # add-on pages by name (see appbase.py)
         DATA.mkdir(parents=True, exist_ok=True)
         try:
             self.history = json.loads((DATA / "history.json").read_text())[-HISTORY_MAX:]
@@ -709,6 +716,12 @@ class Probe:
 
     def on_alert(self, ev):
         """Watchdog problems go out at once, as their own message (the displays ignore apps they don't know)."""
+        for a in list(self.apps.values()):
+            if hasattr(a, "on_alert"):
+                try:
+                    a.on_alert(ev)
+                except Exception as e:  # an add-on must never stop the alert
+                    print(f"{a.name} on_alert: {e}", flush=True)
         bc = self.net.get("broadcast")
         if bc and self.conf["broadcast"] and self.link["up"]:
             msg = {"app": "probe-alert", "v": 1, "id": self.id, "name": self.conf["name"], "ip": self.net.get("ip"),
@@ -750,7 +763,17 @@ class Probe:
                 "watch": self.watch.snapshot() if self.watch else None,
                 "wol": self.wake.snapshot() if self.wake else None,
                 "console": self.console.status() if self.console else None,
+                "apps": self.app_status(),
             }
+
+    def app_status(self):
+        out = {}
+        for k, a in list(self.apps.items()):
+            try:
+                out[k] = a.status()
+            except Exception:
+                out[k] = None
+        return out
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -805,12 +828,14 @@ class Handler(BaseHTTPRequestHandler):
     def gate(self, path, post):
         """Sets self.user. Answers 401/403 and returns False when this request isn't allowed."""
         self.user = self.probe.auth.user(self.headers)
-        if (OPEN_POST if post else OPEN_GET).count(path) or (not post and path.startswith("/vendor/")):
+        if (OPEN_POST if post else OPEN_GET).count(path) or (not post and path.startswith(("/vendor/", "/web/"))):
             return True
         if not self.user:
             self.send_body(401, {"error": "log in first", "login": True})
             return False
-        if post and self.user["role"] != "admin" and path not in ANY_USER_POST:
+        m = APP_RE.fullmatch(path) if post else None
+        app = self.probe.apps.get(m.group(1)) if m else None
+        if post and self.user["role"] != "admin" and path not in ANY_USER_POST and not (app and m.group(2) in app.VIEWER_POST):
             self.send_body(403, {"error": "viewers can't change things"})
             return False
         return True
@@ -863,6 +888,23 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_body(404, {"error": "no such log"})
             return self.send_body(200, f.read_bytes(), "text/plain; charset=utf-8",
                                   [("Content-Disposition", f'attachment; filename="{f.name}"')])
+        if path.startswith("/web/"):
+            m = WEB_RE.fullmatch(path)
+            f = ROOT / "web" / m.group(1) if m else None
+            if not f or not f.is_file():
+                return self.send_body(404, {"error": "not found"})
+            return self.send_body(200, f.read_bytes(), "text/javascript" if m.group(2) == "js" else "text/css")
+        m = APP_RE.fullmatch(path)
+        if m and m.group(1) in p.apps:
+            from urllib.parse import parse_qs
+            q = {k: v[-1] for k, v in parse_qs(self.path.partition("?")[2]).items()}
+            try:
+                out = p.apps[m.group(1)].get(m.group(2), m.group(3), q, self.user)
+            except ValueError as e:
+                return self.send_body(404 if str(e) == "not found" else 400, {"error": str(e)})
+            if isinstance(out, appbase.Reply):
+                return self.send_body(out.code, out.body, out.ctype, out.headers)
+            return self.send_body(200, out)
         if path == "/ws/console":
             # A WebSocket has no CORS: without these checks any web page could type into the switch.
             if not self.same_origin():
@@ -882,6 +924,17 @@ class Handler(BaseHTTPRequestHandler):
         if not self.gate(self.path.split("?")[0], True):
             return
         headers = []
+        m = APP_RE.fullmatch(self.path.split("?")[0])
+        app = self.probe.apps.get(m.group(1)) if m else None
+        if app and m.group(2) in app.RAW_POST:  # uploads: the body is the file, not JSON
+            from urllib.parse import parse_qs
+            q = {k: v[-1] for k, v in parse_qs(self.path.partition("?")[2]).items()}
+            try:
+                out = app.raw(m.group(2), self.rfile, int(self.headers.get("Content-Length") or 0), q, self.user)
+                return self.send_body(200, {"ok": True, **(out or {})})
+            except (ValueError, OSError) as e:
+                self.close_connection = True
+                return self.send_body(400, {"error": str(e)})
         try:
             n = int(self.headers.get("Content-Length") or 0)
             body = json.loads(self.rfile.read(min(n, 2 << 20)) or b"{}") if n else {}
@@ -968,6 +1021,13 @@ class Handler(BaseHTTPRequestHandler):
                     p.ts.action(body)
             elif path == "/api/cs/scan":
                 threading.Thread(target=p.cs.scan, daemon=True).start()
+            elif app:
+                try:
+                    reply.update(app.post(m.group(2), body, self.user) or {})
+                except (ValueError, TypeError):
+                    raise
+                except Exception as e:  # an add-on's surprise becomes a message on the page
+                    raise ValueError(f"{type(e).__name__}: {e}") from None
             elif path == "/api/trace":
                 reply["id"] = p.netmap.start_trace(body.get("q"), self.user["name"])
             # ----- console -----
@@ -1045,6 +1105,9 @@ class TLSServer(ThreadingHTTPServer):
         super().finish_request(request, client_address)
 
 
+APPS = [swcli_mod.CliApp, logs_mod.SwitchLogs]
+
+
 def main():
     global IFACE, DATA, CONF, HTTPS_PORT
     ap = argparse.ArgumentParser(description="Probe Deck")
@@ -1068,6 +1131,13 @@ def main():
     probe.cs = cs_mod.CS(probe)
     probe.ts = ts_mod.Tailscale(probe)
     probe.tls = tls_mod.TLS(probe, CONF.parent)
+    probe.logins = swcli_mod.Logins(CONF.parent)
+    for cls in APPS:
+        try:
+            addon = cls(probe, CONF.parent, DATA) if issubclass(cls, appbase.App) else cls(probe)
+            probe.apps[addon.name] = addon
+        except Exception as e:  # one broken add-on shouldn't take the probe down
+            print(f"{cls.__name__} didn't start: {e}", flush=True)
     if HTTPS_PORT:
         probe.tls.ensure()
         tsrv = TLSServer((a.listen, HTTPS_PORT), Handler, probe.tls)
@@ -1077,6 +1147,9 @@ def main():
         threading.Thread(target=fn, daemon=True).start()
     probe.start_udp()
     probe.watch.start()
+    for addon in probe.apps.values():
+        if hasattr(addon, "start"):
+            threading.Thread(target=addon.start, daemon=True).start()
     srv = ThreadingHTTPServer((a.listen, a.port), Handler)
     srv.daemon_threads = True
     print(f"Probe Deck {__version__} on http://{a.listen}:{a.port}", flush=True)

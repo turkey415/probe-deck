@@ -85,6 +85,13 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - **DTP**: says when the port could be talked into a trunk.
 - An **event list** of everything above. Warnings also go out at once on UDP 47474 as an `app: "probe-alert"` message (the displays ignore it; PorkChopCheck can use it), and the probe message gets an `alerts` count.
 
+### Switch logs (syslog from the switches)
+- The probe is a **syslog receiver** (UDP 514). The page shows the lines to paste into each switch (`logging host <probe>`, `logging trap informational`, timestamps and `logging origin-id hostname`).
+- Cisco messages are split into their code (`%LINK-3-UPDOWN`) and text, coloured by severity, and named by switch (from the message, the Switches page, or the probe's own neighbor).
+- **Last hour** readouts (messages, errors, switches sending), messages per minute, and a list you can filter by severity, switch and text. Tick **Watchdog and CS2 events too** to see everything on one timeline: "why did seat 14 lag at 8:42?"
+- Kept 14 days (one file per day in `/var/lib/probe-deck/logs/`, written every 5 s to spare the SD card); download any day as text. A sender is capped at 200 messages a second.
+- The sidebar shows how many errors (severity 0–3) came in the last hour.
+
 ### Wake (Wake-on-LAN)
 - Save machines with a name, MAC, optional IP and a **group** (a row of seats). Add them by hand, **import** a list (`name, MAC, IP, group` or a CSV), or pick from **Seen on the network** (MACs the watchdog heard in ARP).
 - **Wake all**, wake a group, or wake the ones you tick. Machines wake **2 s apart** by default, so 30 PCs don't all draw power in the same second.

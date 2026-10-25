@@ -588,6 +588,21 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
 .userpill button:hover { color: var(--text); }
 .role { font: 600 9.5px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--amber); }
 .role.viewer { color: #8fb8ff; }
+/* ---------- add-on pages: shared bits ---------- */
+.filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.filters select, .filters input[type=text] { width: auto; flex: 1 1 170px; }
+.filters label.chk { flex: none; }
+pre.cfg { margin: 0; font: 12.5px/1.6 ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; color: #9ff0ae; background: #0b0b0a; border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 8px; padding: 10px 14px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; }
+.loglist { max-height: 640px; }
+.loglist .ev { grid-template-columns: 76px 12px 120px minmax(0, 1fr); }
+.loglist .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); font-size: 12.5px; }
+.loglist .code { font: 600 11.5px ui-monospace, Menlo, Consolas, monospace; color: var(--amber); margin-right: 8px; }
+.loglist .src-watchdog .who, .loglist .src-cs .who { color: #8fb8ff; }
+@media (max-width: 760px) { .loglist .ev { grid-template-columns: 60px 12px minmax(0, 1fr); } .loglist .who { display: none; } }
+.vsplit { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 18px; }
+.steps { margin: 0; padding-left: 18px; color: var(--text-2); font-size: 13px; line-height: 1.7; }
+td.wrap { white-space: normal; }
 </style>
 </head>
 <body class="gated">
@@ -651,6 +666,7 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
     <button type="button" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z M12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z"/></svg><span class="mn">Watch</span><span class="dot" data-lamp></span><span class="chev" aria-hidden="true">▾</span></button>
     <div class="items">
       <a href="#watch" data-view="watch"><span class="dot"></span><span class="nm">Watchdog</span><span class="badge" id="t-watch" hidden></span></a>
+      <a href="#logs" data-view="logs"><span class="dot" id="t-logs"></span><span class="nm">Switch logs</span><span class="badge" id="tb-logs" hidden></span></a>
     </div>
   </div>
   <div class="mod" data-mod="event">
@@ -1297,6 +1313,55 @@ body.gated > :not(.gate):not(dialog) { visibility: hidden; }
   </section>
 </main>
 </div>
+<!-- ================= SWITCH LOGS ================= -->
+<div class="layout view" id="v-logs" hidden>
+<aside>
+  <section class="card">
+    <h2>Receiver <span class="spacer"></span><span class="lamp" id="lg-lamp"></span></h2>
+    <p class="sub" style="margin:0 0 10px">Point each switch's logs at the probe. Paste this into the switch, in <code>configure terminal</code>:</p>
+    <pre class="cfg" id="lg-cfg"></pre>
+    <div class="row" style="align-items:center;margin-top:10px"><button class="btn ro-ok" id="lg-copy" type="button" style="flex:none">Copy</button><span id="lg-copymsg"></span></div>
+    <p class="sub" style="margin:10px 0 0">The last line puts the switch's name in each message. The probe also knows switches by their address from the Switches page.</p>
+  </section>
+  <section class="card admin-only">
+    <h2>Settings</h2>
+    <form class="form" id="f-logs">
+      <label class="chk"><input type="checkbox" id="lg-on"><span>Receive switch logs<small>Syslog over UDP from any switch.</small></span></label>
+      <div class="row">
+        <label class="f">UDP port <input type="number" id="lg-port" min="1" max="65535"></label>
+        <label class="f">Keep (days) <input type="number" id="lg-keep" min="1" max="365"></label>
+      </div>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><button class="btn" type="button" id="lg-clear" style="flex:none">Clear all logs</button><span id="lg-msg"></span></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Switches sending</h2>
+    <div class="tablewrap"><table><thead><tr><th>Switch</th><th>Messages</th><th>Worst</th><th>Last</th></tr></thead><tbody id="lg-senders"></tbody></table></div>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2>Switch logs <span class="spacer"></span><span class="lamp" id="lg-last"></span></h2>
+    <div class="wells">
+      <div class="well" id="lg-hourw"><span class="k">Last hour</span><div id="lg-hour"></div><span class="un">messages</span></div>
+      <div class="well" id="lg-errw"><span class="k">Errors</span><div id="lg-errs"></div><span class="un">severity 0–3 · last hour</span></div>
+      <div class="well" id="lg-nsww"><span class="k">Switches</span><div id="lg-nsw"></div><span class="un">sending today</span></div>
+    </div>
+  </section>
+  <section class="card"><h2>Messages per minute <span class="spacer"></span><span class="sub">last hour</span></h2><div class="legend" id="lg-lg"></div><div class="chart" id="lg-chart"></div></section>
+  <section class="card">
+    <h2>Messages <span class="spacer"></span><select id="lg-day" class="ro-ok" style="width:auto"></select><a class="btn ghost ro-ok" id="lg-dl" href="#">Download</a></h2>
+    <div class="filters">
+      <select id="lg-sev" class="ro-ok"><option value="7">Everything</option><option value="5">Notices and worse</option><option value="4">Warnings and worse</option><option value="3">Errors and worse</option></select>
+      <select id="lg-host" class="ro-ok"><option value="">All switches</option></select>
+      <input type="text" id="lg-q" class="ro-ok" placeholder="Search, e.g. Gi0/7 or UPDOWN" spellcheck="false">
+      <label class="chk ro-ok"><input type="checkbox" id="lg-merge" class="ro-ok"><span>Watchdog and CS2 events too</span></label>
+    </div>
+    <div class="evlist loglist" id="lg-list"></div>
+  </section>
+</main>
+</div>
+
 </div><!-- .content -->
 </div><!-- .shell -->
 <script>
@@ -1426,6 +1491,11 @@ function render() {
   $('#h-dot').className = 'dot ' + (lk.up ? 'on' : 'err');
   $('#h-name').textContent = `${s.conf.name} · ${net.ip || 'no address'}`;
   renderJack(s);
+  for (const [k, a] of Object.entries(s.apps || {})) {
+    const d = $('#t-' + k), b = $('#tb-' + k);
+    if (d) d.className = 'dot ' + ((a && a.dot) || '');
+    if (b) { b.hidden = !(a && a.badge); b.textContent = (a && a.badge) || ''; }
+  }
   const t = s.system.temp;
   $('#h-temp').innerHTML = `<span class="dot ${t == null ? '' : t >= 75 ? 'err' : t >= 60 ? 'warn' : 'on'}"></span>${t == null ? '—' : t.toFixed(0)} °C`;
 
@@ -1623,7 +1693,8 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 
 // ---------- views (tabs) ----------
-const VIEWS = ['probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
+const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
+const VIEWS = ['logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -1639,6 +1710,7 @@ function showView() {
   if (view === 'trace') traceInit();
   if (view === 'cs') csRefresh();
   if (view === 'ts') tsRefresh();
+  if (PAGES[view] && ME) PAGES[view].show();
   if (S) render();
 }
 addEventListener('hashchange', showView);
@@ -3215,5 +3287,7 @@ async function poll() {
 }
 boot();
 </script>
+<!-- add-on pages -->
+<script src="/web/logs.js"></script>
 </body>
 </html>
