@@ -9,12 +9,16 @@ Each record gets a verdict: good, check or bad, with the reasons.
 import csv
 import io
 import json
+import socket
+import subprocess
+import sys
 import urllib.error
 import urllib.request
 import re
 import statistics
 import threading
 import time
+import urllib.parse
 import uuid
 from collections import Counter
 
@@ -36,7 +40,8 @@ def next_label(label):
 class Survey(App):
     name = "survey"
     SETTINGS = {"armed": False, "next": "A1", "title": "Survey", "speed_to": "", "speed_port": 5201,
-                "gxl_url": "", "gxl_key": ""}  # GXL event server and its agent key, for Send to GXL
+                "gxl_url": "", "gxl_key": "",  # GXL event server and its agent key, for Send to GXL
+                "gxl_report": True}            # and check in with GXL like a PC agent, so it is placed at its seat
     LIMITS = {"speed_port": (1, 65535)}
 
     def __init__(self, probe, conf_dir, data_dir):
@@ -48,6 +53,7 @@ class Survey(App):
         self.busy = False
         self.ip_at = {}     # plug -> when the address was there (checks before that don't count)
         self.sent = None    # the last Send to GXL: when, and what GXL said
+        self.gxl = {"next": 0.0, "seat": None, "error": "", "at": None, "testing": False}  # checking in with GXL
 
     def check(self, k, v):
         if k in ("next", "title"):
@@ -84,6 +90,11 @@ class Survey(App):
                 self.tick()
             except Exception as e:
                 self.state["step"] = f"error: {e}"[:120]
+            if self.conf["gxl_report"] and self.conf["gxl_url"] and self.conf["gxl_key"] and time.time() >= self.gxl["next"]:
+                try:
+                    self.check_in()
+                except Exception as e:  # GXL down or unreachable: try again in a minute
+                    self.gxl.update(error=str(e)[:160], next=time.time() + 60)
 
     def plug_id(self):
         lk = self.p.link
@@ -266,9 +277,78 @@ class Survey(App):
             return Reply(buf.getvalue().encode(), "text/csv; charset=utf-8", f"{name}.csv")
         conf = {k: self.conf[k] for k in self.SETTINGS if k != "gxl_key"}  # the key never goes back to the page
         conf["gxl_key_set"] = bool(self.conf["gxl_key"])
-        return {"records": recs, "conf": conf, "state": dict(self.state), "busy": self.busy, "sent": self.sent,
+        return {"records": recs, "conf": conf, "state": dict(self.state), "busy": self.busy, "sent": self.sent, "gxl": dict(self.gxl),
                 "now": time.time(), "jack": {"switch": (self.p.neighbor or {}).get("switch"), "port": (self.p.neighbor or {}).get("port")},
                 "archives": sorted((f.stem for f in self.dir.glob("archive-*.json")), reverse=True)[:20]}
+
+    # ---------- checking in with GXL as an agent ----------
+    def _gxl(self, path, body):
+        req = urllib.request.Request(f"{self.conf['gxl_url']}{path}", data=json.dumps(body).encode(), method="POST",
+                                     headers={"Content-Type": "application/json", "Authorization": f"Agent {self.conf['gxl_key']}"})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as res:
+                raw = res.read()
+        except urllib.error.HTTPError as e:
+            raise ValueError("GXL does not know that agent key" if e.code == 401 else f"GXL said {e.code}") from None
+        except (urllib.error.URLError, OSError) as e:
+            raise ValueError(f"Could not reach GXL: {getattr(e, 'reason', e)}") from None
+        return json.loads(raw) if raw else {}
+
+    def uid(self):
+        return "probedeck-" + re.sub(r"[^0-9a-f]", "", (self.p.net.get("mac") or socket.gethostname()).lower())[:40]
+
+    def check_in(self):
+        """What a GXL agent reports: address, MAC, the switch port it sees, gateway and DNS. GXL puts the
+        probe at the seat on that port, so the traffic map shows its connections there."""
+        net, nb, ck = dict(self.p.net), dict(self.p.neighbor or {}), dict(self.p.checks)
+        pings = [x for x in self.gw_pings(time.time() - 60 - SETTLE / 2)]
+        ok = [x for x in pings if x is not None]
+        body = {
+            "agent_uid": self.uid(), "hostname": socket.gethostname()[:120], "os": "Probe Deck",
+            "version": str(getattr(sys.modules.get("__main__"), "__version__", ""))[:20],
+            "nic": {"name": self.p.watch.iface if getattr(self.p, "watch", None) else "eth0", "mac": net.get("mac"), "ip": net.get("ip"),
+                    "gateway": net.get("gateway"), "link_mbps": net.get("speed") or None,
+                    "duplex": net.get("duplex") if net.get("duplex") in ("full", "half") else None},
+            "neighbor": {"switch": nb["switch"][:120], "port": nb["port"][:80]} if nb.get("switch") and nb.get("port") else None,
+            "checks": {"gateway_ping_ms": round(statistics.mean(ok), 2) if ok else None,
+                       "gateway_loss_pct": round(100 * (len(pings) - len(ok)) / len(pings)) if pings else None,
+                       "dns_ok": all(d["ok"] for d in ck.get("dns") or []) if ck.get("dns") else None},
+        }
+        reply = self._gxl("/agent/report", body)
+        self.gxl.update(seat=reply.get("seat"), error="", at=time.time(),
+                        next=time.time() + max(5, min(300, int(reply.get("interval_seconds") or 60))))
+        task = reply.get("task")
+        if task and task.get("kind", "throughput") == "throughput" and not self.gxl["testing"]:
+            self.gxl["testing"] = True
+            threading.Thread(target=self.run_gxl_test, args=(task,), daemon=True).start()
+
+    def run_gxl_test(self, task):
+        """GXL asked for a speed test to its own iperf3: download, then upload, as its PC agents do."""
+        host = urllib.parse.urlsplit(self.conf["gxl_url"]).hostname
+        out = {"agent_uid": self.uid(), "task_id": task["id"]}
+        try:
+            res = {}
+            for down in (True, False):
+                cmd = ["iperf3", "-c", host, "-p", str(int(task["port"])), "-t", str(int(task["seconds"])), "-J", "--connect-timeout", "3000"]
+                p = subprocess.run(cmd + (["-R"] if down else []), capture_output=True, text=True, timeout=int(task["seconds"]) + 20)
+                d = json.loads(p.stdout or "{}")
+                if d.get("error"):
+                    raise ValueError(f"iperf3: {d['error']}"[:200])
+                end = d.get("end") or {}
+                bps = (end.get("sum_received") or {}).get("bits_per_second")
+                if bps is None:
+                    raise ValueError("iperf3 gave no result")
+                res["down_mbps" if down else "up_mbps"] = round(bps / 1e6, 1)
+                if not down:
+                    res["retransmits"] = (end.get("sum_sent") or {}).get("retransmits")
+            out.update(res, error="")
+        except (ValueError, OSError, subprocess.TimeoutExpired) as e:
+            out["error"] = str(e)[:200] or "The speed test failed"
+        try:
+            self._gxl("/agent/result", out)
+        finally:
+            self.gxl["testing"] = False
+            self.gxl["next"] = 0  # report again now, so GXL hands out the next test
 
     def send_gxl(self):
         """Sends every seat's latest record to the GXL event server. GXL only updates seats it has."""

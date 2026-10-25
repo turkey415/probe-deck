@@ -45,10 +45,12 @@
     if (c.speed_to && !opts.some(o => o[0] === c.speed_to)) opts.push([c.speed_to, c.speed_to]);
     const html = opts.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('');
     if ($('#sv-speed')._h !== html) { const keep = $('#sv-speed')._filled ? $('#sv-speed').value : c.speed_to; $('#sv-speed').innerHTML = html; $('#sv-speed')._h = html; $('#sv-speed').value = keep; }
-    if (!$('#f-survey')._filled) { $('#sv-title').value = c.title; $('#sv-next').value = c.next; $('#sv-speed').value = c.speed_to; $('#sv-speed')._filled = true; $('#sv-gxl').value = c.gxl_url; $('#f-survey')._filled = true; }
+    if (!$('#f-survey')._filled) { $('#sv-title').value = c.title; $('#sv-next').value = c.next; $('#sv-speed').value = c.speed_to; $('#sv-speed')._filled = true; $('#sv-gxl').value = c.gxl_url; $('#sv-gxlrep').checked = c.gxl_report; $('#f-survey')._filled = true; }
     else if (document.activeElement !== $('#sv-next')) $('#sv-next').value = c.next;
     $('#sv-gxlkey').placeholder = c.gxl_key_set ? 'saved (type to change)' : 'from GXL › Seats › agent key';
     $('#sv-send').disabled = !c.gxl_url || !c.gxl_key_set || !recs.length;
+    const g = d.gxl || {};
+    $('#sv-gxlstat').textContent = !c.gxl_report || !c.gxl_url || !c.gxl_key_set ? '' : g.error ? `GXL: ${g.error}` : g.at ? `In GXL at seat ${g.seat || '— (no seat on this port yet)'} · checked in ${fmtWhen(g.at)}` : 'Checking in with GXL…';
     const s = d.sent;
     $('#sv-sent').textContent = s ? `Sent ${fmtWhen(s.t)}: ${s.updated} seats updated in GXL${s.unknown.length ? `; not on GXL's chart: ${s.unknown.slice(0, 12).join(', ')}${s.unknown.length > 12 ? '…' : ''}` : ''}.` : '';
   }
@@ -57,7 +59,7 @@
     const sp = $('#sv-speed').value, peer = ((S && S.peers) || []).find(p => p.ip === sp);
     try {
       await api('/api/x/survey/settings', { title: $('#sv-title').value, next: $('#sv-next').value, speed_to: sp, speed_port: peer && peer.port ? peer.port : 5201,
-        gxl_url: $('#sv-gxl').value, gxl_key: $('#sv-gxlkey').value });
+        gxl_url: $('#sv-gxl').value, gxl_key: $('#sv-gxlkey').value, gxl_report: $('#sv-gxlrep').checked });
       $('#sv-gxlkey').value = ''; flash($('#sv-smsg'), 'Saved', true); refresh();
     }
     catch (err) { flash($('#sv-smsg'), err.message); }
