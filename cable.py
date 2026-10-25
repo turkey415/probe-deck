@@ -93,13 +93,29 @@ class CableTest(App):
             r["log"].append([round(time.time() - r["t"], 1), s])
         try:
             step(f"logging in to {t['name']}")
-            with swcli.open_session(self.p, target) as s:
-                out = s.run(f"test cable-diagnostics tdr interface {port}", 30)
-                if re.search(r"not supported|Invalid|failed", out, re.I):
-                    raise swcli.CLIError(out.strip().splitlines()[-1][:120])
+            name = None
+            try:
+                with swcli.open_session(self.p, target) as s:
+                    name = s.host
+                    out = s.run(f"test cable-diagnostics tdr interface {port}", 30)
+            except swcli.CLIError as e:
+                # SSH can't get into enable mode: if the console cable is on this same switch, use that instead
+                if target.get("console") or "enable mode" not in str(e) or not (self.p.console and self.p.console.ser):
+                    raise
+                step("no enable mode over SSH: trying the console cable")
+                ctarget = {"console": True, "login": target["login"]}
+                with swcli.open_session(self.p, ctarget) as s:
+                    if (s.host or "").lower() != (name or "").lower():
+                        raise swcli.CLIError(f"{e} (The console cable is on {s.host or 'another switch'}, not this one.)") from None
+                    out = s.run(f"test cable-diagnostics tdr interface {port}", 30)
+                target = ctarget
+                r["via"] = "console"
+                step(f"on the console cable of {s.host}")
+            if re.search(r"not supported|failed", out, re.I):
+                raise swcli.CLIError(out.strip().splitlines()[-1][:120])
             step("TDR started: the port's link drops for a few seconds")
             time.sleep(4)
-            if r["mine"]:
+            if r["mine"] and not target.get("console"):
                 step("waiting for the probe's link to come back")
                 end = time.time() + 60
                 while time.time() < end and not self.p.link["up"]:

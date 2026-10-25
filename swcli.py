@@ -175,6 +175,7 @@ class Session:
         self.login = login
         self.host = None
         self.priv = False
+        self.enable_said = None
 
     def __enter__(self):
         return self
@@ -222,30 +223,56 @@ class Session:
     def start(self, enable=True):
         self.link.write(b"\r")
         self.until_prompt(20)
+        self.enable_said = None
         if enable and not self.priv:
-            self.link.write(b"enable\r")
-            end = time.time() + 10
-            buf = ""
-            while time.time() < end:
-                buf += self.link.read(1).decode("utf-8", "replace")
-                if re.search(r"Password: ?$", buf):
-                    if not self.login.get("enable"):
-                        raise CLIError("The switch wants an enable secret: add it to the switch login")
-                    self.link.write(self.login["enable"].encode() + b"\r")
-                    buf = ""
-                elif PROMPT.search(buf.replace("\r", "\n")[-120:]):
-                    break
-            m = PROMPT.search(buf.replace("\r", "\n")[-120:])
-            if m:
-                self.host, self.priv = m.group(1), m.group(2) == "#"
-            if not self.priv:
-                raise CLIError("Couldn't get into enable mode (wrong enable secret?)")
+            self.try_enable()
         self.run("terminal length 0", 10)
         try:
             self.run("terminal width 0", 10)
         except CLIError:
             pass  # some IOS versions want 24-512
         return self
+
+    def try_enable(self):
+        """enable, answering a password prompt with: the enable secret, then the login password, then nothing.
+        If it still doesn't work the session carries on at '>': a command that needs '#' says why."""
+        tries = [p for p in (self.login.get("enable"), self.login.get("password"), "") if p is not None]
+        tries = [p for i, p in enumerate(tries) if p not in tries[:i]]
+        self.link.write(b"enable\r")
+        buf, said = "", ""
+        end = time.time() + 15
+        while time.time() < end:
+            d = self.link.read(1).decode("utf-8", "replace").replace("\r\n", "\n").replace("\r", "\n")
+            buf += d
+            said += d
+            if re.search(r"Password: ?$", buf):
+                if not tries:
+                    self.link.write(b"\x03\r")   # out of guesses: back to the prompt
+                    buf = ""
+                    continue
+                self.link.write(tries.pop(0).encode() + b"\r")
+                buf = ""
+            elif PROMPT.search(buf[-120:]):
+                break
+        m = PROMPT.search(buf[-120:])
+        if m:
+            self.host, self.priv = m.group(1), m.group(2) == "#"
+        if not self.priv:
+            lines = [ln.strip() for ln in said.split("\n") if ln.strip().startswith("%")]
+            self.enable_said = lines[-1] if lines else None
+
+    def why_not_enable(self):
+        said = self.enable_said or ""
+        if "No password set" in said:
+            head = ("The switch has no enable password, and IOS won't let a remote (SSH/telnet) login into enable mode "
+                    "without one (% No password set).")
+        elif said:
+            head = f"The switch didn't let the login into enable mode ({said})."
+        else:
+            head = "The login lands at '>' and couldn't get into enable mode."
+        return (head + " Fix it on the switch with one of: 'username <user> privilege 15' (the login then lands at #), "
+                "or 'enable secret <password>' (and add it to the login here). Or pick 'Console cable' as the switch: "
+                "the console needs no enable password.")
 
     def run(self, cmd, timeout=60):
         self.link.write(cmd.encode() + b"\r")
@@ -256,8 +283,11 @@ class Session:
         if lines and PROMPT.search(lines[-1]):
             lines = lines[:-1]
         text = "\n".join(lines).strip("\n")
-        if re.match(r"\s*% (Invalid|Incomplete|Ambiguous)", text):
-            raise CLIError(f"The switch didn't take '{cmd}': {text.strip()[:100]}")
+        bad = re.search(r"^\s*% (Invalid|Incomplete|Ambiguous|Authorization failed|Command authorization).*$", text, re.M)
+        if bad:
+            if not self.priv and cmd not in ("terminal length 0", "terminal width 0"):
+                raise CLIError(f"'{cmd}' needs enable mode. " + self.why_not_enable())
+            raise CLIError(f"The switch didn't take '{cmd}': {bad.group(0).strip()[:100]}")
         return text
 
 

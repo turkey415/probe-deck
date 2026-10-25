@@ -94,7 +94,8 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - Runs the switch's own **TDR** test (`test cable-diagnostics tdr`) on any port, over SSH or the console cable, and reads back **each pair**: Normal, Open, Short or Impedance mismatch, and **how many metres** from the switch. **This jack** fills in the probe's own switch and port.
 - A plain verdict: "All four pairs are normal", "Pair C is open about 7 m from the switch", "Every pair is open about 30 m away: nothing is plugged in at the far end". At 100 Mbps the two unused pairs may say *Not completed*, and that's fine. A gigabit jack where the probe only links at 100 Mbps gets a hint that a pair is probably bad.
 - TDR drops the port's link for a few seconds. On the probe's own jack the test starts in one login, waits for the link to come back, and reads the result in a second one.
-- Uses the switch login from the Configs page. The last 50 results are kept.
+- Uses the switch login from the Configs page, or one typed on the form. The last 50 results are kept.
+- **Enable mode:** a login that lands at `>` tries `enable` with the saved enable secret, then the login password, then an empty password. A switch with **no enable password** refuses `enable` over SSH (`% No password set`): then, if the probe's console cable is on that same switch (same hostname), the test runs over the cable instead, which needs no enable password and doesn't lose its link during TDR. Otherwise the page says what to change: `username <user> privilege 15`, or an `enable secret`.
 
 ### VLAN walk (does every VLAN on this trunk work?)
 - Plug the probe into a **trunk** port and list the VLANs (`10,20,30-35`, up to 64; a button offers the switch's own VLAN list when the Switches page reads that switch).
