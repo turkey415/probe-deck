@@ -101,6 +101,7 @@ class Watchdog:
                     "seen": None, "proto": None, "roots": 0}
         self.ra = {}                          # src ipv6 -> info
         self.dtp = None
+        self.ignore_xids = set()
         self.scan = {"xid": None, "sent": None, "answers": 0, "last": None, "count": 0}
         self.gw_mac = None
         self.pkts = 0
@@ -278,6 +279,8 @@ class Watchdog:
         if len(d) < 240 or d[236:240] != b"\x63\x82\x53\x63":
             return
         xid = struct.unpack("!I", d[4:8])[0]
+        if xid in self.ignore_xids:  # the VLAN walk's own DHCP on other VLANs: not a rogue server
+            return
         yiaddr, giaddr = ip_s(d[16:20]), ip_s(d[24:28])
         opts, i = {}, 240
         while i < len(d) and d[i] != 255:

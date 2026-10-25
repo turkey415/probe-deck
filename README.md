@@ -93,6 +93,12 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - TDR drops the port's link for a few seconds. On the probe's own jack the test starts in one login, waits for the link to come back, and reads the result in a second one.
 - Uses the switch login from the Configs page. The last 50 results are kept.
 
+### VLAN walk (does every VLAN on this trunk work?)
+- Plug the probe into a **trunk** port and list the VLANs (`10,20,30-35`, up to 64; a button offers the switch's own VLAN list when the Switches page reads that switch).
+- For each VLAN the probe makes a tagged interface and gets a **real DHCP lease** (Discover, Offer, Request, Ack), then, from that address, **pings the gateway**, asks **each DNS server** it was given, and fetches the **internet check** URL. Then it releases the lease and removes the interface.
+- A table shows, per VLAN: how long DHCP took (and the relay, if any), the address and DHCP server, gateway replies and latency, each DNS server, and the internet check. Missing pieces (no router or DNS handed out) are called out.
+- Each test VLAN gets its own routing table, so the probe's own address and traffic don't move. The Watchdog ignores the walk's DHCP, so the other VLANs' servers don't show up as rogue. On an access port nothing answers, and the page says the port probably isn't a trunk.
+
 ### Host scan (who is on this subnet?)
 - Sends one small packet to every address on the probe's subnet (up to a /22), then reads the probe's ARP table: anything that answered ARP is a host, **even with its firewall up**. Hosts the Watchdog heard in the last 10 minutes count too.
 - For each host: IP, MAC and **maker** (from the IEEE lists, so `Cisco`, `Ubiquiti`, `Raspberry Pi`…; phones with a private MAC say so), **names** from reverse DNS, NetBIOS (Windows PCs) and mDNS, and which of a few **TCP ports** are open (22, 80, 443, 445, 3389, 5201, 8080, 9100, 27015 by default; change the list).

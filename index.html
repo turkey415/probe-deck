@@ -665,6 +665,7 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
       <a href="#probe" data-view="probe"><span class="dot" id="t-probe"></span><span class="nm">Overview</span></a>
       <a href="#speed" data-view="speed"><span class="dot" id="t-speed"></span><span class="nm">Speed test</span><span class="badge" id="tb-speed" hidden></span></a>
       <a href="#cable" data-view="cable"><span class="dot" id="t-cable"></span><span class="nm">Cable test</span><span class="badge" id="tb-cable" hidden></span></a>
+      <a href="#vlans" data-view="vlans"><span class="dot" id="t-vlans"></span><span class="nm">VLAN walk</span><span class="badge" id="tb-vlans" hidden></span></a>
     </div>
   </div>
   <div class="mod" data-mod="net">
@@ -1705,6 +1706,53 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
 </main>
 </div>
 
+<!-- ================= VLAN WALK ================= -->
+<div class="layout view" id="v-vlans" hidden>
+<aside>
+  <section class="card admin-only">
+    <h2>Walk the VLANs</h2>
+    <form class="form" id="f-vlans">
+      <label class="f">VLANs <span class="sub">Comma separated, ranges allowed. Up to 64.</span><input type="text" id="vw-list" placeholder="e.g. 10,20,30-35" spellcheck="false" autocomplete="off"></label>
+      <div class="peers" id="vw-hint"></div>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" id="vw-go" style="flex:none">Start the walk</button><button class="btn danger" type="button" id="vw-stop" style="flex:none" hidden>Stop</button></div>
+      <div class="msg" id="vw-err" hidden></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>How it works</h2>
+    <ul class="steps">
+      <li>Plug the probe into a <b>trunk</b> port. For each VLAN it sends tagged frames and gets a real DHCP lease.</li>
+      <li>From that address it pings the VLAN's gateway, asks its DNS servers and fetches the internet check URL, then releases the lease.</li>
+      <li>The probe's own address and traffic stay as they are. On an access port no VLAN answers.</li>
+      <li id="vw-port"></li>
+    </ul>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2>VLAN walk <span class="spacer"></span><span class="lamp" id="vw-lamp"></span></h2>
+    <div class="wells">
+      <div class="well"><span class="k">VLANs</span><div id="vw-n"></div><span class="un" id="vw-n2">walked</span></div>
+      <div class="well" id="vw-wok"><span class="k">Passed</span><div id="vw-ok"></div><span class="un">every test</span></div>
+      <div class="well" id="vw-wnd"><span class="k">No DHCP</span><div id="vw-nd"></div><span class="un">VLANs</span></div>
+      <div class="well" id="vw-wf"><span class="k">Problems</span><div id="vw-bad"></div><span class="un">gateway, DNS or internet</span></div>
+    </div>
+    <div class="wsub" id="vw-sum" style="white-space:normal"></div>
+  </section>
+  <section class="card">
+    <h2>Results <span class="spacer"></span><span class="sub" id="vw-when"></span></h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>VLAN</th><th class="l">DHCP</th><th class="l">Address</th><th class="l">Gateway</th><th class="l">DNS</th><th class="l">Internet</th></tr></thead>
+      <tbody id="vw-list-t"></tbody>
+    </table></div>
+  </section>
+  <section class="card">
+    <h2>Earlier walks</h2>
+    <div class="tablewrap"><table><thead><tr><th>When</th><th class="l">Port</th><th>VLANs</th><th>Passed</th><th>No DHCP</th></tr></thead><tbody id="vw-hist"></tbody></table></div>
+  </section>
+</main>
+</div>
+
 </div><!-- .content -->
 </div><!-- .shell -->
 <script>
@@ -2037,7 +2085,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 // ---------- views (tabs) ----------
 const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
-const VIEWS = ['cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
+const VIEWS = ['vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -3631,6 +3679,7 @@ async function poll() {
 boot();
 </script>
 <!-- add-on pages -->
+<script src="/web/vlans.js"></script>
 <script src="/web/cable.js"></script>
 <script src="/web/configs.js"></script>
 <script src="/web/files.js"></script>
