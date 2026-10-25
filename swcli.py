@@ -86,16 +86,18 @@ class Logins:
 
 # ---------- transports: write bytes, read what has arrived ----------
 class SSHLink:
+    PORT = 22   # tests change it
+
     def __init__(self, host, login, timeout=12):
         if not paramiko:
             raise CLIError("python3-paramiko isn't installed on the probe (apt install python3-paramiko)")
         if not login.get("user"):
-            raise CLIError("Set the switch login first (Switches page, Switch login)")
+            raise CLIError("Set the switch login first (Configs page, Switch login)")
         self.cli = paramiko.SSHClient()
         # Switches get new keys after a reload or upgrade, and this is a LAN tool: take the key as offered.
         self.cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
-            self.cli.connect(host, username=login["user"], password=login.get("password") or None, look_for_keys=False,
+            self.cli.connect(host, port=self.PORT, username=login["user"], password=login.get("password") or None, look_for_keys=False,
                              allow_agent=False, timeout=timeout, banner_timeout=timeout, auth_timeout=timeout)
         except paramiko.AuthenticationException:
             raise CLIError(f"{host} refused the login for {login['user']}") from None
@@ -282,6 +284,11 @@ def open_session(probe, target, enable=True):
 class CliApp:
     """GET /api/x/cli: the login (without secrets). POST save, test."""
     name = "cli"
+    VIEWER_POST = ()
+    RAW_POST = ()
+
+    def status(self):
+        return None
 
     def __init__(self, probe):
         self.p = probe

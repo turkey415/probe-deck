@@ -121,6 +121,13 @@ For a [lancache](https://lancache.net) (or any cache that works the same way):
 - A list of recent transfers: which switch, which file, which way, how long, and whether it worked.
 - Downloads stream from the card, so a big file doesn't fill the probe's memory.
 
+### Configs (switch config backups and diffs)
+- Pulls every switch's **running-config** (the switches on the Switches page, plus the probe's own switch) over **SSH**, or over the **console cable** for a switch with no network. Every 24 hours, on **Pull** / **Pull all now**, and a minute after Switch logs hears `%SYS-5-CONFIG_I` (someone changed the config).
+- A version is kept only when the config **really changed** (timestamps and "Last configuration change" lines are ignored), with how many lines were added and removed. The last 100 per switch are kept.
+- **Label** a version ("Before the event"); labelled versions are never thrown away. Tick two versions and **Compare** for a coloured diff. View or download any version.
+- **Switch login:** one user, password and enable secret for every switch (Configs and Cable test both use it), kept in `/etc/probe-deck/logins.json`, root-only, never sent to the page. **Test** shows whether it works.
+- Configs hold password hashes and SNMP communities, so only **admins** can view, compare or download them; viewers see the list.
+
 ### Wake (Wake-on-LAN)
 - Save machines with a name, MAC, optional IP and a **group** (a row of seats). Add them by hand, **import** a list (`name, MAC, IP, group` or a CSV), or pick from **Seen on the network** (MACs the watchdog heard in ARP).
 - **Wake all**, wake a group, or wake the ones you tick. Machines wake **2 s apart** by default, so 30 PCs don't all draw power in the same second.

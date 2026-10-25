@@ -127,6 +127,10 @@ class SwitchLogs(App):
                 self.msgs.append(rec)
                 self.pending.append(rec)
                 self.count_sender(rec)
+            if rec.get("code") and rec["code"].endswith("CONFIG_I"):  # someone changed the config: Configs pulls it
+                cfg = self.p.apps.get("configs")
+                if cfg:
+                    cfg.on_config_change(ip)
 
     def close(self):
         if self.sock:

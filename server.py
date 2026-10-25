@@ -44,9 +44,10 @@ import hosts as hosts_mod
 import cache as cache_mod
 import capture as capture_mod
 import tftp as tftp_mod
+import configs as configs_mod
 import swcli as swcli_mod
 
-__version__ = "0.21.0"
+__version__ = "0.22.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -1128,7 +1129,7 @@ class TLSServer(ThreadingHTTPServer):
         super().finish_request(request, client_address)
 
 
-APPS = [swcli_mod.CliApp, logs_mod.SwitchLogs, inet_mod.Inet, hosts_mod.HostScan, cache_mod.LanCache, capture_mod.Capture, tftp_mod.Files]
+APPS = [swcli_mod.CliApp, logs_mod.SwitchLogs, inet_mod.Inet, hosts_mod.HostScan, cache_mod.LanCache, capture_mod.Capture, tftp_mod.Files, configs_mod.Configs]
 
 
 def main():
