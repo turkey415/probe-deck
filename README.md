@@ -4,9 +4,9 @@ A pocket gigabit **network probe** with its own web page. Plug it into any switc
 
 Every page is in the **sidebar**, grouped, under a **This jack** card that always shows the port, switch, VLAN and link lights:
 - **Port:** the **Overview** (what is on the other end of this cable), **Speed test** (LAN with iperf3 and the internet with Cloudflare), **Cable test** (the switch's TDR, pair by pair) and **VLAN walk** (DHCP, gateway, DNS and internet on every VLAN of a trunk).
-- **Network:** **Switches** (GXL-LANapp's Switches page over SNMP), **Trace** (the path to any IP, MAC or name) and **Host scan** (who is on this subnet, with makers, names and open ports).
-- **Watch:** **Watchdog** (rogue DHCP, IP conflicts, spoofing, storms, spanning tree, rogue IPv6 routers), **Switch logs** (a syslog receiver for the switches) and **Capture** (tcpdump to .pcap, and alarms that capture themselves).
-- **Event:** **Jack survey** (walk the hall and record every seat's jack), **CS2** (is this network fit for a match?), **LAN cache** (are game downloads hitting the cache?) and **Wake** (Wake-on-LAN for the room).
+- **Network:** **Switches** (GXL-LANapp's Switches page over SNMP), **Trace** (the path to any IP, MAC or name), **Traceroute** (every hop watched once a second, like mtr), **Host scan** (who is on this subnet, with makers, names, smart-device types and open ports), **mDNS** (every service announced on the LAN) and **Multicast** (groups, the IGMP querier, a join test).
+- **Watch:** **Watchdog** (rogue DHCP, IP conflicts, spoofing, storms, spanning tree, rogue IPv6 routers, and what's on the wire), **Switch logs** (a syslog receiver for the switches) and **Capture** (tcpdump to .pcap, and alarms that capture themselves).
+- **Event:** **Jack survey** (walk the hall and record every seat's jack), **CS2** (is this network fit for a match?), **Tick test** (game-rate UDP to a reflector), **LAN cache** (are game downloads hitting the cache?) and **Wake** (Wake-on-LAN for the room).
 - **Switch tools:** **Console** (the USB console cable in the browser), **Configs** (running-config backups and diffs) and **Files** (a TFTP server for images and configs).
 - **System:** **Settings & power**, **Tailscale**, **HTTPS** and **Users**.
 
@@ -38,6 +38,8 @@ The screenshots use made-up names and addresses (core-1, access-1, 10.10.x.x), a
 
 ### Port: what is this jack?
 - **Switch, port and VLAN** from **CDP** (Cisco) or **LLDP** (everyone else), e.g. `Gi0/7` on `access-1`. Also shows the switch model, IOS version and management IP.
+- **Time to online:** seconds from link-up until the port passes traffic. Without portfast a switch port listens and learns for 30–50 seconds first, and every PC on it waits that long; over 25 s is flagged **portfast off?**. Live (address, gateway answering, internet answering) when the link comes up while the probe is running: a port bounce, or a move to another jack on USB-C power. **On PoE** the probe is powered by the port, so it boots after the link is already up and can't time it live: it reads the boot logs instead (the kernel's *Link is Up*, then dhclient's DHCP offer and address). DHCP's own retry timer adds a few seconds to that figure, and the page says so. Next to it the page shows the probe's **own boot**, in seconds from power-on: when the port came up, when the address arrived, and when Probe Deck started. Jack survey records both for every seat.
+- **Port details** (from CDP/LLDP and DHCP): data and **voice VLAN**, the **PoE** the switch offers, duplex, whether the port asks for **802.1X**, whether it offers to trunk (DTP), whether the gateway is an **HSRP / VRRP / GLBP** virtual MAC and its maker, and the DHCP **phone options** (150 / 66 TFTP server, 43, NTP).
 - **Link** speed and duplex, how long the link has been up, and **link drops** (with the time of the last one).
 - **Plug to IP**: seconds from cable-in to a DHCP address.
 - **New jack, new lease**: when the cable is moved, the probe asks DHCP again, so a different VLAN gets a fresh address. You can turn this off.
@@ -95,6 +97,7 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - **Spanning tree**: root bridge, protocol, **topology changes** and root changes, from the BPDUs the switch sends.
 - **IPv6 router advertisements**: a PC sharing its connection (Windows ICS) or a rogue router.
 - **DTP**: says when the port could be talked into a trunk.
+- **On the wire** (PorkChopCheck's wire report): the probe's own adapter (flow control, **Energy Efficient Ethernet**, a link slower than both ends offer, PAUSE and error counters), **flooding** (traffic for other machines reaching this port: a spanning-tree change, a full MAC table or a hub), the loudest broadcast and multicast senders by maker, address conflicts, IPv6 routers, **switch protocols heard** (LACP, PAgP, UDLD, VTP, loopback keepalives, PAUSE frames) and **ICMP redirects or "fragmentation needed"** sent to the probe. If more than 5,000 frames a second arrive for other machines (a mirror port or a bad flood) it stops listening for 30 seconds and says so.
 - An **event list** of everything above. Warnings also go out at once on UDP 47474 as an `app: "probe-alert"` message (the displays ignore it; PorkChopCheck can use it), and the probe message gets an `alerts` count.
 
 ### Cable test (is it the cable or the port?)
@@ -110,6 +113,18 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - A table shows, per VLAN: how long DHCP took (and the relay, if any), the address and DHCP server, gateway replies and latency, each DNS server, and the internet check. Missing pieces (no router or DNS handed out) are called out.
 - Each test VLAN gets its own routing table, so the probe's own address and traffic don't move. The Watchdog ignores the walk's DHCP, so the other VLANs' servers don't show up as rogue. On an access port nothing answers, and the page says the port probably isn't a trunk.
 
+### Traceroute (where does it go slow?)
+- Type an address or a name: every hop on the way is probed **once a second**, like `mtr`, with its loss, last, average, best and worst times and a strip of its last 40 probes (lost ones in red), all hops on one scale so a slow hop stands out. Hop names come from reverse DNS. **Gateway** and recent targets are one click.
+- A hop that loses probes or answers slowly while the hops after it don't is a router that limits its own replies, not a fault; loss or delay that carries on to the last hop is real.
+
+### mDNS (what's announced on the LAN?)
+- Every service announced over multicast DNS (Bonjour / Avahi), grouped by type with friendly names: Chromecasts, AirPlay, printers, ESPHome, WLED, Home Assistant, Matter, Shelly, file shares… with each one's address, port, host name and TXT details. It asks every 10 minutes and listens all the time. PorkChopCheck's browser (`pc_net.py`).
+
+### Multicast (does multicast work here?)
+- **IGMP querier:** who it is, its IGMP version and how often it asks. With IGMP snooping on and no querier, streams, AirPlay and mDNS work for a few minutes and then stop; **Ask for a querier** joins a scratch group for a moment so a querier answers within a second instead of up to two minutes.
+- **Groups** seen on the port with their rate, sources and the members heard reporting, named where known (mDNS, SSDP, Dante, sACN, PTP…).
+- **Join test:** the probe joins a group through Linux and shows whether traffic for it arrives.
+
 ### Host scan (who is on this subnet?)
 - Sends one small packet to every address on the probe's subnet (up to a /22), then reads the probe's ARP table: anything that answered ARP is a host, **even with its firewall up**. Hosts the Watchdog heard in the last 10 minutes count too.
 - For each host: IP, MAC and **maker** (from the IEEE lists, so `Cisco`, `Ubiquiti`, `Raspberry Pi`…; phones with a private MAC say so), **names** from reverse DNS, NetBIOS (Windows PCs) and mDNS, and which of a few **TCP ports** are open (22, 80, 443, 445, 3389, 5201, 8080, 9100, 27015 by default; change the list).
@@ -123,6 +138,8 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - A verdict per seat, **good**, **check** or **bad**, with the reasons: not gigabit, half duplex, no DHCP, slow DHCP, gateway loss or latency, DNS or internet failing, a VLAN that differs from most seats, or a switch port shared with another seat.
 - Readouts for the next seat and the good/check/bad counts, a table (with **Only problems**), rename or delete seats, **Download CSV**, and **New survey** (the old one is kept on the probe).
 - The probe message on UDP 47474 carries the survey (`sv`: armed, next seat, count, last seat's verdict), so a T-Display can show it while you walk.
+
+- **Smart devices** (on by default): PorkChopCheck's discovery (`pc_smart.py`) asks over SSDP/UPnP, mDNS, Kasa/Tapo, LIFX, Govee, WiZ, Yeelight and Tuya, and reads Roku, Hue, Shelly and Cast device pages, then shows each device's **type** (TV, speaker, camera, plug, bulb…), **brand**, **model** and, when a device publishes one, its **serial number**. A **Smart devices** filter shows just those. It adds about 20 seconds to a scan.
 
 ### Switch logs (syslog from the switches)
 - The probe is a **syslog receiver** (UDP 514). The page shows the lines to paste into each switch (`logging host <probe>`, `logging trap informational`, timestamps and `logging origin-id hostname`).
@@ -160,6 +177,11 @@ For a [lancache](https://lancache.net) (or any cache that works the same way):
 - **Label** a version ("Before the event"); labelled versions are never thrown away. Tick two versions and **Compare** for a coloured diff. View or download any version.
 - **Switch logins:** type a user, password and enable secret right on the Cable test form or above the Configs list: it's used for that run only, or saved for that switch with **Remember**. The saved logins (one shared by every switch, and any switch can have its own) are what scheduled pulls use. They're kept in `/etc/probe-deck/logins.json`, root-only; passwords never go back to the page.
 - Configs hold password hashes and SNMP communities, so only **admins** can view, compare or download them; viewers see the list.
+
+### Tick test (what a CS2 player feels)
+- CS2 sends small UDP packets at a steady 64 or 128 a second; switches and routers often treat that differently from ping. The tick test sends the same traffic to a **reflector** and times every reply: **loss**, the **longest run of lost packets** (three in a row is a visible hitch), **late replies** that miss a tick, **jitter**, and packets **out of order** or **twice**, with a chart of every reply (lost ones in red) and a verdict for Counter-Strike: excellent, good, fair or bad, using PorkChopCheck's limits. **Stricter limits** switches to its "Claude recommended" set.
+- The reflector's own delay is measured and taken out, so a busy reflector doesn't look like a slow network. The probe's own sending accuracy is shown too.
+- **The probe is a reflector itself** (UDP 27777, on by default), so a PorkChopCheck box (Tools › Tick test › Server = the probe's address) or another probe can test the path to it. It answers only test packets, one same-size reply each, so it can't amplify traffic. Or run `porkchopcheck --reflector` on the game server or a spare PC. It's PorkChopCheck's code (`pc_net.py`), so the two work together.
 
 ### Wake (Wake-on-LAN)
 - Save machines with a name, MAC, optional IP and a **group** (a row of seats). Add them by hand, **import** a list (`name, MAC, IP, group` or a CSV), or pick from **Seen on the network** (MACs the watchdog heard in ARP).

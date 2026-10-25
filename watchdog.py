@@ -335,7 +335,7 @@ class Watchdog:
         mac = self.mac
         bootp = struct.pack("!BBBBIHH4s4s4s4s16s64s128s", 1, 1, 6, 0, xid, 0, 0x8000, b"\0" * 4, b"\0" * 4, b"\0" * 4,
                             b"\0" * 4, mac + b"\0" * 10, b"", b"")
-        opts = b"\x63\x82\x53\x63" + b"\x35\x01\x01" + b"\x37\x05\x01\x03\x06\x0f\x36" + b"\x0c\x0bprobe-watch" + b"\xff"
+        opts = b"\x63\x82\x53\x63" + b"\x35\x01\x01" + b"\x37\x09\x01\x03\x06\x0f\x2a\x2b\x42\x96\x36" + b"\x0c\x0bprobe-watch" + b"\xff"
         payload = bootp + opts + b"\0" * max(0, 300 - len(bootp) - len(opts))
         udp = struct.pack("!HHHH", 68, 67, 8 + len(payload), 0) + payload
         ip = struct.pack("!BBHHHBBH4s4s", 0x45, 0x10, 20 + len(udp), random.getrandbits(16), 0, 64, 17, 0,

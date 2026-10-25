@@ -137,6 +137,12 @@ class Survey(App):
                  "gw_ms": round(statistics.mean(ok_p), 2) if ok_p else None, "gw_loss": round(100 * (len(pings) - len(ok_p)) / len(pings)) if pings else None,
                  "dns_ok": all(d["ok"] for d in ck.get("dns") or []) if ck.get("dns") else None,
                  "inet_ok": (ck.get("http") or {}).get("ok"), "inet_ms": (ck.get("http") or {}).get("ms"), "flaps": lk.get("flaps") and len(lk["flaps"])}
+            on = self.p.apps.get("online")
+            res = on.for_plug(plug) if on and plug else None
+            if res:
+                r["online"] = {k: res.get(k) for k in ("mode", "ip_s", "offer_s", "gw_s", "inet_s", "slow", "boot")}
+                if r["plug_ip"] is None:
+                    r["plug_ip"] = res.get("ip_s")
             if self.conf["speed_to"] and net.get("ip"):
                 self.state["step"] = f"{label}: speed test"
                 r["speed_test"] = self.speed_test()
@@ -184,7 +190,11 @@ class Survey(App):
             bad.append("DNS fails")
         if r.get("inet_ok") is False:
             check.append("no internet")
-        if r.get("plug_ip") and r["plug_ip"] > 15:
+        ol = r.get("online") or {}
+        if ol.get("slow"):
+            secs = ol.get("gw_s") or ol.get("offer_s") or ol.get("ip_s")
+            check.append(f"{secs} s before the port passed traffic: portfast off?")
+        elif r.get("plug_ip") and r["plug_ip"] > 15:
             check.append(f"{r['plug_ip']} s to get an address")
         if not r.get("switch"):
             check.append("no CDP/LLDP: switch port unknown")

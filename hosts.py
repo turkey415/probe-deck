@@ -72,7 +72,7 @@ def nbstat_name(data):
 
 class HostScan(App):
     name = "hosts"
-    SETTINGS = {"every": 15, "ports": "22,80,443,445,3389,5201,8080,9100,27015", "names": True}
+    SETTINGS = {"every": 15, "ports": "22,80,443,445,3389,5201,8080,9100,27015", "names": True, "smart": True}
     LIMITS = {"every": (0, 1440)}
 
     def __init__(self, probe, conf_dir, data_dir):
@@ -161,6 +161,11 @@ class HostScan(App):
                 self.scan["step"] = f"looking at {len(found)} hosts"
             names = self.lookup_names(list(found)) if self.conf["names"] else {}
             ports = self.scan_ports(list(found))
+            smart = {}
+            if self.conf["smart"]:
+                with self.lock:
+                    self.scan["step"] = "identifying devices (SSDP, mDNS, Kasa, Hue, Roku…)"
+                smart = self.smart_scan(net, found)
             now = time.time()
             with self.lock:
                 if self.base_t is None:
@@ -170,6 +175,9 @@ class HostScan(App):
                     h.update(ip=ip, last=now, vendor=self.vendor(mac), ports=ports.get(ip, []))
                     nm = names.get(ip) or {}
                     h["names"] = {**(h.get("names") or {}), **{k: v for k, v in nm.items() if v}}
+                    sd = smart.get(ip)
+                    if sd:
+                        h["smart"] = sd
                     self.hosts[mac] = h
                 if len(self.hosts) > KEEP_HOSTS:
                     for mac in sorted(self.hosts, key=lambda m: self.hosts[m]["last"])[:len(self.hosts) - KEEP_HOSTS]:
@@ -181,6 +189,42 @@ class HostScan(App):
         finally:
             with self.lock:
                 self.scan.update(running=False, step=None)
+
+    def smart_scan(self, net, found):
+        """PorkChopCheck's smart-device discovery (pc_smart.py): type, brand, model, serial."""
+        import pc_smart
+
+        class Oui:
+            def __init__(s, fn):
+                s.fn = fn
+
+            def vendor_long(s, mac):
+                return s.fn(mac) or ""
+
+            vendor = vendor_long
+
+        def mdns_fn():
+            m = self.p.apps.get("mdns")
+            if not m:
+                return {"types": set(), "inst": {}, "hosts": {}, "responders": set()}
+            m.scan()
+            return m.browser().snapshot()
+
+        try:
+            my = open(f"/sys/class/net/{self.p_iface()}/address").read().strip()
+            sc = pc_smart.SmartScan(self.p.net["ip"], str(net.netmask), my, Oui(self.vendor),
+                                    lambda: [(ip, mac, "REACHABLE") for ip, mac in found.items()], mdns_fn)
+            devs = sc.run()
+        except Exception as e:
+            print(f"smart scan: {e}", flush=True)
+            return {}
+        out = {}
+        for d in devs:
+            if d.get("category") == "unknown" and not d.get("model") and not d.get("serial"):
+                continue
+            out[d["ip"]] = {k: d.get(k) for k in ("category", "brand", "model", "serial", "name", "smart")}
+            out[d["ip"]]["sources"] = list(d.get("sources") or [])[:6]
+        return out
 
     def p_iface(self):
         return self.p.watch.iface  # the interface the probe was started on
@@ -299,7 +343,7 @@ class HostScan(App):
             })
         out.sort(key=lambda h: (not h["up"], tuple(int(x) for x in h["ip"].split("."))))
         return {"scan": dict(self.scan), "hosts": out, "every": self.conf["every"], "ports": self.conf["ports"],
-                "names": self.conf["names"], "now": now, "subnet": str(self.subnet()) if self.p.net.get("ip") else None}
+                "names": self.conf["names"], "smart": self.conf["smart"], "now": now, "subnet": str(self.subnet()) if self.p.net.get("ip") else None}
 
     def post(self, action, body, user):
         if action == "scan":

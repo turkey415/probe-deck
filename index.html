@@ -671,6 +671,11 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
 #sx-tip .r b { margin-left: auto; padding-left: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255, .03); } tr.click.picked td { background: rgba(255, 176, 0, .07); }
 @media (prefers-reduced-motion: reduce) { .dial .pk, .dial .nd, .dial .sg { transition: none; } }
+.wrsec { margin-bottom: 10px; } .wrsec > .k { display: block; margin: 6px 0 2px; }
+.ev.wr { grid-template-columns: 12px minmax(0, 1fr); }
+.mdtype { margin-bottom: 14px; } .mdh { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+.mtrtab td { vertical-align: middle; }
+#mc-list tr.sel td { background: rgba(255, 176, 0, .06); }
 </style>
 </head>
 <body class="gated">
@@ -732,7 +737,10 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
     <div class="items">
       <a href="#net" data-view="net"><span class="dot"></span><span class="nm">Switches</span><span class="badge" id="t-net" hidden></span></a>
       <a href="#trace" data-view="trace"><span class="dot"></span><span class="nm">Trace</span></a>
+      <a href="#mtr" data-view="mtr"><span class="dot" id="t-mtr"></span><span class="nm">Traceroute</span><span class="badge" id="tb-mtr" hidden></span></a>
       <a href="#hosts" data-view="hosts"><span class="dot" id="t-hosts"></span><span class="nm">Host scan</span><span class="badge" id="tb-hosts" hidden></span></a>
+      <a href="#mdns" data-view="mdns"><span class="dot" id="t-mdns"></span><span class="nm">mDNS</span><span class="badge" id="tb-mdns" hidden></span></a>
+      <a href="#mcast" data-view="mcast"><span class="dot" id="t-mcast"></span><span class="nm">Multicast</span><span class="badge" id="tb-mcast" hidden></span></a>
     </div>
   </div>
   <div class="mod" data-mod="watch">
@@ -748,6 +756,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
     <div class="items">
       <a href="#survey" data-view="survey"><span class="dot" id="t-survey"></span><span class="nm">Jack survey</span><span class="badge" id="tb-survey" hidden></span></a>
       <a href="#cs" data-view="cs"><span class="dot" id="t-cs"></span><span class="nm">CS2</span></a>
+      <a href="#tick" data-view="tick"><span class="dot" id="t-tick"></span><span class="nm">Tick test</span><span class="badge" id="tb-tick" hidden></span></a>
       <a href="#cache" data-view="cache"><span class="dot" id="t-cache"></span><span class="nm">LAN cache</span><span class="badge" id="tb-cache" hidden></span></a>
       <a href="#wake" data-view="wake"><span class="dot"></span><span class="nm">Wake</span></a>
     </div>
@@ -803,8 +812,15 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
       <div class="well" id="w-link"><span class="k">Link</span><div id="lk-speed"></div><span class="un" id="lk-dup">—</span></div>
       <div class="well" id="w-vlan"><span class="k">VLAN</span><div id="nb-vlan"></div><span class="un" id="nb-vlan2">native</span></div>
       <div class="well" id="w-flaps"><span class="k">Link drops</span><div id="lk-flaps"></div><span class="un" id="lk-flap2">—</span></div>
-      <div class="well" id="w-dhcp"><span class="k">Plug to IP</span><div id="lk-ipafter"></div><span class="un">seconds</span></div>
+      <div class="well" id="w-dhcp" hidden><span class="k">Plug to IP</span><div id="lk-ipafter"></div><span class="un">seconds</span></div>
+      <div class="well wide" id="w-online"><span class="k">Time to online</span><div id="on-secs"></div><span class="un" id="on-what">—</span><div class="wsub" id="on-note" style="white-space:normal"></div></div>
     </div>
+  </section>
+
+  <section class="card" id="pd-card">
+    <h2>Port details <span class="spacer"></span><span class="sub" id="pd-via"></span></h2>
+    <dl class="kv" id="pd-kv"></dl>
+    <div id="pd-notes" style="margin-top:10px"></div>
   </section>
 
   <section class="card">
@@ -962,6 +978,13 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
   <section class="card">
     <h2>Events <span class="spacer"></span><button class="btn ghost admin-only" id="w-clear">Clear</button></h2>
     <div class="evlist" id="w-events"></div>
+  </section>
+
+  <section class="card" id="wr-card">
+    <h2>On the wire <span class="spacer"></span><span class="lamp" id="wr-lamp"></span></h2>
+    <p class="sub" style="margin:0 0 10px">The things that cause lag and odd behaviour that nothing else shows: this probe's own adapter, switch flooding, the loudest senders, port-channel and trunk protocols, and ICMP redirects or MTU trouble (from PorkChopCheck's wire report).</p>
+    <div id="wr-list"></div>
+    <button class="btn admin-only" id="wr-restart" type="button" title="Clear what it has seen and start counting again">Restart</button>
   </section>
 </main>
 </div>
@@ -1504,6 +1527,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
       <label class="f">Scan every (minutes) <span class="sub">0 = only when you press Scan now.</span><input type="number" id="hs-every" min="0" max="1440"></label>
       <label class="f">TCP ports to try <input type="text" id="hs-ports" spellcheck="false"></label>
       <label class="chk"><input type="checkbox" id="hs-names"><span>Look up names<small>Reverse DNS, NetBIOS and mDNS.</small></span></label>
+      <label class="chk"><input type="checkbox" id="hs-smart"><span>Identify smart devices<small>SSDP/UPnP, mDNS, Kasa/Tapo, Hue, Roku, Shelly, LIFX, Govee, WiZ, Yeelight, Tuya: type, brand, model and sometimes a serial number. Adds about 20 s to a scan.</small></span></label>
       <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><button class="btn" type="button" id="hs-forget" style="flex:none">Forget all</button><span id="hs-smsg"></span></div>
     </form>
   </section>
@@ -1528,6 +1552,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
       <input type="text" id="hs-q" class="ro-ok" placeholder="Filter: IP, name, MAC, maker, port" spellcheck="false">
       <label class="chk ro-ok"><input type="checkbox" id="hs-onlyup" class="ro-ok" checked><span>Up now</span></label>
       <label class="chk ro-ok"><input type="checkbox" id="hs-onlynew" class="ro-ok"><span>New only</span></label>
+      <label class="chk ro-ok"><input type="checkbox" id="hs-onlysmart" class="ro-ok"><span>Smart devices</span></label>
     </div>
     <div class="tablewrap"><table class="hosttab">
       <thead><tr><th class="l">IP</th><th class="l">Name</th><th class="l">MAC · maker</th><th class="l">Open ports</th><th>First seen</th><th>Last seen</th><th></th></tr></thead>
@@ -1898,6 +1923,134 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 </main>
 </div>
 
+<!-- ================= TICK TEST ================= -->
+<div class="layout view" id="v-tick" hidden>
+<aside>
+  <section class="card admin-only">
+    <h2>Tick test</h2>
+    <form class="form" id="f-tick">
+      <label class="f">Reflector <span class="sub">The far end that sends every packet back: another probe, or <code>porkchopcheck --reflector</code> on the game server or a spare PC (UDP 27777).</span>
+        <input type="text" id="tk-target" placeholder="e.g. 192.168.1.20 or 192.168.1.20:27777" spellcheck="false" autocomplete="off"></label>
+      <div class="peers" id="tk-peers"></div>
+      <div class="seg" role="radiogroup" aria-label="Rate">
+        <label><input type="radio" name="tk-rate" value="64" checked>64 a second</label>
+        <label><input type="radio" name="tk-rate" value="128">128 a second</label>
+      </div>
+      <label class="f">Seconds <input type="number" id="tk-secs" min="5" max="600"></label>
+      <label class="chk"><input type="checkbox" id="tk-strict"><span>Stricter limits<small>PorkChopCheck's "Claude recommended" set: fewer late replies allowed, and jitter graded too.</small></span></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" id="tk-go" style="flex:none">Start</button><button class="btn danger" type="button" id="tk-stop" style="flex:none" hidden>Stop</button></div>
+      <div class="msg" id="tk-err" hidden></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>This probe's reflector <span class="spacer"></span><span class="lamp" id="tk-rlamp"></span></h2>
+    <p class="sub" style="margin:0 0 10px" id="tk-rhow"></p>
+    <dl class="kv" id="tk-rinfo"></dl>
+    <label class="chk admin-only" style="margin-top:12px"><input type="checkbox" id="tk-refl"><span>Run the reflector<small>Answers only tick-test packets, one same-size reply each, so it can't be used to amplify traffic.</small></span></label>
+  </section>
+  <section class="card">
+    <h2>Why not just ping?</h2>
+    <p class="sub" style="margin:0">CS2 sends small UDP packets at a steady 64 or 128 a second. Switches and routers often treat that differently from ping. This test sends the same traffic and times every reply: <b>runs of lost packets</b> (three in a row is a visible hitch), <b>late replies</b> that miss a tick, jitter, and packets out of order or twice.</p>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2>Tick test <span class="spacer"></span><span class="lamp" id="tk-lamp"></span></h2>
+    <div class="big-port" id="tk-head" style="font-size:22px;white-space:normal">—</div>
+    <div class="wells" id="tk-wells"></div>
+    <div class="legend" id="tk-lg"></div>
+    <div class="chart" id="tk-chart" style="height:220px"></div>
+    <div class="wsub" id="tk-detail" style="white-space:normal"></div>
+  </section>
+  <section class="card">
+    <h2>What a player feels</h2>
+    <div class="tablewrap"><table><thead><tr><th class="l">Figure</th><th>Value</th><th class="l">Grade</th><th class="l">Why it matters</th></tr></thead><tbody id="tk-rate"></tbody></table></div>
+  </section>
+  <section class="card">
+    <h2>Earlier tests <span class="spacer"></span><button class="btn ghost admin-only" id="tk-clear">Clear</button></h2>
+    <div class="tablewrap"><table><thead><tr><th>When</th><th class="l">Reflector</th><th>Rate</th><th>Loss</th><th>In a row</th><th>Late</th><th>Ping</th><th class="l">Verdict</th></tr></thead><tbody id="tk-hist"></tbody></table></div>
+  </section>
+</main>
+</div>
+
+<!-- ================= TRACEROUTE ================= -->
+<div class="view" id="v-mtr" hidden style="padding:18px 20px 40px;max-width:1640px;margin:0 auto;display:flex;flex-direction:column;gap:18px">
+  <section class="card">
+    <h2>Traceroute <span class="spacer"></span><span class="sub">every hop, probed once a second, like mtr</span></h2>
+    <form class="tracebar" id="f-mtr">
+      <input type="text" id="mt-q" class="ro-ok" placeholder="1.1.1.1 · steamcommunity.com · a game server" spellcheck="false" autocomplete="off">
+      <button class="btn primary admin-only" type="submit" id="mt-go">Start</button>
+      <button class="btn danger admin-only" type="button" id="mt-stop" hidden>Stop</button>
+    </form>
+    <div class="peers" id="mt-recent" style="margin-top:10px"></div>
+  </section>
+  <section class="card">
+    <h2><span id="mt-title">Hops</span> <span class="spacer"></span><span class="lamp" id="mt-lamp"></span></h2>
+    <div class="tablewrap"><table class="mtrtab">
+      <thead><tr><th>#</th><th class="l">Hop</th><th>Loss</th><th>Sent</th><th>Last</th><th>Avg</th><th>Best</th><th>Worst</th><th class="l">Last 40 (same scale for every hop)</th></tr></thead>
+      <tbody id="mt-list"></tbody>
+    </table></div>
+    <p class="sub" style="margin:12px 0 0">A hop that loses probes or answers slowly while the hops after it don't is a router that limits its own replies: not a fault. Loss or delay that carries on to the last hop is real.</p>
+  </section>
+</div>
+
+<!-- ================= MDNS ================= -->
+<div class="layout view" id="v-mdns" hidden>
+<aside>
+  <section class="card">
+    <h2>mDNS browser <span class="spacer"></span><span class="lamp" id="md-lamp"></span></h2>
+    <p class="sub" style="margin:0 0 12px">Every service announced on the LAN over multicast DNS (Bonjour, Avahi): Chromecasts, AirPlay, printers, ESPHome, WLED, Home Assistant, Matter… It asks every 10 minutes and also listens all the time.</p>
+    <dl class="kv" id="md-info"></dl>
+    <div class="row admin-only" style="margin-top:14px;align-items:center"><button class="btn primary" type="button" id="md-go" style="flex:none">Ask now</button><button class="btn" type="button" id="md-reset" style="flex:none">Start over</button></div>
+  </section>
+</aside>
+<main>
+  <section class="card">
+    <h2>Services <span class="spacer"></span><span class="sub" id="md-count"></span></h2>
+    <div class="filters"><input type="text" id="md-q" class="ro-ok" placeholder="Filter: name, type, address" spellcheck="false"></div>
+    <div id="md-list"></div>
+    <div class="sub" id="md-empty" style="margin-top:12px"></div>
+  </section>
+</main>
+</div>
+
+<!-- ================= MULTICAST ================= -->
+<div class="layout view" id="v-mcast" hidden>
+<aside>
+  <section class="card">
+    <h2>IGMP querier <span class="spacer"></span><span class="lamp" id="mc-qlamp"></span></h2>
+    <div class="big-port" id="mc-q" style="font-size:20px;white-space:normal">—</div>
+    <p class="sub" id="mc-qnote" style="margin:6px 0 12px"></p>
+    <button class="btn admin-only" type="button" id="mc-probe">Ask for a querier</button>
+    <p class="sub" style="margin:10px 0 0">Joins a scratch group for a moment and leaves it: a querier answers within a second, instead of its next general query up to two minutes later.</p>
+  </section>
+  <section class="card admin-only">
+    <h2>Join test</h2>
+    <form class="form" id="f-mcjoin">
+      <label class="f">Group <span class="sub">The probe joins it through Linux, which sends the IGMP report, and counts what arrives.</span>
+        <input type="text" id="mc-group" placeholder="e.g. 239.1.2.3 or 239.255.255.250" spellcheck="false" autocomplete="off"></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" id="mc-join" style="flex:none">Join</button><button class="btn" type="button" id="mc-leave" style="flex:none" hidden>Leave</button><span id="mc-msg"></span></div>
+      <div class="wsub" id="mc-jstate" style="white-space:normal"></div>
+    </form>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2>Multicast on this port <span class="spacer"></span><span class="lamp" id="mc-lamp"></span></h2>
+    <div class="wells">
+      <div class="well"><span class="k">Groups</span><div id="mc-ng"></div><span class="un">with traffic or members</span></div>
+      <div class="well"><span class="k">Traffic</span><div id="mc-bps"></div><span class="un" id="mc-bpsu">Mbps</span></div>
+      <div class="well" id="mc-wq"><span class="k">Queriers</span><div id="mc-nq"></div><span class="un">heard</span></div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Groups <span class="spacer"></span><button class="btn ghost admin-only" id="mc-reset">Start over</button></h2>
+    <div class="tablewrap"><table><thead><tr><th class="l">Group</th><th class="l">What</th><th>Rate</th><th>Packets</th><th class="l">Sources</th><th class="l">Members heard</th><th>Last</th></tr></thead><tbody id="mc-list"></tbody></table></div>
+    <p class="sub" style="margin:12px 0 0">With IGMP snooping on, a switch only sends a group to ports that asked for it, so most groups other machines watch won't show here. That's normal.</p>
+  </section>
+</main>
+</div>
+
 </div><!-- .content -->
 </div><!-- .shell -->
 <script>
@@ -2220,7 +2373,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 // ---------- views (tabs) ----------
 const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
-const VIEWS = ['survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
+const VIEWS = ['tick', 'mtr', 'mdns', 'mcast', 'survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -3824,5 +3977,10 @@ boot();
 <script src="/web/hosts.js"></script>
 <script src="/web/speed.js"></script>
 <script src="/web/logs.js"></script>
+<script src="/web/tick.js"></script>
+<script src="/web/mtr.js"></script>
+<script src="/web/mdns.js"></script>
+<script src="/web/mcast.js"></script>
+<script src="/web/wire.js"></script>
 </body>
 </html>
