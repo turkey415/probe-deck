@@ -87,6 +87,12 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - **DTP**: says when the port could be talked into a trunk.
 - An **event list** of everything above. Warnings also go out at once on UDP 47474 as an `app: "probe-alert"` message (the displays ignore it; PorkChopCheck can use it), and the probe message gets an `alerts` count.
 
+### Cable test (is it the cable or the port?)
+- Runs the switch's own **TDR** test (`test cable-diagnostics tdr`) on any port, over SSH or the console cable, and reads back **each pair**: Normal, Open, Short or Impedance mismatch, and **how many metres** from the switch. **This jack** fills in the probe's own switch and port.
+- A plain verdict: "All four pairs are normal", "Pair C is open about 7 m from the switch", "Every pair is open about 30 m away: nothing is plugged in at the far end". At 100 Mbps the two unused pairs may say *Not completed*, and that's fine. A gigabit jack where the probe only links at 100 Mbps gets a hint that a pair is probably bad.
+- TDR drops the port's link for a few seconds. On the probe's own jack the test starts in one login, waits for the link to come back, and reads the result in a second one.
+- Uses the switch login from the Configs page. The last 50 results are kept.
+
 ### Host scan (who is on this subnet?)
 - Sends one small packet to every address on the probe's subnet (up to a /22), then reads the probe's ARP table: anything that answered ARP is a host, **even with its firewall up**. Hosts the Watchdog heard in the last 10 minutes count too.
 - For each host: IP, MAC and **maker** (from the IEEE lists, so `Cisco`, `Ubiquiti`, `Raspberry Pi`…; phones with a private MAC say so), **names** from reverse DNS, NetBIOS (Windows PCs) and mDNS, and which of a few **TCP ports** are open (22, 80, 443, 445, 3389, 5201, 8080, 9100, 27015 by default; change the list).

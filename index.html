@@ -664,6 +664,7 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
     <div class="items">
       <a href="#probe" data-view="probe"><span class="dot" id="t-probe"></span><span class="nm">Overview</span></a>
       <a href="#speed" data-view="speed"><span class="dot" id="t-speed"></span><span class="nm">Speed test</span><span class="badge" id="tb-speed" hidden></span></a>
+      <a href="#cable" data-view="cable"><span class="dot" id="t-cable"></span><span class="nm">Cable test</span><span class="badge" id="tb-cable" hidden></span></a>
     </div>
   </div>
   <div class="mod" data-mod="net">
@@ -1667,6 +1668,43 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
 </main>
 </div>
 
+<!-- ================= CABLE TEST ================= -->
+<div class="layout view" id="v-cable" hidden>
+<aside>
+  <section class="card admin-only">
+    <h2>Test a cable</h2>
+    <form class="form" id="f-cable">
+      <label class="f">Switch <select id="cb-dev"></select></label>
+      <label class="f">Port <input type="text" id="cb-port" placeholder="e.g. Gi0/7" spellcheck="false" autocomplete="off"></label>
+      <div class="peers"><button type="button" id="cb-mine">This jack</button></div>
+      <button class="btn primary" type="submit" id="cb-go">Run the cable test</button>
+      <div class="msg" id="cb-err" hidden></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Good to know</h2>
+    <ul class="steps">
+      <li>It's the switch's own TDR test: it sends a pulse down each pair and times the echo, so it finds an open or shorted pair and <b>how far away</b> it is.</li>
+      <li>The port's link <b>drops for a few seconds</b> while it runs. On the probe's own jack the probe goes offline briefly and the page waits.</li>
+      <li>At 100 Mbps only two pairs carry data; the others may say <i>Not completed</i>.</li>
+      <li>It logs in with the switch login on the <a href="#configs">Configs</a> page.</li>
+    </ul>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2>Cable <span class="spacer"></span><span class="lamp" id="cb-lamp"></span></h2>
+    <div class="wells" id="cb-pairs"></div>
+    <div class="wsub" id="cb-verdict" style="white-space:normal"></div>
+    <pre class="cfg" id="cb-log" hidden></pre>
+  </section>
+  <section class="card">
+    <h2>History <span class="spacer"></span><button class="btn ghost admin-only" id="cb-clear">Clear</button></h2>
+    <div class="tablewrap"><table><thead><tr><th>When</th><th class="l">Switch</th><th class="l">Port</th><th class="l">Pairs</th><th class="l">Result</th></tr></thead><tbody id="cb-hist"></tbody></table></div>
+  </section>
+</main>
+</div>
+
 </div><!-- .content -->
 </div><!-- .shell -->
 <script>
@@ -1999,7 +2037,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 // ---------- views (tabs) ----------
 const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
-const VIEWS = ['configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
+const VIEWS = ['cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -3593,6 +3631,7 @@ async function poll() {
 boot();
 </script>
 <!-- add-on pages -->
+<script src="/web/cable.js"></script>
 <script src="/web/configs.js"></script>
 <script src="/web/files.js"></script>
 <script src="/web/capture.js"></script>
