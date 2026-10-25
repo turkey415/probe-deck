@@ -275,12 +275,15 @@ class SwitchLogs(App):
             extra = [e for e in extra if e["sev"] <= sev_max and (not text or text in e["msg"].lower())]
             out = sorted(out + extra, key=lambda r: -r["t"])[:400]
         days = sorted((f.stem for f in self.dir.glob("*.jsonl")), reverse=True)
+        ign = self.ignored()
         return {
             "on": self.conf["on"], "port": self.conf["port"], "keep_days": self.conf["keep_days"], "listening": bool(self.sock),
             "error": self.error, "dropped": self.dropped, "probe_ip": self.p.net.get("ip"), "now": now,
             "hour": hour, "errors": errs, "per_min": per_min, "msgs": out, "days": days,
-            "senders": sorted(({**v, "ip": ip, "name": names.get(ip) or v.get("origin") or ip, "known": ip in names,
-                                "what": None if ip in names else self.what(ip)} for ip, v in senders.items()), key=lambda s: -s["last"]),
+            "senders": sorted(({**v, "ip": ip, "name": names.get(ip) or v.get("origin") or ip, "known": ip in names, "ignored": ip in ign,
+                                "what": None if ip in names else self.what(ip)}
+                               for ip, v in {**{x: {"n": 0, "last": 0, "worst": 7} for x in ign}, **senders}.items()),
+                              key=lambda s: (s["ignored"], -s["last"])),
             "ignored": sorted(self.ignored()), "dropped_ignored": getattr(self, "dropped_ignored", 0),
             "last": ({"code": msgs[-1].get("code"), "t": msgs[-1]["t"]} if msgs else None),
         }

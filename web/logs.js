@@ -27,13 +27,15 @@
     $('#lg-errw').classList.toggle('alarm', d.errors > 0);
     const today = d.senders.filter(s => d.now - s.last < 86400);
     setSeg('#lg-nsw', today.length, 2);
-    setHTML('#lg-senders', d.senders.map(s => `<tr><td class="l wrap" title="${esc(s.ip)}">${esc(s.name)}${s.name !== s.ip ? `<div class="sub mono">${esc(s.ip)}</div>` : ''}`
-      + `${!s.known ? `<div class="sub">${esc(s.what || 'not a switch on the Switches page')}</div>` : ''}</td><td>${s.n}</td><td><span class="dot ${sevDot(s.worst)}"></span> ${SEVN[s.worst]}</td><td>${esc(ago(s.last))}</td>`
-      + `<td><span class="keys admin-only"><button class="key" data-ign="${esc(s.ip)}" title="Drop everything new from this sender">Ignore</button><button class="key" data-forget="${esc(s.ip)}" title="Delete its messages">✕</button></span></td></tr>`).join('')
+    setHTML('#lg-senders', d.senders.map(s => `<tr class="${s.ignored ? 'ign' : ''}"><td class="l wrap" title="${esc(s.ip)}">${esc(s.name)}${s.ignored ? ' <span class="chip warn">ignored</span>' : ''}`
+      + `${s.name !== s.ip ? `<div class="sub mono">${esc(s.ip)}</div>` : ''}${!s.known ? `<div class="sub">${esc(s.what || 'not a switch on the Switches page')}</div>` : ''}</td>`
+      + `<td>${s.n}</td><td>${s.n ? `<span class="dot ${sevDot(s.worst)}"></span> ${SEVN[s.worst]}` : '—'}</td><td>${s.last ? esc(ago(s.last)) : '—'}</td>`
+      + `<td><span class="keys admin-only">${s.ignored ? `<button class="key" data-unign="${esc(s.ip)}" title="Take its messages again">Listen again</button>`
+        : `<button class="key" data-ign="${esc(s.ip)}" title="Drop everything new from this sender">Ignore</button>`}`
+      + `${s.n ? `<button class="key" data-forget="${esc(s.ip)}" title="Delete its messages">✕</button>` : ''}</span></td></tr>`).join('')
       || '<tr><td colspan="5" class="sub">None yet. Paste the lines on the left into a switch.</td></tr>');
-    $('#lg-ignbox').hidden = !d.ignored.length;
-    setHTML('#lg-ign', d.ignored.map(ip => `<button type="button" class="admin-only" data-unign="${esc(ip)}" title="Stop ignoring">${esc(ip)} ✕</button>`).join(''));
-    $('#lg-ign2').textContent = d.dropped_ignored ? `${d.dropped_ignored} messages dropped since the probe started` : '';
+    $('#lg-ign2').hidden = !d.ignored.length;
+    $('#lg-ign2').textContent = `Ignoring ${d.ignored.length} sender${d.ignored.length === 1 ? '' : 's'}${d.dropped_ignored ? ` · ${d.dropped_ignored} messages dropped since the probe started` : ''}.`;
     // filters: keep the picked switch and day
     const hosts = '<option value="">All switches</option>' + d.senders.map(s => `<option value="${esc(s.ip)}">${esc(s.name)}</option>`).join('');
     const hv = $('#lg-host').value; setHTML('#lg-host', hosts); $('#lg-host').value = hv;
@@ -65,14 +67,14 @@
     try { await api('/api/x/logs/clear'); flash($('#lg-msg'), 'Cleared', true); refresh(); } catch (err) { flash($('#lg-msg'), err.message); }
   });
   $('#lg-senders').addEventListener('click', async e => {
-    const f = e.target.closest('[data-forget]'), g = e.target.closest('[data-ign]');
+    const f = e.target.closest('[data-forget]'), g = e.target.closest('[data-ign]'), u = e.target.closest('[data-unign]');
     try {
       if (f && confirm(`Delete every message from ${f.dataset.forget}? New ones still arrive (use Ignore to drop those too).`)) await api('/api/x/logs/forget', { ip: f.dataset.forget });
+      if (u) await api('/api/x/logs/unignore', { ip: u.dataset.unign });
       if (g && confirm(`Ignore ${g.dataset.ign}? New messages from it are dropped (the ones already kept stay; ✕ deletes them).`)) await api('/api/x/logs/ignore', { ip: g.dataset.ign });
     } catch (err) { alert(err.message); }
     refresh();
   });
-  $('#lg-ign').addEventListener('click', async e => { const b = e.target.closest('[data-unign]'); if (b) { await api('/api/x/logs/unignore', { ip: b.dataset.unign }).catch(err => alert(err.message)); refresh(); } });
   PAGES.logs = { show: refresh };
   setInterval(() => { if (view === 'logs' && ME) refresh(); }, 3000);
 })();

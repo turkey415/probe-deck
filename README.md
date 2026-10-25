@@ -131,7 +131,7 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - Kept 14 days (one file per day in `/var/lib/probe-deck/logs/`, written every 5 s to spare the SD card); download any day as text. A sender is capped at 200 messages a second.
 - The sidebar shows how many errors (severity 0–3) came in the last hour.
 - **Who's sending:** each sender is named from the Switches page or the message itself; anything else shows what Host scan knows about it (name and maker). Cisco access points that haven't joined their controller send syslog to the broadcast address, so the probe hears them without any setup.
-- **Forget** a sender (✕) to delete its messages, or **Ignore** it to drop anything new from it; the ignored list is under the senders, with a button to stop ignoring each one.
+- **Ignore** a sender to drop anything new from it, and **Listen again** to take its messages again: ignored senders stay in the list, dimmed, even after their messages are deleted. **✕** deletes a sender's saved messages.
 
 ### LAN cache (are game downloads hitting the cache?)
 For a [lancache](https://lancache.net) (or any cache that works the same way):

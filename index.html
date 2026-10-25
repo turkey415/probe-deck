@@ -616,6 +616,7 @@ pre.caplines { max-height: 420px; overflow: auto; white-space: pre; overflow-wra
 #f-pulllogin .loginbox > .row { display: contents; }
 @media (max-width: 760px) { #f-pulllogin .loginbox { grid-template-columns: 1fr; } }
 .upbar { height: 8px; border-radius: 4px; background: var(--well); overflow: hidden; border: 1px solid var(--line); }
+#lg-senders tr.ign td { opacity: .5; }
 #fl-list tr.sel td, #cf-list tr.sel td { background: rgba(255, 176, 0, .06); }
 .upbar i { display: block; height: 100%; width: 0; background: var(--amber); transition: width .2s; }
 pre.diff { margin-top: 12px; max-height: 620px; overflow: auto; white-space: pre; overflow-wrap: normal; color: var(--text-2); user-select: text; }
@@ -1367,15 +1368,6 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
       <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><button class="btn" type="button" id="lg-clear" style="flex:none">Clear all logs</button><span id="lg-msg"></span></div>
     </form>
   </section>
-  <section class="card">
-    <h2>Switches sending</h2>
-    <div class="tablewrap"><table><thead><tr><th>Sender</th><th>Messages</th><th>Worst</th><th>Last</th><th></th></tr></thead><tbody id="lg-senders"></tbody></table></div>
-    <div id="lg-ignbox" hidden style="margin-top:12px">
-      <span class="k">Ignored</span>
-      <div class="peers" id="lg-ign" style="margin-top:6px"></div>
-      <span class="sub" id="lg-ign2"></span>
-    </div>
-  </section>
 </aside>
 <main>
   <section class="card deck">
@@ -1387,6 +1379,11 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
     </div>
   </section>
   <section class="card"><h2>Messages per minute <span class="spacer"></span><span class="sub">last hour</span></h2><div class="legend" id="lg-lg"></div><div class="chart" id="lg-chart"></div></section>
+  <section class="card">
+    <h2>Who is sending <span class="spacer"></span><span class="sub">switches and anything else sending syslog here</span></h2>
+    <div class="tablewrap"><table><thead><tr><th>Sender</th><th>Messages</th><th>Worst</th><th>Last</th><th></th></tr></thead><tbody id="lg-senders"></tbody></table></div>
+    <p class="sub" id="lg-ign2" hidden style="margin:10px 0 0"></p>
+  </section>
   <section class="card">
     <h2>Messages <span class="spacer"></span><select id="lg-day" class="ro-ok" style="width:auto"></select><a class="btn ghost ro-ok" id="lg-dl" href="#">Download</a></h2>
     <div class="filters">
