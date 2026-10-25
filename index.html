@@ -625,9 +625,55 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
 .svtab tr.lv-bad td:first-child { box-shadow: inset 3px 0 0 var(--crit); }
 .svtab tr.lv-check td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
 .svtab tr.lv-good td:first-child { box-shadow: inset 3px 0 0 var(--good); }
+
+/* ---------- speed test instruments (from iPerf Deck) ---------- */
+.sx-src { margin-left: 8px; width: auto; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.sx-src label { padding: 3px 12px; }
+.dials { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 14px; }
+.minis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+.dial { position: relative; margin: 0 auto; width: 100%; }
+.dial.big { max-width: 290px; }
+.dial.mini { max-width: 170px; }
+.dial svg.face { display: block; width: 100%; height: auto; overflow: visible; }
+.dial .sg { fill: none; stroke: var(--led-off); transition: stroke .3s; }
+.dial .sg.on { stroke: var(--c); filter: drop-shadow(0 0 3px var(--c)); }
+.dial .sl { fill: var(--muted); font: 9px ui-monospace, Menlo, Consolas, monospace; }
+.dial.mini .sl { font-size: 13px; }
+.dial .ttl { fill: var(--text-2); font: 600 11px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .16em; }
+.dial.mini .ttl { font-size: 14.5px; letter-spacing: .1em; }
+.dial .pk, .dial .nd { transform-origin: 100px 100px; transition: transform .9s cubic-bezier(.3, 1.35, .5, 1), opacity .3s; }
+.dial .pk path { fill: var(--text); }
+.dial .nd path { fill: var(--c); filter: drop-shadow(0 0 3px var(--c)); }
+.dial .ctr { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; pointer-events: none; }
+.dial .seg7 { --c: inherit; }
+.dial .ctr .seg7 .on { fill: var(--c); }
+.dial.big .seg7 { height: 34px; }
+.dial.mini .seg7 { height: 21px; }
+.dial.mini .ctr { gap: 3px; }
+.dial.mini .un { font-size: 9px; letter-spacing: .08em; }
+.dial.off .sg.on { stroke: var(--led-off); filter: none; }
+.dial.off .nd, .dial.off .pk { opacity: 0; }
+.subs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; border-top: 1px solid rgba(255, 255, 255, .06); padding-top: 11px; }
+.sr { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.sr .seg7 { height: 17px; }
+.sr .un { font-size: 9px; letter-spacing: .08em; }
+.chart.big { height: 300px; }
+.chart.small { height: 170px; }
+.wf { position: relative; height: 180px; background: #07080c; border: 1px solid #2f2f2d; border-radius: 6px; overflow: hidden; cursor: pointer; }
+.wf canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.wf-key { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
+.wf-key i { width: 120px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, #0a0e1c, #102a6e, #286edc, #5abeff, #e6f5ff); }
+#sx-tip { position: fixed; z-index: 30; pointer-events: none; background: #2f2f2d; border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 10px; font-size: 12.5px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .45); min-width: 130px; }
+#sx-tip .t { color: var(--muted); margin-bottom: 4px; }
+#sx-tip .r { display: flex; align-items: center; gap: 7px; }
+#sx-tip .r b { margin-left: auto; padding-left: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255, .03); } tr.click.picked td { background: rgba(255, 176, 0, .07); }
+@media (prefers-reduced-motion: reduce) { .dial .pk, .dial .nd, .dial .sg { transition: none; } }
 </style>
 </head>
 <body class="gated">
+<div id="sx-tip" hidden></div>
 <div class="gate" id="gate">
   <section class="card">
     <div class="brand"><svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#212120"/><path d="M9 7h14v9H9z M12 16v5 M16 16v5 M20 16v5 M7 25h18" fill="none" stroke="#ffb000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Probe Deck</div>
@@ -1387,31 +1433,32 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
   </section>
 </aside>
 <main>
-  <section class="card deck">
-    <h2>LAN speed test <span class="spacer"></span><span class="lamp" id="sp-lamp"></span></h2>
-    <div class="speeds">
-      <div class="well" id="w-down"><span class="k">Download</span><div id="sp-down"></div><span class="un" id="sp-down-u">Mbps</span></div>
-      <div class="well" id="w-up"><span class="k">Upload</span><div id="sp-up"></div><span class="un" id="sp-up-u">Mbps</span></div>
+  <section class="card deck" id="sv-deck">
+    <h2><span id="sx-title">Instruments</span> <span class="spacer"></span><span class="lamp" id="sx-lamp"></span>
+      <span class="seg sx-src ro-ok" role="radiogroup" aria-label="Which test"><label><input type="radio" name="sx-src" value="lan" class="ro-ok">LAN</label><label><input type="radio" name="sx-src" value="inet" class="ro-ok">Internet</label></span></h2>
+    <div class="dials">
+      <div class="well"><div id="sx-down"></div><div class="subs" id="sx-sub-down"></div></div>
+      <div class="well"><div id="sx-up"></div><div class="subs" id="sx-sub-up"></div></div>
     </div>
-    <div class="legend" id="lg-sp"></div>
-    <div class="chart" id="c-sp"></div>
+    <div class="minis">
+      <div class="well" id="sx-m1"></div><div class="well" id="sx-m2"></div><div class="well" id="sx-m3"></div><div class="well" id="sx-m4"></div>
+    </div>
+    <div class="wsub" id="sx-note" style="white-space:normal"></div>
+  </section>
+  <section class="card">
+    <h2>Throughput <span class="spacer"></span><span class="legend" id="sx-lg-main" style="margin:0;text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+    <div class="chart big" id="sx-main" role="img" aria-label="Throughput over time"></div>
+  </section>
+  <div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr))">
+    <section class="card" id="sx-p1"><h2 id="sx-t1">Retransmits per second</h2><div class="legend" id="sx-lg1"></div><div class="chart small" id="sx-c1" role="img"></div></section>
+    <section class="card" id="sx-p2"><h2 id="sx-t2">Round-trip time</h2><div class="legend" id="sx-lg2"></div><div class="chart small" id="sx-c2" role="img"></div></section>
+  </div>
+  <section class="card">
+    <h2>Waterfall <span class="spacer"></span><span class="sub" id="sx-wfn"></span></h2>
+    <div class="wf" id="sx-wf" role="img" aria-label="Heat map of recent tests"><canvas></canvas></div>
+    <div class="wf-key"><span>slower</span><i></i><span>faster</span><span style="margin-left:auto">One row per test, newest on top; left to right is start to finish. Click a row (or a history row) to open it.</span></div>
   </section>
 
-  <section class="card deck">
-    <h2>Internet <span class="spacer"></span><span class="lamp" id="in-lamp"></span></h2>
-    <div class="speeds">
-      <div class="well" id="in-wd"><span class="k">Download</span><div id="in-down"></div><span class="un">Mbps</span></div>
-      <div class="well" id="in-wu"><span class="k">Upload</span><div id="in-up"></div><span class="un">Mbps</span></div>
-    </div>
-    <div class="wells">
-      <div class="well" id="in-wi"><span class="k">Idle latency</span><div id="in-idle"></div><span class="un" id="in-jit">ms</span></div>
-      <div class="well" id="in-wld"><span class="k">Loaded · download</span><div id="in-ld"></div><span class="un">ms to 1.1.1.1</span></div>
-      <div class="well" id="in-wlu"><span class="k">Loaded · upload</span><div id="in-lu"></div><span class="un">ms to 1.1.1.1</span></div>
-    </div>
-    <div class="wsub" id="in-isp"></div>
-    <div class="legend" id="in-lg"></div>
-    <div class="chart" id="in-chart"></div>
-  </section>
 
   <section class="card">
     <h2>Stations <span class="spacer"></span><span class="sub" id="st-count"></span></h2>
@@ -1951,7 +1998,6 @@ class Chart {
 }
 const cLat = new Chart('#c-lat', { ago: true, minTop: 2, axis: v => parseFloat(v.toPrecision(3)) + '' });
 const cRate = new Chart('#c-rate', { ago: true, minTop: 1e6, axis: axisBps });
-const cSp = new Chart('#c-sp', { minTop: 1e8, axis: axisBps });
 const legend = (id, items) => { const h = items.map(i => `<span><i class="sw" style="background:${i.color}"></i>${esc(i.name)}</span>`).join(''); if ($(id)._h !== h) { $(id).innerHTML = h; $(id)._h = h; } };
 
 // ---------- API ----------
@@ -2040,23 +2086,14 @@ function render() {
 
   // speed test
   const sp = s.speed, res = sp.result || {}, last = s.history[0] || {};
-  const pick = ph => sp.running && sp.phase === ph ? (sp.points.filter(p => p[0] === ph).at(-1) || [])[2] : (res[ph] || (sp.running ? {} : last[ph]) || {}).bps;
-  for (const ph of ['down', 'up']) {
-    const v = pick(ph), [n, u] = splitBps(v);
-    $('#w-' + ph).classList.toggle('off', v == null);
-    setSeg('#sp-' + ph, v == null ? '----' : n, 5);
-    $(`#sp-${ph}-u`).textContent = (u || 'Mbps') + (sp.running && sp.phase === ph ? ' · live' : '');
-  }
-  $('#sp-lamp').innerHTML = sp.running ? `<span class="dot live"></span>${sp.phase === 'down' ? 'download' : 'upload'} · ${esc(sp.label || sp.server)}` : sp.error ? `<span class="dot err"></span>error` : last.t ? `<span class="dot on"></span>last ${fmtWhen(last.t)}` : '<span class="dot"></span>idle';
-  const spSeries = ['down', 'up'].map((ph, i) => ({ name: ph === 'down' ? 'Download' : 'Upload', color: C.s[i], pts: (sp.points || []).filter(p => p[0] === ph).map(p => [p[1], p[2]]) }));
-  legend('#lg-sp', spSeries); cSp.set(spSeries, Math.max(sp.secs || s.conf.iperf_secs, ...spSeries.flatMap(x => x.pts.map(p => p[0]))));
+  if (window.SPV) SPV.lan(s);   // the Speed test page's instruments and charts (web/speed.js)
   $('#sp-go').textContent = sp.running ? 'Stop test' : 'Start test';
   $('#sp-go').className = 'btn ' + (sp.running ? 'danger' : 'primary');
   $('#sp-err').hidden = !sp.error; $('#sp-err').textContent = sp.error || '';
   const ph = s.peers.map(p => `<button type="button" data-ip="${esc(p.ip)}" title="${esc(p.ip)}${p.running ? '' : ' (iperf3 server off)'}">${esc(p.name)}</button>`).join('');
   if ($('#sp-peers')._h !== ph) { $('#sp-peers').innerHTML = ph; $('#sp-peers')._h = ph; }
 
-  const hh = s.history.map(r => `<tr><td>${fmtWhen(r.t)}</td><td class="l" title="${esc(r.server)}">${esc(r.label && r.label !== r.server ? r.label : r.server)}</td><td class="l mono">${esc(r.port || '—')}</td>
+  const hh = s.history.map(r => `<tr class="click" data-sel="lan:${r.t}"><td>${fmtWhen(r.t)}</td><td class="l" title="${esc(r.server)}">${esc(r.label && r.label !== r.server ? r.label : r.server)}</td><td class="l mono">${esc(r.port || '—')}</td>
     <td>${r.down ? fmtBps(r.down.bps) : '—'}</td><td>${r.up ? fmtBps(r.up.bps) : '—'}</td><td>${r.up && r.up.retr != null ? r.up.retr : '—'}</td></tr>`).join('') || '<tr><td colspan="6" class="sub">No tests yet.</td></tr>';
   if ($('#hist')._h !== hh) { $('#hist').innerHTML = hh; $('#hist')._h = hh; }
 

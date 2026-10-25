@@ -64,7 +64,7 @@ class Inet(App):
             raise RuntimeError("1.1.1.1 doesn't answer ping")
         return ms
 
-    def pinger(self, out, stop):
+    def pinger(self, out, stop, phase=None, t0=None):
         """ICMP to 1.1.1.1 every 0.25 s while the streams run: the loaded latency."""
         p = subprocess.Popen(["ping", "-n", "-i", "0.25", "-W", "2", "1.1.1.1"], stdout=subprocess.PIPE, text=True)
         try:
@@ -72,6 +72,9 @@ class Inet(App):
                 m = re.search(r"time=([\d.]+)", line)
                 if m:
                     out.append(float(m.group(1)))
+                    if phase:
+                        with self.lock:
+                            self.run.setdefault("lat", []).append([phase, round(time.time() - t0, 2), float(m.group(1))])
                 if stop.is_set():
                     break
         finally:
@@ -154,8 +157,8 @@ class Inet(App):
 
         lat = []
         threads = [threading.Thread(target=down if phase == "down" else up, args=(i,), daemon=True) for i in range(n)]
-        pt = threading.Thread(target=self.pinger, args=(lat, stop), daemon=True)
         t0 = time.time()
+        pt = threading.Thread(target=self.pinger, args=(lat, stop, phase, t0), daemon=True)
         for t in threads:
             t.start()
         pt.start()
@@ -192,7 +195,7 @@ class Inet(App):
             if not self.p.link["up"]:
                 raise ValueError("No link")
             self.stop = False
-            self.run = {"running": True, "phase": "meta", "points": [], "error": None, "started": time.time(), "live": None, "result": None}
+            self.run = {"running": True, "phase": "meta", "points": [], "lat": [], "error": None, "started": time.time(), "live": None, "result": None}
         threading.Thread(target=self.go, args=(user,), daemon=True).start()
 
     def go(self, user):
@@ -204,6 +207,7 @@ class Inet(App):
             with self.lock:
                 self.run["phase"] = "latency"
             ms = self.idle_latency()
+            res["idle_pts"] = ms
             res["idle_ms"] = round(statistics.median(ms), 1)
             res["jitter_ms"] = round(statistics.mean(abs(a - b) for a, b in zip(ms[1:], ms[:-1])), 1) if len(ms) > 2 else None
             for phase in ("down", "up"):
@@ -216,6 +220,8 @@ class Inet(App):
                 res[f"{phase}_ms"] = round(statistics.median(lat), 1) if lat else None
                 res[f"{phase}_bytes"] = moved
             res["ok"] = True
+            with self.lock:
+                res["pts"], res["lat"] = list(self.run["points"]), list(self.run["lat"])[:600]
         except Exception as e:
             res.update(ok=False, error=str(e)[:160])
         with self.lock:

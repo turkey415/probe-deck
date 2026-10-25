@@ -50,7 +50,7 @@ import vlanwalk as vlanwalk_mod
 import survey as survey_mod
 import swcli as swcli_mod
 
-__version__ = "0.26.0"
+__version__ = "0.27.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -483,6 +483,14 @@ class Probe:
             with self.lock:
                 self.speed["phase"] = ph
             r = self.iperf_once(server, ph)
+            for _ in range(3):  # the far server restarts between tests (iperf3 -s -1): give it a moment
+                err = str(self.speed.get("error") or "")
+                if r is not None or not self.speed["running"] or not re.search(r"unable to connect|busy|refused|reset|control message", err):
+                    break
+                time.sleep(1.5)
+                with self.lock:
+                    self.speed["error"] = None
+                r = self.iperf_once(server, ph)
             if r is None:
                 break
             res[ph] = r
@@ -493,7 +501,7 @@ class Probe:
             sp["running"], sp["phase"] = False, None
             if res:
                 entry = {"t": round(sp["started"]), "server": server, "label": sp.get("label"), "secs": sp["secs"],
-                         "streams": self.conf["iperf_streams"], **res,
+                         "streams": self.conf["iperf_streams"], **res, "pts": sp["points"][:400],
                          "port": (self.neighbor or {}).get("port"), "switch": (self.neighbor or {}).get("switch")}
                 self.history = (self.history + [entry])[-HISTORY_MAX:]
                 for p in self.peers.values():
@@ -524,8 +532,13 @@ class Probe:
             kind, data = ev.get("event"), ev.get("data")
             if kind == "interval":
                 s = data.get("sum", {})
+                sts = data.get("streams") or []
+                rtts = [x["rtt"] for x in sts if x.get("rtt")]          # sender side only: the upload
+                cwnd = [x["snd_cwnd"] for x in sts if x.get("snd_cwnd")]
                 with self.lock:
-                    self.speed["points"].append([phase, round(time.time() - t0, 1), s.get("bits_per_second", 0)])
+                    self.speed["points"].append([phase, round(time.time() - t0, 1), s.get("bits_per_second", 0), s.get("retransmits"),
+                                                 round(sum(rtts) / len(rtts) / 1000, 2) if rtts else None,
+                                                 round(sum(cwnd) / 1024) if cwnd else None])
             elif kind == "end":
                 sent, recv = data.get("sum_sent", {}), data.get("sum_received", {})
                 out = {"bps": recv.get("bits_per_second") or sent.get("bits_per_second"), "retr": sent.get("retransmits"),
@@ -535,7 +548,7 @@ class Probe:
                     self.speed["error"] = str(data)[:200]
         proc.wait()
         self.speed_proc = None
-        return out
+        return out if out and out.get("bps") else None   # a failed run still sends an "end" with empty sums
 
     def stop_speed(self):
         with self.lock:

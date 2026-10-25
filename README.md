@@ -46,6 +46,10 @@ It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same l
 
 ### Speed tests
 The **Speed test** page (Port in the sidebar) holds the LAN test, the Stations and both histories.
+- **Instruments and charts from iPerf Deck**, for either test (a LAN / Internet switch): big **arc dials** for download and upload (live while a test runs, then the average, with a peak marker) with **Avg, Peak, Low and Data** readouts; small dials for **round trip, retransmits per second, congestion window** and the gateway ping (LAN), or **idle latency, latency under load** both ways and **bufferbloat** (internet).
+- A **throughput chart** with a shaded area and a hover crosshair and tooltip shared by every chart; **retransmits per second** (bars) and **round-trip time** for a LAN test, **latency under load** (with the idle line) for an internet test.
+- A **waterfall**: one row per test, coloured by speed from start to finish. Click a row, or a row in either history table, to bring that test back on the dials and charts.
+- Round trip, retransmits and congestion window come from the sending side, so a LAN test shows them for the upload (run Upload or Both).
 - An **internet speed test** against Cloudflare (speed.cloudflare.com): download and upload for 3–30 s each way over 1–8 streams, with live readouts and a chart. It also pings 1.1.1.1 before the test (**idle latency** and jitter) and while it runs (**loaded latency**): when latency climbs under load, the uplink has bufferbloat. It shows the public IP, the network (AS number) and the Cloudflare data centre. At gigabit one test moves 1–2 GB, so it only runs when you press the button. Cloudflare limits how often one public IP can test; the page says so when that happens.
 - An **iperf3** client against any server, as download, upload or both, with live seven-segment readouts and a live chart.
 - **History** of every test, with the switch port it ran on.
