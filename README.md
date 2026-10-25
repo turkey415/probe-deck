@@ -126,7 +126,7 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 
 ### LAN cache (are game downloads hitting the cache?)
 For a [lancache](https://lancache.net) (or any cache that works the same way):
-- **DNS:** looks up the download names of Steam, Battle.net, Epic, Riot, EA, Ubisoft, Xbox and Windows Update through **every** DNS server the probe was given, and shows which ones point at the cache. One DNS server that skips the cache is enough to send half the room to the internet.
+- **DNS:** looks up the download names of Steam, Battle.net, Epic, Riot, EA, Ubisoft, Xbox and Windows Update through **every** DNS server the probe was given, and shows which ones point at the cache. The names are taken from the [uklans cache-domains](https://github.com/uklans/cache-domains) lists that lancache-dns uses. Steam's list is just `lancache.steamcontent.com`: the Steam client looks that name up and, when it's a LAN address, downloads through it. One DNS server that skips the cache is enough to send half the room to the internet.
 - **The cache answers:** lancache's heartbeat (`/lancache-heartbeat`, which says which cache answered), and whether port 443 is open for HTTPS passthrough.
 - **A test file (optional):** paste an `http://` URL from the cache's access log (a Steam chunk is ideal). It's fetched through the cache twice: the first should say **MISS** and the second **HIT**, and the second shows how fast the cache serves.
 - **Other DNS servers:** add up to 6 DNS servers to be checked every time, next to (or instead of) the ones DHCP hands out, or type one in **Try a DNS server** for a one-off check that isn't saved: test a cache's DNS before it goes into the DHCP config. Each column says where the server came from (DHCP, added, trial).

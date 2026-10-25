@@ -18,16 +18,19 @@ from urllib.parse import urlsplit
 
 from appbase import App
 
-# Names from the uklans cache-domains lists that lancache-dns points at the cache.
+# Names on the uklans cache-domains lists (github.com/uklans/cache-domains), which lancache-dns points at the cache.
+# Each one is on its service's list as written or under a wildcard; checked against the lists 2026-10-24.
+# Steam's list is the single name lancache.steamcontent.com: the Steam client looks it up and, when it is a
+# LAN address, downloads through it. Other Steam CDN names are meant to stay public.
 SERVICES = [
-    ("Steam", ["lancache.steamcontent.com", "cache1-iad1.steamcontent.com", "steampipe.akamaized.net"]),
+    ("Steam", ["lancache.steamcontent.com"]),
     ("Battle.net", ["level3.blizzard.com", "blzddist1-a.akamaihd.net"]),
     ("Epic Games", ["epicgames-download1.akamaized.net", "fastly-download.epicgames.com"]),
     ("Riot", ["lol.dyn.riotcdn.net", "riotgamespatcher-a.akamaihd.net"]),
     ("EA / Origin", ["origin-a.akamaihd.net"]),
     ("Ubisoft", ["uplaypc-s-ubisoft.cdn.ubi.com"]),
-    ("Xbox / Microsoft Store", ["assets1.xboxlive.com", "dl.delivery.mp.microsoft.com"]),
-    ("Windows Update", ["download.windowsupdate.com"]),
+    ("Xbox / Microsoft Store", ["assets1.xboxlive.com", "xvcf1.xboxlive.com"]),
+    ("Windows Update", ["download.windowsupdate.com", "dl.delivery.mp.microsoft.com"]),
 ]
 
 
