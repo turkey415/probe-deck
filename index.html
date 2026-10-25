@@ -607,6 +607,7 @@ td.wrap { white-space: normal; }
 .hosttab .mk { display: block; color: var(--muted); font-size: 11.5px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
 .hosttab .nm small { display: block; color: var(--muted); font-size: 11.5px; }
 .hosttab .chip { margin: 0 4px 3px 0; }
+pre.caplines { max-height: 420px; overflow: auto; white-space: pre; overflow-wrap: normal; font-size: 11.5px; user-select: text; }
 </style>
 </head>
 <body class="gated">
@@ -673,6 +674,7 @@ td.wrap { white-space: normal; }
     <div class="items">
       <a href="#watch" data-view="watch"><span class="dot"></span><span class="nm">Watchdog</span><span class="badge" id="t-watch" hidden></span></a>
       <a href="#logs" data-view="logs"><span class="dot" id="t-logs"></span><span class="nm">Switch logs</span><span class="badge" id="tb-logs" hidden></span></a>
+      <a href="#capture" data-view="capture"><span class="dot" id="t-capture"></span><span class="nm">Capture</span><span class="badge" id="tb-capture" hidden></span></a>
     </div>
   </div>
   <div class="mod" data-mod="event">
@@ -1509,6 +1511,61 @@ td.wrap { white-space: normal; }
 </main>
 </div>
 
+<!-- ================= CAPTURE ================= -->
+<div class="layout view" id="v-capture" hidden>
+<aside>
+  <section class="card admin-only">
+    <h2>Capture</h2>
+    <form class="form" id="f-cap">
+      <label class="f">Filter <span class="sub">tcpdump syntax. Empty = everything.</span>
+        <input type="text" id="cp-filter" placeholder="e.g. host 192.168.1.20 and port 27015" spellcheck="false" autocomplete="off"></label>
+      <div class="peers" id="cp-presets"></div>
+      <div class="row">
+        <label class="f">Stop after (s) <span class="sub">0 = until you stop it</span><input type="number" id="cp-secs" min="0" max="3600" value="60"></label>
+        <label class="f">Name <input type="text" id="cp-name" maxlength="30" placeholder="capture" spellcheck="false"></label>
+      </div>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" id="cp-go" style="flex:none">Start</button><button class="btn danger" type="button" id="cp-stop" style="flex:none" hidden>Stop</button><span id="cp-msg"></span></div>
+    </form>
+  </section>
+  <section class="card admin-only">
+    <h2>Settings</h2>
+    <form class="form" id="f-capset">
+      <div class="row">
+        <label class="f">Ring in RAM (MB) <input type="number" id="cp-ring" min="4" max="128"></label>
+        <label class="f">Bytes per packet <span class="sub">0 = whole packet</span><input type="number" id="cp-snap" min="0" max="65535"></label>
+      </div>
+      <label class="chk"><input type="checkbox" id="cp-live"><span>Show packets live<small>Also prints each packet on this page.</small></span></label>
+      <label class="chk"><input type="checkbox" id="cp-auto"><span>Capture Watchdog alarms by themselves<small>Rogue DHCP, storms, IP conflicts, spoofing, spanning tree, rogue IPv6 routers: a short capture with a filter for that problem, kept on the card. At most one per kind every 10 minutes.</small></span></label>
+      <label class="f">Alarm capture length (s) <input type="number" id="cp-asecs" min="5" max="300"></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="cp-smsg"></span></div>
+    </form>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2>Capture <span class="spacer"></span><span class="lamp" id="cp-lamp"></span></h2>
+    <div class="wells">
+      <div class="well" id="cp-wp"><span class="k">Packets</span><div id="cp-pk"></div><span class="un" id="cp-pk2">—</span></div>
+      <div class="well" id="cp-wb"><span class="k">In the ring</span><div id="cp-mb"></div><span class="un" id="cp-mb2">MB</span></div>
+      <div class="well" id="cp-wt"><span class="k">Time</span><div id="cp-tm"></div><span class="un" id="cp-tm2">seconds</span></div>
+    </div>
+    <div class="row" style="align-items:center;flex-wrap:wrap">
+      <a class="btn ro-ok" id="cp-dl" href="/api/x/capture/file/current" style="flex:none" hidden>Download .pcap</a>
+      <button class="btn admin-only" id="cp-keep" type="button" style="flex:none" hidden>Keep on the card</button>
+      <span class="sub" id="cp-info" style="flex:1"></span>
+    </div>
+  </section>
+  <section class="card" id="cp-livecard">
+    <h2>Packets <span class="spacer"></span><span class="sub">the last 80</span></h2>
+    <pre class="cfg caplines" id="cp-lines"></pre>
+  </section>
+  <section class="card">
+    <h2>Kept captures <span class="spacer"></span><span class="sub">on the SD card</span></h2>
+    <div class="tablewrap"><table><thead><tr><th class="l">File</th><th>Size</th><th>When</th><th></th></tr></thead><tbody id="cp-kept"></tbody></table></div>
+  </section>
+</main>
+</div>
+
 </div><!-- .content -->
 </div><!-- .shell -->
 <script>
@@ -1841,7 +1898,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 // ---------- views (tabs) ----------
 const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
-const VIEWS = ['cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
+const VIEWS = ['capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -3435,6 +3492,7 @@ async function poll() {
 boot();
 </script>
 <!-- add-on pages -->
+<script src="/web/capture.js"></script>
 <script src="/web/cache.js"></script>
 <script src="/web/hosts.js"></script>
 <script src="/web/speed.js"></script>

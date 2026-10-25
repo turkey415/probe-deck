@@ -108,6 +108,12 @@ For a [lancache](https://lancache.net) (or any cache that works the same way):
 - **A test file (optional):** paste an `http://` URL from the cache's access log (a Steam chunk is ideal). It's fetched through the cache twice: the first should say **MISS** and the second **HIT**, and the second shows how fast the cache serves.
 - The cache's address is found by itself (the LAN address most game names point at), or set it. Checks run every 10 minutes and on **Check now**. The sidebar light is green when every name goes to the cache, amber when some don't, red when the cache doesn't answer.
 
+### Capture (packets, as .pcap)
+- **tcpdump** on the probe's port with any filter (buttons for DHCP, ARP, broadcast, DNS, CS2, spanning tree, CDP/LLDP). Stop after N seconds or by hand.
+- The capture goes into a **ring in RAM** (32 MB by default; the oldest packets drop off), not the SD card. **Download .pcap** at any time and open it in Wireshark; **Keep** copies it to the card.
+- **Show packets live**: the last 80 packets, as tcpdump prints them, on the page.
+- **Watchdog alarms capture themselves** (on by default): a rogue DHCP server, a broadcast storm, an IP conflict or ARP spoofing, a spanning tree change or a rogue IPv6 router starts a 30-second capture with a filter for that problem, kept on the card, so there's evidence of what happened while nobody was looking. At most one per kind every 10 minutes; the card keeps the last 30 (512 MB at most).
+
 ### Wake (Wake-on-LAN)
 - Save machines with a name, MAC, optional IP and a **group** (a row of seats). Add them by hand, **import** a list (`name, MAC, IP, group` or a CSV), or pick from **Seen on the network** (MACs the watchdog heard in ARP).
 - **Wake all**, wake a group, or wake the ones you tick. Machines wake **2 s apart** by default, so 30 PCs don't all draw power in the same second.
