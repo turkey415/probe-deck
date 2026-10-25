@@ -1369,7 +1369,12 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
   </section>
   <section class="card">
     <h2>Switches sending</h2>
-    <div class="tablewrap"><table><thead><tr><th>Switch</th><th>Messages</th><th>Worst</th><th>Last</th></tr></thead><tbody id="lg-senders"></tbody></table></div>
+    <div class="tablewrap"><table><thead><tr><th>Sender</th><th>Messages</th><th>Worst</th><th>Last</th><th></th></tr></thead><tbody id="lg-senders"></tbody></table></div>
+    <div id="lg-ignbox" hidden style="margin-top:12px">
+      <span class="k">Ignored</span>
+      <div class="peers" id="lg-ign" style="margin-top:6px"></div>
+      <span class="sub" id="lg-ign2"></span>
+    </div>
   </section>
 </aside>
 <main>

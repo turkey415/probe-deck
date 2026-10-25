@@ -42,7 +42,21 @@ def parse(raw, ip):
 
 class SwitchLogs(App):
     name = "logs"
-    SETTINGS = {"on": True, "port": 514, "keep_days": 14}
+    SETTINGS = {"on": True, "port": 514, "keep_days": 14, "ignore": ""}
+
+    def check(self, k, v):
+        if k == "ignore":
+            ips = []
+            for x in re.split(r"[,\s]+", str(v or "").strip()):
+                if x and not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", x):
+                    raise ValueError(f"Not an IPv4 address: {x[:30]}")
+                if x and x not in ips:
+                    ips.append(x)
+            return ", ".join(ips[:64])
+        return super().check(k, v)
+
+    def ignored(self):
+        return {x.strip() for x in self.conf["ignore"].split(",") if x.strip()}
     LIMITS = {"port": (1, 65535), "keep_days": (1, 365)}
 
     def __init__(self, probe, conf_dir, data_dir):
@@ -119,6 +133,9 @@ class SwitchLogs(App):
             if r[0] != sec:
                 r[0], r[1] = sec, 0
             r[1] += 1
+            if ip in self.ignored():
+                self.dropped_ignored = getattr(self, "dropped_ignored", 0) + 1
+                continue
             if r[1] > RATE_CAP:
                 self.dropped += 1
                 continue
@@ -164,6 +181,18 @@ class SwitchLogs(App):
                         f.unlink(missing_ok=True)
 
     # ---------- for the page ----------
+    def what(self, ip):
+        """For a sender that isn't a known switch: what Host scan or Wake knows about it."""
+        hs = self.p.apps.get("hosts")
+        if hs:
+            with hs.lock:
+                h = next((h for h in hs.hosts.values() if h.get("ip") == ip), None)
+            if h:
+                nm = h.get("names") or {}
+                bits = [nm.get("netbios") or nm.get("mdns") or nm.get("dns"), h.get("vendor")]
+                return " · ".join(b for b in bits if b) or None
+        return None
+
     def names(self):
         """switch IP -> name, from the Switches page and the probe's own neighbor."""
         out = {}
@@ -250,11 +279,46 @@ class SwitchLogs(App):
             "on": self.conf["on"], "port": self.conf["port"], "keep_days": self.conf["keep_days"], "listening": bool(self.sock),
             "error": self.error, "dropped": self.dropped, "probe_ip": self.p.net.get("ip"), "now": now,
             "hour": hour, "errors": errs, "per_min": per_min, "msgs": out, "days": days,
-            "senders": sorted(({**v, "ip": ip, "name": names.get(ip) or v.get("origin") or ip} for ip, v in senders.items()), key=lambda s: -s["last"]),
+            "senders": sorted(({**v, "ip": ip, "name": names.get(ip) or v.get("origin") or ip, "known": ip in names,
+                                "what": None if ip in names else self.what(ip)} for ip, v in senders.items()), key=lambda s: -s["last"]),
+            "ignored": sorted(self.ignored()), "dropped_ignored": getattr(self, "dropped_ignored", 0),
             "last": ({"code": msgs[-1].get("code"), "t": msgs[-1]["t"]} if msgs else None),
         }
 
+    def forget(self, ip):
+        """Delete one sender's messages, in memory and in the day files."""
+        with self.lock:
+            keep = [m for m in self.msgs if m["ip"] != ip]
+            self.msgs.clear()
+            self.msgs.extend(keep)
+            self.pending = [m for m in self.pending if m["ip"] != ip]
+            self.senders.pop(ip, None)
+            for f in self.dir.glob("*.jsonl"):
+                try:
+                    lines = f.read_text().splitlines(True)
+                except OSError:
+                    continue
+                left = [ln for ln in lines if f'"ip":"{ip}"' not in ln]
+                if len(left) != len(lines):
+                    tmp = f.with_suffix(".tmp")
+                    tmp.write_text("".join(left))
+                    tmp.replace(f)
+
     def post(self, action, body, user):
+        ip = str(body.get("ip") or "").strip()
+        if action in ("forget", "ignore", "unignore") and not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip):
+            raise ValueError("Pick a sender")
+        if action == "forget":
+            self.forget(ip)
+            return {}
+        if action == "ignore":
+            self.save_conf({"ignore": ", ".join(sorted(self.ignored() | {ip}))})
+            if body.get("forget"):
+                self.forget(ip)
+            return {}
+        if action == "unignore":
+            self.save_conf({"ignore": ", ".join(sorted(self.ignored() - {ip}))})
+            return {}
         if action == "clear":
             with self.lock:
                 self.msgs.clear()
