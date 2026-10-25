@@ -76,6 +76,8 @@ label.chk small { display: block; color: var(--muted); font-size: 11.5px; }
 .kv dt { color: var(--muted); font-size: 12px; }
 .kv dd { margin: 1px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 aside .kv { grid-template-columns: 1fr 1fr; }
+.kv.on-kv { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px 14px; margin-top: 6px; }
+.kv.on-kv dd { font-variant-numeric: tabular-nums; font-weight: 600; }
 
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 13px; }
 th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }

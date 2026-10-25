@@ -41,6 +41,7 @@ class Online(App):
         self.history = load_json(self.hist_file, [])[-HIST_MAX:]
         self.cur = None
         self.started_mono = time.monotonic()
+        self.boot = None  # this boot's timeline, from the journal (boot_times)
 
     def iface(self):
         return self.p.watch.iface
@@ -74,6 +75,22 @@ class Online(App):
         r["boot"] = {"link_at": round(t_link, 1), "ip_at": round(bound, 1) if bound else None,
                      "ready_at": round(started[0], 1) if started else None}
         return r
+
+    def boot_times(self):
+        """Seconds from power-on: link up, address, Probe Deck running. "poe" when the link was up before
+        Probe Deck started (the port powered the probe), else "usb". The probe has no power sensor, so
+        a USB start with the cable already plugged in also reads as PoE."""
+        iface = self.iface()
+        link = [t for t, m in mono_lines(f"{iface}: Link is Up")]
+        bound = [t for t, m in mono_lines("bound to") if "dhclient" in m]
+        started = [t for t, m in mono_lines("Started probe-deck.service")]
+        if not started:
+            return None
+        ready, link_at = started[0], link[0] if link else None
+        ip_at = next((t for t in bound if link_at is None or t >= link_at), None)
+        return {"power": "poe" if link_at is not None and link_at <= ready and link_at < 60 else "usb",
+                "link_at": round(link_at, 1) if link_at is not None else None,
+                "ip_at": round(ip_at, 1) if ip_at is not None else None, "ready_at": round(ready, 1)}
 
     # ---------- live ----------
     def current_ip(self):
@@ -129,6 +146,10 @@ class Online(App):
     def start(self):
         time.sleep(3)
         try:
+            self.boot = self.boot_times()
+        except Exception:
+            self.boot = None
+        try:
             b = self.from_boot()
         except Exception:
             b = None
@@ -170,4 +191,5 @@ class Online(App):
         return {"dot": "warn"} if r and r.get("slow") else None
 
     def get(self, sub, arg, q, user):
-        return {"latest": self.latest(), "history": self.history[::-1][:10], "portfast_secs": PORTFAST_SECS, "now": time.time()}
+        return {"latest": self.latest(), "history": self.history[::-1][:10], "portfast_secs": PORTFAST_SECS, "now": time.time(),
+                "boot": self.boot}

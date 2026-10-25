@@ -7,17 +7,20 @@
 
   function drawOnline(o) {
     const r = o && o.latest, w = $('#w-online');
-    if (!r) { setSeg('#on-secs', '--.-', 4); $('#on-what').textContent = 'not measured yet'; $('#on-note').textContent = 'Measured when the link comes up.'; w.classList.add('off'); return; }
+    const b = o && o.boot, s = v => (v == null ? '—' : `${v} s`);
+    const bootRow = b ? [[`Boot (${b.power === 'poe' ? 'PoE' : 'USB'})`, s(b.ready_at)]] : [];
+    const times = rows => setHTML('#on-note', `<dl class="kv on-kv">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`);
+    if (!r) { setSeg('#on-secs', '--.-', 4); $('#on-what').textContent = 'not measured yet'; times(bootRow); w.classList.add('off'); return; }
     w.classList.remove('off');
     const live = r.mode === 'live', secs = live ? (r.gw_s ?? r.ip_s) : (r.offer_s ?? r.ip_s);
     setSeg('#on-secs', secs == null ? (r.running ? '..' : '--.-') : secs.toFixed(1), 4);
     w.classList.toggle('alarm', !!r.slow);
-    $('#on-what').textContent = r.running ? 'seconds · measuring…' : live ? `seconds to the gateway answering${r.slow ? ' · portfast off?' : ''}` : `seconds to a DHCP offer · from the boot logs${r.slow ? ' · portfast off?' : ''}`;
-    const b = r.boot;
-    const bootLine = b ? ` Boot, from power-on: the port came up at ${b.link_at} s, the address at ${b.ip_at ?? '—'} s, ${b.ready_at != null ? `, and Probe Deck started at ${b.ready_at} s` : ''}.` : '';
-    $('#on-note').textContent = (live
-      ? `Link up ${fmtWhen(r.t)}: address in ${r.ip_s ?? '—'} s, gateway in ${r.gw_s ?? '—'} s, internet in ${r.inet_s ?? '—'} s.${r.gave_up ? ' The gateway never answered.' : ''} Over ${o.portfast_secs} s means the switch port probably isn't set to portfast.`
-      : `The probe is powered by this port (PoE), so it boots after the port is already up and can't time it live. These come from the boot logs: link up, then a DHCP offer ${r.offer_s ?? '—'} s and an address ${r.ip_s ?? '—'} s later. DHCP's own retry timer adds a few seconds (${r.retry_s ?? '?'} s before its first try this time), so it's a rough figure; 30 s or more still means portfast is off. For live timing, bounce the port or power the probe from USB-C.`) + bootLine;
+    $('#on-what').textContent = r.running ? 'seconds · measuring…' : `${live ? 'seconds to gateway' : 'seconds to DHCP offer'}${r.slow ? ' · portfast off?' : ''}`;
+    // after link up for this jack, then the probe's own boot (seconds from power-on)
+    const rb = r.boot;
+    times(live
+      ? [['Address', s(r.ip_s)], ['Gateway', r.gave_up ? 'no answer' : s(r.gw_s)], ['Internet', s(r.inet_s)], ...bootRow]
+      : [['DHCP offer', s(r.offer_s)], ['Address', s(r.ip_s)], ...(rb ? [['Boot (PoE)', s(rb.ready_at)], ['Link up at', s(rb.link_at)], ['Address at', s(rb.ip_at)]] : bootRow)]);
   }
 
   function drawPort(p) {
