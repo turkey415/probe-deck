@@ -156,6 +156,19 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
 .tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .badge { min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--crit); color: #fff; font-size: 10px; letter-spacing: 0; display: inline-grid; place-items: center; box-shadow: 0 0 8px color-mix(in srgb, var(--crit) 70%, transparent); }
 .layout.r { grid-template-columns: minmax(0, 1fr) 330px; }
+.layout.one { grid-template-columns: minmax(0, 1fr); }
+/* System stats page */
+.st-bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--led-off); margin: 4px 0 12px; }
+.st-bar i { display: block; height: 100%; }
+.st-key { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--text-2); margin-bottom: 12px; }
+.st-key span { display: inline-flex; align-items: center; gap: 6px; }
+#v-stats .gx .gauge { grid-template-columns: 64px 1fr 110px; }
+#v-stats .gx .gauge + .gauge { margin-top: 8px; }
+#v-stats .gx .gauge .k { color: var(--text-2); font: 600 11px var(--mono); }
+#v-stats .note { color: var(--muted); font-size: 12.5px; margin: 10px 0 0; }
+#v-stats h3 { margin: 16px 0 8px; font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+.btn.sm { padding: 4px 10px; font-size: 12px; text-transform: none; letter-spacing: 0; flex: none; }
+
 @media (max-width: 960px) { .layout.r { grid-template-columns: minmax(0, 1fr); } }
 select, textarea { font: inherit; color: inherit; width: 100%; background: var(--bg); border: 1px solid var(--line-2); border-radius: 7px; padding: 7px 9px; min-width: 0; }
 textarea { font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; font-size: 12.5px; resize: vertical; }
@@ -774,6 +787,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
   <div class="mod" data-mod="sys">
     <button type="button" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9 M17 7h3 M4 17h3 M11 17h9 M15 5v4 M9 15v4"/></svg><span class="mn">System</span><span class="dot" data-lamp></span><span class="chev" aria-hidden="true">▾</span></button>
     <div class="items">
+      <a href="#stats" data-view="stats"><span class="dot" id="t-stats"></span><span class="nm">System stats</span></a>
       <a href="#settings" data-view="settings" class="admin-only"><span class="dot"></span><span class="nm">Settings &amp; power</span></a>
       <a href="#ts" data-view="ts"><span class="dot" id="t-ts"></span><span class="nm">Tailscale</span></a>
       <a href="#https" data-view="https"><span class="dot" id="t-https"></span><span class="nm">HTTPS</span></a>
@@ -785,21 +799,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 <div class="scrim" id="scrim"></div>
 <div class="content">
 <div class="banner" id="offline" hidden style="margin:14px 20px 0">Lost contact with the probe. Retrying…</div>
-<div class="layout view" id="v-probe">
-<aside>
-
-
-  <section class="card">
-    <h2>Probe</h2>
-    <dl class="kv" id="sys"></dl>
-    <div class="row admin-only" style="margin-top:14px">
-      <button class="btn" id="b-recheck">Check now</button>
-      <button class="btn" id="b-renew">Renew DHCP</button>
-    </div>
-  </section>
-
-</aside>
-
+<div class="layout one view" id="v-probe">
 <main>
 
   <section class="card deck">
@@ -826,7 +826,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
   </section>
 
   <section class="card">
-    <h2>Network</h2>
+    <h2>Network <span class="spacer"></span><span class="row admin-only" style="gap:8px"><button class="btn sm" id="b-recheck">Check now</button><button class="btn sm" id="b-renew">Renew DHCP</button></span></h2>
     <dl class="kv" id="net"></dl>
   </section>
 
@@ -1931,6 +1931,70 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 </main>
 </div>
 
+<!-- ================= SYSTEM STATS ================= -->
+<div class="layout one view" id="v-stats" hidden>
+<main>
+  <section class="card deck">
+    <h2>System <span class="spacer"></span><span class="lamp" id="st-lamp"></span></h2>
+    <div class="gx"><div class="vus" id="st-meters"></div></div>
+    <div class="wells" id="st-wells" style="margin-top:14px"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card"><h2>CPU <span class="spacer"></span><span class="sub" id="st-cpusub"></span></h2>
+      <div class="gx" id="st-cores"></div>
+      <dl class="kv" id="st-cpukv" style="margin-top:14px"></dl>
+    </section>
+    <section class="card"><h2>Heat and cooling <span class="spacer"></span><span class="sub" id="st-heatsub"></span></h2>
+      <div class="gx" id="st-temps"></div>
+      <dl class="kv" id="st-heatkv" style="margin-top:14px"></dl>
+      <p class="note" id="st-heatnote"></p>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="card"><h2>Memory <span class="spacer"></span><span class="sub" id="st-memsub"></span></h2>
+      <div class="st-bar" id="st-membar"></div><div class="st-key" id="st-memkey"></div>
+      <dl class="kv" id="st-memkv"></dl>
+      <h3>Swap (page file)</h3>
+      <div id="st-swap"></div>
+    </section>
+    <section class="card"><h2>Storage <span class="spacer"></span><span class="sub" id="st-disksub"></span></h2>
+      <div class="gx" id="st-fs"></div>
+      <dl class="kv" id="st-diskkv" style="margin-top:14px"></dl>
+    </section>
+  </div>
+
+  <section class="card"><h2>Network interfaces</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="l">Interface</th><th class="l">State</th><th>Speed</th><th class="l">MAC</th><th>MTU</th><th>Down now</th><th>Up now</th><th>Received</th><th>Sent</th><th>Errors</th><th>Drops</th></tr></thead>
+      <tbody id="st-if"></tbody>
+    </table></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card"><h2>CPU load <span class="spacer"></span><span class="sub">last 10 min</span></h2><div class="legend" id="st-lg-cpu"></div><div class="chart" id="st-c-cpu"></div></section>
+    <section class="card"><h2>Temperature <span class="spacer"></span><span class="sub">last 10 min</span></h2><div class="legend" id="st-lg-temp"></div><div class="chart" id="st-c-temp"></div></section>
+    <section class="card"><h2>Memory in use <span class="spacer"></span><span class="sub">last 10 min</span></h2><div class="legend" id="st-lg-mem"></div><div class="chart" id="st-c-mem"></div></section>
+    <section class="card"><h2>Network <span class="spacer"></span><span class="sub" id="st-netsub">last 10 min</span></h2><div class="legend" id="st-lg-net"></div><div class="chart" id="st-c-net"></div></section>
+    <section class="card"><h2>SD card reads and writes <span class="spacer"></span><span class="sub">last 10 min</span></h2><div class="legend" id="st-lg-disk"></div><div class="chart" id="st-c-disk"></div></section>
+    <section class="card"><h2>Busiest processes <span class="spacer"></span><span class="sub" id="st-procsub"></span></h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th class="l">Process</th><th>PID</th><th>CPU</th><th>Memory</th><th>Threads</th></tr></thead>
+        <tbody id="st-procs"></tbody>
+      </table></div>
+      <p class="note">CPU is a share of one core: 100% means one core flat out, and this board has <span id="st-ncores">4</span>.</p>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>This probe <span class="spacer"></span><span class="row admin-only" style="gap:8px"><a class="btn sm" href="#settings">Settings &amp; power</a></span></h2>
+    <dl class="kv" id="sys"></dl>
+    <dl class="kv" id="st-about" style="margin-top:12px"></dl>
+  </section>
+</main>
+</div>
+
 <!-- ================= TICK TEST ================= -->
 <div class="layout view" id="v-tick" hidden>
 <aside>
@@ -2381,7 +2445,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 // ---------- views (tabs) ----------
 const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
-const VIEWS = ['tick', 'mtr', 'mdns', 'mcast', 'survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
+const VIEWS = ['stats', 'tick', 'mtr', 'mdns', 'mcast', 'survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -3986,6 +4050,7 @@ boot();
 <script src="/web/speed.js"></script>
 <script src="/web/logs.js"></script>
 <script src="/web/tick.js"></script>
+<script src="/web/stats.js"></script>
 <script src="/web/mtr.js"></script>
 <script src="/web/mdns.js"></script>
 <script src="/web/mcast.js"></script>
