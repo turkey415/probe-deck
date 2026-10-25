@@ -89,7 +89,7 @@ class Configs(App):
             self.wake_ev.wait(60)
             self.wake_ev.clear()
 
-    def pull(self, d, by="schedule"):
+    def pull(self, d, by="schedule", login=None):
         self.busy = d["key"]
         t0 = time.time()
         ent = self.index.setdefault(d["key"], {"versions": []})
@@ -97,6 +97,7 @@ class Configs(App):
         res = {"t": t0, "ok": False, "by": by}
         try:
             target = {"console": True} if d["via"] == "console" else {"host": d["host"]}
+            target["login"] = login or {}
             with swcli.open_session(self.p, target) as s:
                 text = s.run("show running-config", 120)
                 if s.host:
@@ -227,7 +228,8 @@ class Configs(App):
                 d = dict(d, via="console" if d.get("console") else "ssh")
             if self.busy:
                 raise ValueError("Another pull is running")
-            return {"result": self.pull(d, by=user["name"])}
+            login = swcli.take_login(self.p, body, None if d.get("console") else d["host"])
+            return {"result": self.pull(d, by=user["name"], login=login)}
         if action == "pull_all":
             for d in self.devices():
                 if d["via"] != "off" and d["key"] not in self.queue:

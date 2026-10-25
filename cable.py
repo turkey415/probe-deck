@@ -81,10 +81,12 @@ class CableTest(App):
         mine = bool(not t["console"] and t["host"] == mgmt and own and port.lower().replace("gigabitethernet", "gi") == own.lower().replace("gigabitethernet", "gi"))
         self.run = {"running": True, "step": "starting the test", "dev": key, "switch": t["name"], "port": port, "mine": mine, "t": time.time(),
                     "by": user, "log": []}
-        threading.Thread(target=self.go, args=(t, port, self.run), daemon=True).start()
+        login = swcli.take_login(self.p, body, None if t["console"] else t["host"])
+        threading.Thread(target=self.go, args=(t, port, self.run, login), daemon=True).start()
 
-    def go(self, t, port, r):
+    def go(self, t, port, r, login=None):
         target = {"console": True} if t["console"] else {"host": t["host"]}
+        target["login"] = login or {}
 
         def step(s):
             r["step"] = s

@@ -50,7 +50,7 @@ import vlanwalk as vlanwalk_mod
 import survey as survey_mod
 import swcli as swcli_mod
 
-__version__ = "0.25.0"
+__version__ = "0.26.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")

@@ -608,6 +608,13 @@ td.wrap { white-space: normal; }
 .hosttab .nm small { display: block; color: var(--muted); font-size: 11.5px; }
 .hosttab .chip { margin: 0 4px 3px 0; }
 pre.caplines { max-height: 420px; overflow: auto; white-space: pre; overflow-wrap: normal; font-size: 11.5px; user-select: text; }
+.loginbox { display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--well); border: 1px solid var(--line); border-radius: 8px; }
+#f-pulllogin .loginbox { display: grid; grid-template-columns: 1fr 1fr; align-items: end; }
+#f-pulllogin .loginbox > .k, #f-pulllogin .loginbox > .chk { grid-column: 1 / -1; }
+#f-pulllogin .loginbox .f .sub { display: none; }
+#f-pulllogin .loginbox { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#f-pulllogin .loginbox > .row { display: contents; }
+@media (max-width: 760px) { #f-pulllogin .loginbox { grid-template-columns: 1fr; } }
 .upbar { height: 8px; border-radius: 4px; background: var(--well); overflow: hidden; border: 1px solid var(--line); }
 #fl-list tr.sel td, #cf-list tr.sel td { background: rgba(255, 176, 0, .06); }
 .upbar i { display: block; height: 100%; width: 0; background: var(--amber); transition: width .2s; }
@@ -1630,11 +1637,12 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
   <section class="card admin-only">
     <h2>Switch login <span class="spacer"></span><span class="lamp" id="cf-login"></span></h2>
     <form class="form" id="f-login">
-      <p class="sub" style="margin:0">One login for every switch, over SSH (and the console cable if it asks). Configs and Cable test use it. Kept on the probe, root-only, never sent to this page.</p>
+      <p class="sub" style="margin:0">The saved login: one shared by every switch, and any switch can have its own. Scheduled pulls use it; Pull and Cable test can also take a login typed for one run. Kept on the probe, root-only; passwords are never sent back to this page.</p>
+      <label class="f">For <select id="cf-for"></select></label>
       <label class="f">User <input type="text" id="cf-user" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
       <label class="f">Password <input type="password" id="cf-pw" autocomplete="new-password"></label>
       <label class="f">Enable secret <span class="sub">Only if the user lands at <code>&gt;</code>, not <code>#</code>.</span><input type="password" id="cf-en" autocomplete="new-password"></label>
-      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="cf-lmsg"></span></div>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><button class="btn" type="button" id="cf-forget" style="flex:none" hidden>Use the shared login</button><span id="cf-lmsg"></span></div>
     </form>
   </section>
   <section class="card admin-only">
@@ -1658,6 +1666,15 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
   </section>
   <section class="card">
     <h2>Switches</h2>
+    <form class="admin-only" id="f-pulllogin" style="margin-bottom:12px" autocomplete="off"><div class="loginbox">
+        <span class="k">Login for Pull (empty = the saved one)</span>
+        <div class="row">
+          <label class="f">User <input type="text" id="pl-user" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+          <label class="f">Password <input type="password" id="pl-pw" autocomplete="new-password"></label>
+        </div>
+        <label class="f">Enable secret <span class="sub">only if needed</span><input type="password" id="pl-en" autocomplete="new-password"></label>
+        <label class="chk"><input type="checkbox" id="pl-rem"><span>Remember for this switch<small>Otherwise it's used for this run only. Empty fields use the saved login.</small></span></label>
+      </div></form>
     <div class="tablewrap"><table>
       <thead><tr><th class="l">Switch</th><th class="l">How</th><th class="l">Last pull</th><th>Versions</th><th>Last change</th><th></th></tr></thead>
       <tbody id="cf-list"></tbody>
@@ -1684,6 +1701,15 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
       <label class="f">Switch <select id="cb-dev"></select></label>
       <label class="f">Port <input type="text" id="cb-port" placeholder="e.g. Gi0/7" spellcheck="false" autocomplete="off"></label>
       <div class="peers"><button type="button" id="cb-mine">This jack</button></div>
+      <div class="loginbox">
+        <span class="k">Switch login</span>
+        <div class="row">
+          <label class="f">User <input type="text" id="cb-user" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+          <label class="f">Password <input type="password" id="cb-pw" autocomplete="new-password"></label>
+        </div>
+        <label class="f">Enable secret <span class="sub">only if needed</span><input type="password" id="cb-en" autocomplete="new-password"></label>
+        <label class="chk"><input type="checkbox" id="cb-rem"><span>Remember for this switch<small>Otherwise it's used for this run only. Empty fields use the saved login.</small></span></label>
+      </div>
       <button class="btn primary" type="submit" id="cb-go">Run the cable test</button>
       <div class="msg" id="cb-err" hidden></div>
     </form>
@@ -1694,7 +1720,7 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
       <li>It's the switch's own TDR test: it sends a pulse down each pair and times the echo, so it finds an open or shorted pair and <b>how far away</b> it is.</li>
       <li>The port's link <b>drops for a few seconds</b> while it runs. On the probe's own jack the probe goes offline briefly and the page waits.</li>
       <li>At 100 Mbps only two pairs carry data; the others may say <i>Not completed</i>.</li>
-      <li>It logs in with the switch login on the <a href="#configs">Configs</a> page.</li>
+      <li>Type the switch's login above for this test, or leave it empty to use the one saved on the <a href="#configs">Configs</a> page. Tick <i>Remember</i> to save it for that switch.</li>
     </ul>
   </section>
 </aside>

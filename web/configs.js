@@ -42,9 +42,16 @@
         + `<td><span class="keys admin-only"><button class="key" data-view="${v.file}">View</button><a class="key" style="text-decoration:none" href="/api/x/configs/download?dev=${encodeURIComponent(dev.key)}&f=${v.file}">Download</a><button class="key" data-label="${v.file}">Label</button></span></td></tr>`).join(''));
       $('#cf-diff').disabled = ticked.size !== 2;
     }
-    if (!$('#f-cfg')._filled) { $('#cf-every').value = d.every; $('#cf-onchg').checked = d.on_change; $('#cf-user').value = L.user; $('#f-cfg')._filled = true; }
-    $('#cf-pw').placeholder = L.password_set ? '•••••••• (set: type to change)' : 'not set';
-    $('#cf-en').placeholder = L.enable_set ? '•••••••• (set: type to change)' : 'not set';
+    if (!$('#f-cfg')._filled) { $('#cf-every').value = d.every; $('#cf-onchg').checked = d.on_change; $('#f-cfg')._filled = true; }
+    // the saved login: shared, or one switch's own
+    const fors = '<option value="">All switches (shared)</option>' + d.devices.filter(x => x.host).map(x => `<option value="${esc(x.host)}">${esc(x.name)} · ${esc(x.host)}${(L.per || {})[x.host] ? ' (own login)' : ''}</option>`).join('');
+    const fv = $('#cf-for').value; setHTML('#cf-for', fors); $('#cf-for').value = fv || '';
+    const per = $('#cf-for').value ? (L.per || {})[$('#cf-for').value] : null;
+    if ($('#cf-user')._for !== $('#cf-for').value && document.activeElement !== $('#cf-user')) { $('#cf-user').value = per ? per.user : $('#cf-for').value ? '' : L.user; $('#cf-user')._for = $('#cf-for').value; }
+    $('#cf-pw').placeholder = (per ? per.password_set : L.password_set) ? '•••••••• (saved: type to change)' : $('#cf-for').value && !per ? 'uses the shared login' : 'not saved';
+    $('#cf-en').placeholder = L.enable_set ? '•••••••• (saved: type to change)' : 'not saved';
+    $('#cf-forget').hidden = !per;
+    fillLogin('pl', L, '');
   }
   const showText = (html) => { const o = $('#cf-out'); o.hidden = false; o.innerHTML = html; o.scrollIntoView({ block: 'nearest' }); };
   $('#cf-list').addEventListener('change', async e => {
@@ -57,7 +64,7 @@
     const p = e.target.closest('[data-pull]');
     if (p) {
       p.disabled = true; p.textContent = 'Pulling…';
-      try { const r = await api('/api/x/configs/pull', { dev: p.dataset.pull }); const x = r.result; if (!x.ok) alert(x.error); }
+      try { const r = await api('/api/x/configs/pull', { dev: p.dataset.pull, ...loginBody('pl') }); const x = r.result; if (!x.ok) alert(x.error); $('#pl-pw').value = ''; $('#pl-en').value = ''; }
       catch (err) { alert(err.message); }
       refresh();
     }
@@ -87,9 +94,15 @@
   });
   $('#f-login').addEventListener('submit', async e => {
     e.preventDefault();
-    try { await api('/api/x/cli/save', { user: $('#cf-user').value, password: $('#cf-pw').value, enable: $('#cf-en').value }); $('#cf-pw').value = ''; $('#cf-en').value = ''; flash($('#cf-lmsg'), 'Saved', true); refresh(); }
+    try { await api('/api/x/cli/save', { host: $('#cf-for').value, user: $('#cf-user').value, password: $('#cf-pw').value, enable: $('#cf-en').value }); $('#cf-pw').value = ''; $('#cf-en').value = ''; $('#cf-user')._for = null; flash($('#cf-lmsg'), 'Saved', true); refresh(); }
     catch (err) { flash($('#cf-lmsg'), err.message); }
   });
+  $('#cf-for').addEventListener('change', () => { $('#cf-user')._for = null; if (D) draw(); });
+  $('#cf-forget').addEventListener('click', async () => {
+    try { await api('/api/x/cli/save', { host: $('#cf-for').value, remove: true }); $('#cf-user')._for = null; flash($('#cf-lmsg'), 'This switch uses the shared login again', true); refresh(); }
+    catch (err) { flash($('#cf-lmsg'), err.message); }
+  });
+  $('#f-pulllogin').addEventListener('submit', e => e.preventDefault());
   $('#f-cfg').addEventListener('submit', async e => {
     e.preventDefault();
     try { await api('/api/x/configs/settings', { every: +$('#cf-every').value, on_change: $('#cf-onchg').checked }); flash($('#cf-smsg'), 'Saved', true); }

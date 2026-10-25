@@ -143,7 +143,7 @@ For a [lancache](https://lancache.net) (or any cache that works the same way):
 - Pulls every switch's **running-config** (the switches on the Switches page, plus the probe's own switch) over **SSH**, or over the **console cable** for a switch with no network. Every 24 hours, on **Pull** / **Pull all now**, and a minute after Switch logs hears `%SYS-5-CONFIG_I` (someone changed the config).
 - A version is kept only when the config **really changed** (timestamps and "Last configuration change" lines are ignored), with how many lines were added and removed. The last 100 per switch are kept.
 - **Label** a version ("Before the event"); labelled versions are never thrown away. Tick two versions and **Compare** for a coloured diff. View or download any version.
-- **Switch login:** one user, password and enable secret for every switch (Configs and Cable test both use it), kept in `/etc/probe-deck/logins.json`, root-only, never sent to the page. **Test** shows whether it works.
+- **Switch logins:** type a user, password and enable secret right on the Cable test form or above the Configs list: it's used for that run only, or saved for that switch with **Remember**. The saved logins (one shared by every switch, and any switch can have its own) are what scheduled pulls use. They're kept in `/etc/probe-deck/logins.json`, root-only; passwords never go back to the page.
 - Configs hold password hashes and SNMP communities, so only **admins** can view, compare or download them; viewers see the list.
 
 ### Wake (Wake-on-LAN)

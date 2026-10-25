@@ -264,14 +264,15 @@ class Session:
 def open_session(probe, target, enable=True):
     """target: {"host": "<switch IP>"} for SSH, or {"console": True} for the cable."""
     logins = probe.logins
+    once = {k: v for k, v in (target.get("login") or {}).items() if v}   # typed on the page for this run
     if target.get("console"):
-        login = logins.get(None)
+        login = {**logins.get(None), **once}
         link = ConsoleLink(probe.console)
     else:
         host = str(target.get("host") or "")
         if not IP_RE.fullmatch(host):
             raise CLIError("Pick a switch")
-        login = logins.get(host)
+        login = {**logins.get(host), **once}
         link = SSHLink(host, login)
     s = Session(link, login)
     try:
@@ -279,6 +280,25 @@ def open_session(probe, target, enable=True):
     except Exception:
         s.__exit__()
         raise
+
+
+def take_login(probe, body, host=None):
+    """A login typed on the page: used for this run, and saved for this switch when "remember" is ticked."""
+    once = {}
+    user = str(body.get("user") or "").strip()
+    if user:
+        if not NAME_RE.fullmatch(user):
+            raise ValueError("Bad user name")
+        once["user"] = user
+    for k in ("password", "enable"):
+        v = str(body.get(k) or "")
+        if v:
+            if len(v) > 128 or "\n" in v or "\r" in v:
+                raise ValueError(f"Bad {k}")
+            once[k] = v
+    if once and body.get("remember"):
+        probe.logins.set({"host": host or "", "user": once.get("user") or probe.logins.get(host).get("user", ""), **once})
+    return once
 
 
 class CliApp:
