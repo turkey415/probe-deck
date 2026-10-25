@@ -65,7 +65,11 @@ class Tick(App):
             time.sleep(1)
             r = self.run
             if r and r["running"] and (self.test.stop_ev.is_set() or time.time() - r["started"] >= r["secs"] + 1.2):
-                self.finish()
+                try:
+                    self.finish()
+                except Exception as e:
+                    print(f"tick test: {e}", flush=True)
+                    r["running"] = False
 
     # ---------- a test ----------
     def begin(self, body, user):

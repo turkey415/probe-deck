@@ -140,7 +140,12 @@ class Online(App):
             lk = self.p.link
             if lk["up"] and lk["since"] != last and lk["since"] > self.p.started + 5:
                 last = lk["since"]
-                self.live(lk["since"])
+                try:
+                    self.live(lk["since"])
+                except Exception as e:  # one bad measurement must not stop the next
+                    print(f"time to online: {e}", flush=True)
+                    if self.cur:
+                        self.cur["running"] = False
             elif lk["since"] != last:
                 last = lk["since"]
 

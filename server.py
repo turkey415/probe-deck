@@ -54,7 +54,7 @@ import tick as tick_mod
 import mtr as mtr_mod
 import swcli as swcli_mod
 
-__version__ = "0.31.1"
+__version__ = "0.31.2"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
