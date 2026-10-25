@@ -200,7 +200,10 @@ class NetMap:
             if self.community():
                 with self.lock:
                     devs = list(self.devices)
-                list(self.pool.map(self.poll_one, devs))
+                try:
+                    list(self.pool.map(self.poll_one, devs))
+                except Exception as e:  # never let one bad poll stop the poller
+                    print(f"switch poll: {e}", flush=True)
                 self.refresh_discovered()
             self.wake.wait(POLL_EVERY)
             self.wake.clear()
@@ -222,7 +225,7 @@ class NetMap:
                     st.update(self.reader.read(dev["id"], c, info, dev["host"], self.community(dev), self.version(dev),
                                                dev.get("roles") or {}))
                     self.attach_neighbors(st)
-        except S.SnmpError as e:
+        except (S.SnmpError, OSError) as e:   # OSError: no route for a moment (the link is renegotiating)
             st.update({k: v for k, v in prev.items() if k not in ("status", "error", "at")})
             st.update(status="error", error=str(e)[:160], down_since=prev.get("down_since") or time.time())
         st["took"] = round(time.time() - t0, 2)

@@ -1309,6 +1309,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
       <label class="chk"><input type="checkbox" id="s-perfdeck"><span>Show up in Perf-Deck<small>Answers Perf-Deck discovery on UDP 52010.</small></span></label>
       <label class="chk"><input type="checkbox" id="s-bcast"><span>Broadcast probe results<small>UDP 47474, for the T-Displays and PorkChopCheck.</small></span></label>
       <label class="chk"><input type="checkbox" id="s-renew"><span>New DHCP lease when re-plugged<small>Moving to another jack (or VLAN) gets a fresh address.</small></span></label>
+      <label class="chk"><input type="checkbox" id="s-eee"><span>Turn off Energy Efficient Ethernet<small>EEE lets the link sleep between packets, which adds a wake-up delay to every test. Switched off at start and after every link-up.</small></span></label>
       <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="s-msg"></span></div>
     </form>
   </section>
@@ -2336,7 +2337,7 @@ function fillForms() {
   $('#sp-server').value = c.iperf_server; $('#sp-secs').value = c.iperf_secs; $('#sp-streams').value = c.iperf_streams;
   $('#s-name').value = c.name; $('#s-targets').value = c.targets; $('#s-interval').value = c.interval; $('#s-dns').value = c.dns_name;
   $('#s-http').value = c.http_url; $('#s-listen').checked = c.iperf_listen; $('#s-perfdeck').checked = c.perfdeck;
-  $('#s-bcast').checked = c.broadcast; $('#s-renew').checked = c.renew_on_link;
+  $('#s-bcast').checked = c.broadcast; $('#s-renew').checked = c.renew_on_link; $('#s-eee').checked = c.eee_off;
   formsFilled = true;
 }
 
@@ -2359,7 +2360,7 @@ $('#f-set').onsubmit = async e => {
     await api('/api/settings', {
       name: $('#s-name').value, targets: $('#s-targets').value, interval: +$('#s-interval').value, dns_name: $('#s-dns').value.trim(),
       http_url: $('#s-http').value.trim(), iperf_listen: $('#s-listen').checked, perfdeck: $('#s-perfdeck').checked,
-      broadcast: $('#s-bcast').checked, renew_on_link: $('#s-renew').checked,
+      broadcast: $('#s-bcast').checked, renew_on_link: $('#s-renew').checked, eee_off: $('#s-eee').checked,
     });
     m.className = 'ok-msg'; m.textContent = 'Saved';
   } catch (err) { m.className = 'msg'; m.textContent = err.message; }

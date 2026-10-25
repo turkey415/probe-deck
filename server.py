@@ -54,7 +54,7 @@ import tick as tick_mod
 import mtr as mtr_mod
 import swcli as swcli_mod
 
-__version__ = "0.31.0"
+__version__ = "0.31.1"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -81,6 +81,7 @@ DEFAULTS = {
     "perfdeck": True,
     "broadcast": True,
     "renew_on_link": True,
+    "eee_off": True,
     **console_mod.DEFAULTS,
     **watch_mod.DEFAULTS,
     **wake_mod.DEFAULTS,
@@ -236,11 +237,14 @@ class Probe:
             if v and not HOST_RE.fullmatch(v):
                 raise ValueError("Bad iperf3 server")
             c["iperf_server"] = v
-        for k in ("iperf_listen", "perfdeck", "broadcast", "renew_on_link", "watch", "cs_nodes", "ts_geoip"):
+        for k in ("iperf_listen", "perfdeck", "broadcast", "renew_on_link", "eee_off", "watch", "cs_nodes", "ts_geoip"):
             if k in new:
                 c[k] = bool(new[k])
+        eee_changed = "eee_off" in new and bool(new["eee_off"]) != bool(self.conf.get("eee_off"))
         with self.lock:
             self.conf = c
+        if eee_changed:
+            run(["ethtool", "--set-eee", IFACE, "eee", "off" if c["eee_off"] else "on"], 10)
         CONF.parent.mkdir(parents=True, exist_ok=True)
         CONF.write_text(json.dumps(c, indent=2))
         os.chmod(CONF, 0o600)  # holds the SNMP community
@@ -262,6 +266,8 @@ class Probe:
                     else:
                         self.link.update(up=False, since=now, ip_after=None)
                         self.link["flaps"] = (self.link["flaps"] + [now])[-50:]
+                    if up:
+                        threading.Thread(target=self.eee_off, daemon=True).start()
                     if up and self.conf["renew_on_link"] and self.started < now - 20:
                         threading.Thread(target=self.renew, daemon=True).start()
                     self.wake_ev.set()
@@ -272,6 +278,15 @@ class Probe:
                     self.rates.append((now, max(0, rx - last[1]) * 8 / dt, max(0, tx - last[2]) * 8 / dt))
             last = (now, rx, tx)
             time.sleep(1)
+
+    def eee_off(self):
+        """Energy Efficient Ethernet lets the link sleep between packets: a wake-up delay a test probe
+        shouldn't add. Switched off at start and after every link-up (renegotiation can turn it back on)."""
+        if not self.conf.get("eee_off"):
+            return
+        # only when it's on: changing it makes the link renegotiate, so never touch a link that's already right
+        if re.search(r"EEE status:\s*enabled", run(["ethtool", "--show-eee", IFACE], 10)):
+            run(["ethtool", "--set-eee", IFACE, "eee", "off"], 10)
 
     def renew(self):
         """New jack, maybe a new VLAN: get a fresh DHCP lease."""
@@ -1199,6 +1214,7 @@ def main():
     for fn in (probe.link_loop, probe.ping_loop, probe.check_loop, probe.iperf_server_loop):
         threading.Thread(target=fn, daemon=True).start()
     probe.start_udp()
+    threading.Thread(target=probe.eee_off, daemon=True).start()
     probe.watch.start()
     for addon in probe.apps.values():
         if hasattr(addon, "start"):

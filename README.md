@@ -75,7 +75,8 @@ The **Speed test** page (Port in the sidebar) holds the LAN test, the Stations a
 - Every ~9 s the probe broadcasts a small JSON summary on **UDP 47474**: switch and port, VLAN, link, IP, gateway ping, DNS and internet status, and the last speed test. This is the shared probe message from [t-display-progs](https://github.com/turkey415/t-display-progs) (`TODO.md`) for the T-Display and CYD **Probe Viewer** app, and for PorkChopCheck. `GET /api/probe` returns the same message.
 
 ### Settings and system
-- Probe name, ping targets, check interval, DNS test name, internet check URL, and on/off switches for the iperf3 server, Perf-Deck discovery, the broadcast, and DHCP-on-replug. Settings are saved from the page.
+- Probe name, ping targets, check interval, DNS test name, internet check URL, and on/off switches for the iperf3 server, Perf-Deck discovery, the broadcast, and DHCP-on-replug.
+- **Energy Efficient Ethernet off** (on by default): EEE lets the link sleep between packets, which adds a wake-up delay to every test (the probe's port came set to sleep up to a second). It's switched off at start and after a link comes up, and only when it's on, because changing it makes the link renegotiate for a few seconds. Settings are saved from the page.
 - CPU temperature, load, memory and uptime, plus **Check now** and **Renew DHCP** buttons.
 - Works on a phone: the layout stacks to one column.
 
