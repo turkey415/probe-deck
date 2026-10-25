@@ -2,14 +2,13 @@
 
 A pocket gigabit **network probe** with its own web page. Plug it into any switch port and it is powered by PoE. Within a few seconds the page shows what is on the other end of the cable: which switch and port, which VLAN, whether DHCP, DNS and the internet work, and how fast the port really is.
 
-Every page is in the **sidebar**, grouped (Port, Network, Watch, Event, Switch tools, System), under a **This jack** card that always shows the port, switch, VLAN and link lights. Besides the Overview, the pages are:
-- **Console**: plug a USB console cable into a switch and use its console from the web page (or over telnet).
-- **Watchdog**: catches rogue DHCP servers, IP conflicts, gateway spoofing, broadcast storms, spanning tree changes and rogue IPv6 routers.
-- **Wake**: Wake-on-LAN for every machine in the room, with a staggered "wake all".
-- **HTTPS**: the page is served over HTTPS with a certificate the probe makes itself, and this tab shows it and regenerates it.
-- **Switches**: GXL-LANapp's Switches page: hall gauges, a bandwidth monitor, firewall and LAN cache monitors, every switch's ports and busiest ports, and a drill-down into each port, over SNMP.
-- **Trace**: type an IP, MAC or host name and see the path from the probe, switch by switch, to the port (or access point) it's on.
-- **Users**: everyone logs in. **Admins** can change anything; **viewers** see everything but change nothing.
+Every page is in the **sidebar**, grouped, under a **This jack** card that always shows the port, switch, VLAN and link lights:
+- **Port:** the **Overview** (what is on the other end of this cable), **Speed test** (LAN with iperf3 and the internet with Cloudflare), **Cable test** (the switch's TDR, pair by pair) and **VLAN walk** (DHCP, gateway, DNS and internet on every VLAN of a trunk).
+- **Network:** **Switches** (GXL-LANapp's Switches page over SNMP), **Trace** (the path to any IP, MAC or name) and **Host scan** (who is on this subnet, with makers, names and open ports).
+- **Watch:** **Watchdog** (rogue DHCP, IP conflicts, spoofing, storms, spanning tree, rogue IPv6 routers), **Switch logs** (a syslog receiver for the switches) and **Capture** (tcpdump to .pcap, and alarms that capture themselves).
+- **Event:** **Jack survey** (walk the hall and record every seat's jack), **CS2** (is this network fit for a match?), **LAN cache** (are game downloads hitting the cache?) and **Wake** (Wake-on-LAN for the room).
+- **Switch tools:** **Console** (the USB console cable in the browser), **Configs** (running-config backups and diffs) and **Files** (a TFTP server for images and configs).
+- **System:** **Settings & power**, **Tailscale**, **HTTPS** and **Users**.
 
 It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same look as [iPerf Deck](https://github.com/turkey415/Perf-Deck). The probe joins Perf-Deck's network of stations, so the two can test each other.
 
@@ -105,6 +104,13 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - Names the probe already knows are shown first: Wake machines, Perf-Deck stations, switches from the Switches page, the gateway.
 - Hosts are remembered by MAC with first and last seen; machines that turn up after the first scan are marked **new**. Filter by anything; each host has a **Trace** button.
 - Scans every 15 minutes (or only when you press **Scan now**). A /24 takes about 12 seconds.
+
+### Jack survey (every seat, before the doors open)
+- Press **Start surveying**, then walk the hall and plug the probe into each seat's jack in order. On each jack it waits for the switch port (CDP/LLDP), a DHCP address, its DNS and internet checks and a few gateway pings, then **records the seat** and moves the label on (B-14 → B-15). On PoE the probe boots on every jack; the survey carries on across reboots. Plugging into the same switch port again within 10 minutes isn't counted twice.
+- Each seat keeps: switch, port and VLAN, link speed and duplex, seconds from plug to address, gateway latency and loss, DNS and internet, and (optional) a 3-second speed test to a Perf-Deck station.
+- A verdict per seat, **good**, **check** or **bad**, with the reasons: not gigabit, half duplex, no DHCP, slow DHCP, gateway loss or latency, DNS or internet failing, a VLAN that differs from most seats, or a switch port shared with another seat.
+- Readouts for the next seat and the good/check/bad counts, a table (with **Only problems**), rename or delete seats, **Download CSV**, and **New survey** (the old one is kept on the probe).
+- The probe message on UDP 47474 carries the survey (`sv`: armed, next seat, count, last seat's verdict), so a T-Display can show it while you walk.
 
 ### Switch logs (syslog from the switches)
 - The probe is a **syslog receiver** (UDP 514). The page shows the lines to paste into each switch (`logging host <probe>`, `logging trap informational`, timestamps and `logging origin-id hostname`).
@@ -317,6 +323,7 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 - **`wake.py`**: saved machines, magic packets and the ping checks.
 - **`index.html`**: one file. It polls `/api/state` every second (twice a second during a test). The console loads `vendor/xterm.js` the first time you open it.
 - **`netmap.py`**: devices, the poller, discovery and the trace. **`gxl_switch.py`** reads a switch the way GXL-LANapp's server does (forwarding table, CDP/LLDP, VLANs, environment, rates, history). **`pc_snmp.py`** is the SNMP v1/v2c client and port grading, copied unchanged from PorkChopCheck.
+- **Add-on pages** plug in through **`appbase.py`** (`/api/x/<name>`, settings and data folders, downloads): **`inet.py`** (internet speed test), **`cable.py`**, **`vlanwalk.py`**, **`hosts.py`**, **`logs.py`** (syslog), **`capture.py`**, **`survey.py`**, **`cache.py`**, **`configs.py`** and **`tftp.py`** (Files). Their page code is in **`web/<name>.js`**. **`swcli.py`** logs in to a switch's CLI over SSH (paramiko) or the console cable, for Configs and Cable test.
 - **`auth.py`**: users, roles and sessions (and the `passwd`/`add`/`del` command for SSH).
 - **`tls.py`**: makes the certificate with `openssl` and holds the SSL context. The HTTPS server does each handshake in the request's thread and picks up a new certificate on the next connection.
 - **Files on the probe:** settings in `/etc/probe-deck/config.json`, the certificate in `/etc/probe-deck/tls/`; in `/var/lib/probe-deck`: test history `history.json`, watchdog events `events.json`, saved machines `wol.json`, console logs `console/`.
@@ -351,6 +358,7 @@ Open **https://probe-02.local/** and accept the self-signed certificate (or trus
 | GET | `/api/tailscale` | Tailscale status, settings and devices |
 | POST | `/api/tailscale` | `{action: up\|down\|login\|logout\|service\|settings\|cert\|add_server\|switch\|remove, ...}` (admin) |
 | GET | `/api/cs` | The CS2 tab: servers, Perf-Deck nodes, stats, path, player PCs, lag events, verdict |
+| GET / POST | `/api/x/<page>[/…]` | The add-on pages (`speed`, `cable`, `vlans`, `hosts`, `logs`, `capture`, `survey`, `cache`, `configs`, `files`, `cli`): each is a module built on `appbase.App`, with its settings in `/etc/probe-deck/<page>.json` and its data in `/var/lib/probe-deck/<page>/` |
 | POST | `/api/cs/scan` | Scan the LAN for game servers now (any user) |
 | GET | `/api/trace/<id>`, `/api/traces` | A trace's steps and result; recent traces |
 | GET | `/api/tls`, `/api/tls/cert.pem` | Certificate details; download the certificate |

@@ -613,6 +613,11 @@ pre.caplines { max-height: 420px; overflow: auto; white-space: pre; overflow-wra
 .upbar i { display: block; height: 100%; width: 0; background: var(--amber); transition: width .2s; }
 pre.diff { margin-top: 12px; max-height: 620px; overflow: auto; white-space: pre; overflow-wrap: normal; color: var(--text-2); user-select: text; }
 pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { color: #8fb8ff; }
+.svtab td { vertical-align: top; }
+.svtab .why { white-space: normal; min-width: 130px; color: var(--text-2); font-size: 12.5px; }
+.svtab tr.lv-bad td:first-child { box-shadow: inset 3px 0 0 var(--crit); }
+.svtab tr.lv-check td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+.svtab tr.lv-good td:first-child { box-shadow: inset 3px 0 0 var(--good); }
 </style>
 </head>
 <body class="gated">
@@ -687,6 +692,7 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
   <div class="mod" data-mod="event">
     <button type="button" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5 M12 16v5 M3 12h5 M16 12h5 M12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10z"/></svg><span class="mn">Event</span><span class="dot" data-lamp></span><span class="chev" aria-hidden="true">▾</span></button>
     <div class="items">
+      <a href="#survey" data-view="survey"><span class="dot" id="t-survey"></span><span class="nm">Jack survey</span><span class="badge" id="tb-survey" hidden></span></a>
       <a href="#cs" data-view="cs"><span class="dot" id="t-cs"></span><span class="nm">CS2</span></a>
       <a href="#cache" data-view="cache"><span class="dot" id="t-cache"></span><span class="nm">LAN cache</span><span class="badge" id="tb-cache" hidden></span></a>
       <a href="#wake" data-view="wake"><span class="dot"></span><span class="nm">Wake</span></a>
@@ -1753,6 +1759,63 @@ pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { co
 </main>
 </div>
 
+<!-- ================= JACK SURVEY ================= -->
+<div class="layout view" id="v-survey" hidden>
+<aside>
+  <section class="card admin-only">
+    <h2>Survey <span class="spacer"></span><span class="lamp" id="sv-lamp"></span></h2>
+    <form class="form" id="f-survey">
+      <div class="row">
+        <label class="f">Name <input type="text" id="sv-title" maxlength="30" spellcheck="false"></label>
+        <label class="f">Next seat <input type="text" id="sv-next" maxlength="30" spellcheck="false" placeholder="A-01"></label>
+      </div>
+      <label class="f">Speed test at each seat <select id="sv-speed"></select></label>
+      <div class="row" style="align-items:center"><button class="btn" type="submit" style="flex:none">Save</button><span id="sv-smsg"></span></div>
+    </form>
+    <div class="form" style="margin-top:14px">
+      <label class="chk" id="sv-thisl"><input type="checkbox" id="sv-this"><span>Count the jack I'm on now<small>Otherwise the survey starts at the next jack you plug into.</small></span></label>
+      <div class="row" style="align-items:center">
+        <button class="btn primary" type="button" id="sv-arm" style="flex:none">Start surveying</button>
+        <button class="btn" type="button" id="sv-rec" style="flex:none">Record this jack now</button>
+      </div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li>Press <b>Start surveying</b>, then walk the hall and plug the probe into each seat's jack, in order.</li>
+      <li>On each jack it waits for the switch port (CDP/LLDP), an address and its checks, then saves the seat and moves to the next label (B-14 → B-15). On PoE it boots on every jack; that's fine.</li>
+      <li>The T-Display Probe Viewer and this page show the next seat. Plugging into the same port again within 10 minutes isn't counted twice.</li>
+      <li>Each seat gets <b>good</b>, <b>check</b> or <b>bad</b>, with why: not gigabit, half duplex, no DHCP, slow DHCP, gateway loss or latency, DNS, internet, an unusual VLAN, or a port shared with another seat.</li>
+    </ol>
+  </section>
+  <section class="card admin-only">
+    <h2>Finish</h2>
+    <div class="row" style="align-items:center;flex-wrap:wrap"><a class="btn ro-ok" id="sv-csv" href="/api/x/survey/csv" style="flex:none">Download CSV</a><button class="btn" type="button" id="sv-new" style="flex:none">New survey</button></div>
+    <p class="sub" style="margin:10px 0 0">New survey keeps a copy of this one on the probe and starts an empty list.</p>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2><span id="sv-name">Survey</span> <span class="spacer"></span><span class="lamp" id="sv-jack"></span></h2>
+    <div class="wells">
+      <div class="well wide" id="sv-wnext"><span class="k">Next seat</span><div class="big-port" id="sv-nextv">—</div><div class="wsub" id="sv-step" style="white-space:normal"></div></div>
+      <div class="well"><span class="k">Seats</span><div id="sv-n"></div><span class="un">recorded</span></div>
+      <div class="well"><span class="k">Good</span><div id="sv-good" style="--c:var(--good)"></div><span class="un">seats</span></div>
+      <div class="well" id="sv-wchk"><span class="k">Check</span><div id="sv-chk"></div><span class="un">seats</span></div>
+      <div class="well" id="sv-wbad"><span class="k">Bad</span><div id="sv-bad"></div><span class="un">seats</span></div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Seats <span class="spacer"></span><label class="chk ro-ok" style="font-size:12.5px"><input type="checkbox" id="sv-onlybad" class="ro-ok"><span>Only problems</span></label></h2>
+    <div class="tablewrap"><table class="svtab">
+      <thead><tr><th class="l">Seat</th><th class="l">Switch port</th><th>VLAN</th><th class="l">Link</th><th>To IP</th><th class="l">Gateway</th><th class="l">DNS · net</th><th class="l">Speed test</th><th class="l">Why</th><th></th></tr></thead>
+      <tbody id="sv-list"></tbody>
+    </table></div>
+  </section>
+</main>
+</div>
+
 </div><!-- .content -->
 </div><!-- .shell -->
 <script>
@@ -2085,7 +2148,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 // ---------- views (tabs) ----------
 const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
-const VIEWS = ['vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
+const VIEWS = ['survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -3679,6 +3742,7 @@ async function poll() {
 boot();
 </script>
 <!-- add-on pages -->
+<script src="/web/survey.js"></script>
 <script src="/web/vlans.js"></script>
 <script src="/web/cable.js"></script>
 <script src="/web/configs.js"></script>
