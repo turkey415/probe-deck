@@ -608,6 +608,9 @@ td.wrap { white-space: normal; }
 .hosttab .nm small { display: block; color: var(--muted); font-size: 11.5px; }
 .hosttab .chip { margin: 0 4px 3px 0; }
 pre.caplines { max-height: 420px; overflow: auto; white-space: pre; overflow-wrap: normal; font-size: 11.5px; user-select: text; }
+.upbar { height: 8px; border-radius: 4px; background: var(--well); overflow: hidden; border: 1px solid var(--line); }
+#fl-list tr.sel td { background: rgba(255, 176, 0, .06); }
+.upbar i { display: block; height: 100%; width: 0; background: var(--amber); transition: width .2s; }
 </style>
 </head>
 <body class="gated">
@@ -689,6 +692,7 @@ pre.caplines { max-height: 420px; overflow: auto; white-space: pre; overflow-wra
     <button type="button" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3z M7 10l3 2-3 2 M12 15h5"/></svg><span class="mn">Switch tools</span><span class="dot" data-lamp></span><span class="chev" aria-hidden="true">▾</span></button>
     <div class="items">
       <a href="#console" data-view="console"><span class="dot" id="t-con"></span><span class="nm">Console</span></a>
+      <a href="#files" data-view="files"><span class="dot" id="t-files"></span><span class="nm">Files (TFTP)</span><span class="badge" id="tb-files" hidden></span></a>
     </div>
   </div>
   <div class="mod" data-mod="sys">
@@ -1566,6 +1570,49 @@ pre.caplines { max-height: 420px; overflow: auto; white-space: pre; overflow-wra
 </main>
 </div>
 
+<!-- ================= FILES (TFTP) ================= -->
+<div class="layout view" id="v-files" hidden>
+<aside>
+  <section class="card">
+    <h2>TFTP server <span class="spacer"></span><span class="lamp" id="fl-lamp"></span></h2>
+    <form class="form admin-only" id="f-files">
+      <label class="chk"><input type="checkbox" id="fl-on"><span>Serve these files over TFTP<small>UDP 69, read-only unless you allow writes. Anyone on the LAN can read them while it's on.</small></span></label>
+      <label class="chk"><input type="checkbox" id="fl-write"><span>Allow writes<small>So a switch can <code>copy running-config tftp:</code> to the probe.</small></span></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="fl-smsg"></span></div>
+    </form>
+    <p class="sub" style="margin:12px 0 6px">On the switch:</p>
+    <pre class="cfg" id="fl-cmds"></pre>
+  </section>
+  <section class="card admin-only">
+    <h2>Upload</h2>
+    <div class="form">
+      <input type="file" id="fl-file" multiple class="ro-ok">
+      <div class="row" style="align-items:center"><button class="btn primary" type="button" id="fl-up" style="flex:none">Upload</button><span id="fl-umsg"></span></div>
+      <div class="upbar" id="fl-bar" hidden><i></i></div>
+      <span class="sub">IOS images, configs, anything up to 512 MB. File names: letters, digits, . _ -</span>
+    </div>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2>Files <span class="spacer"></span><span class="lamp" id="fl-xfer"></span></h2>
+    <div class="wells">
+      <div class="well"><span class="k">Files</span><div id="fl-n"></div><span class="un">on the probe</span></div>
+      <div class="well"><span class="k">Used</span><div id="fl-used"></div><span class="un">MB</span></div>
+      <div class="well"><span class="k">Free</span><div id="fl-free"></div><span class="un">GB on the card</span></div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>On the probe</h2>
+    <div class="tablewrap"><table><thead><tr><th class="l">File</th><th>Size</th><th class="l">MD5</th><th>Changed</th><th></th></tr></thead><tbody id="fl-list"></tbody></table></div>
+  </section>
+  <section class="card">
+    <h2>TFTP transfers</h2>
+    <div class="tablewrap"><table><thead><tr><th>When</th><th class="l">Switch</th><th class="l">File</th><th class="l">Way</th><th>Bytes</th><th>Time</th><th class="l">Result</th></tr></thead><tbody id="fl-log"></tbody></table></div>
+  </section>
+</main>
+</div>
+
 </div><!-- .content -->
 </div><!-- .shell -->
 <script>
@@ -1898,7 +1945,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 // ---------- views (tabs) ----------
 const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
-const VIEWS = ['capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
+const VIEWS = ['files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -3492,6 +3539,7 @@ async function poll() {
 boot();
 </script>
 <!-- add-on pages -->
+<script src="/web/files.js"></script>
 <script src="/web/capture.js"></script>
 <script src="/web/cache.js"></script>
 <script src="/web/hosts.js"></script>

@@ -114,6 +114,13 @@ For a [lancache](https://lancache.net) (or any cache that works the same way):
 - **Show packets live**: the last 80 packets, as tcpdump prints them, on the page.
 - **Watchdog alarms capture themselves** (on by default): a rogue DHCP server, a broadcast storm, an IP conflict or ARP spoofing, a spanning tree change or a rogue IPv6 router starts a 30-second capture with a filter for that problem, kept on the card, so there's evidence of what happened while nobody was looking. At most one per kind every 10 minutes; the card keeps the last 30 (512 MB at most).
 
+### Files (TFTP)
+- Upload IOS images, configs or anything else (up to 512 MB each) from the page, with a progress bar; each file gets its **MD5** for `verify /md5`.
+- A built-in **TFTP server** (UDP 69, off until you turn it on) serves them to switches, with the `blksize` and `tsize` options so a big image comes over quickly. The page shows the commands to paste (`copy tftp://<probe>/<file> flash:`, `verify /md5 …`, `copy running-config tftp://…`).
+- **Allow writes** (off by default) lets a switch copy files to the probe, such as its running config.
+- A list of recent transfers: which switch, which file, which way, how long, and whether it worked.
+- Downloads stream from the card, so a big file doesn't fill the probe's memory.
+
 ### Wake (Wake-on-LAN)
 - Save machines with a name, MAC, optional IP and a **group** (a row of seats). Add them by hand, **import** a list (`name, MAC, IP, group` or a CSV), or pick from **Seen on the network** (MACs the watchdog heard in ARP).
 - **Wake all**, wake a group, or wake the ones you tick. Machines wake **2 s apart** by default, so 30 PCs don't all draw power in the same second.

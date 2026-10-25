@@ -43,9 +43,10 @@ import inet as inet_mod
 import hosts as hosts_mod
 import cache as cache_mod
 import capture as capture_mod
+import tftp as tftp_mod
 import swcli as swcli_mod
 
-__version__ = "0.20.0"
+__version__ = "0.21.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -788,6 +789,8 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def send_body(self, code, body, ctype="application/json", headers=()):
+        if isinstance(body, Path):  # a file: stream it, don't read it all into memory
+            return self.send_file(code, body, ctype, headers)
         if not isinstance(body, bytes):
             body = json.dumps(body).encode()
         self.send_response(code)
@@ -798,6 +801,22 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
+
+    def send_file(self, code, path, ctype, headers):
+        with open(path, "rb") as f:
+            size = os.fstat(f.fileno()).st_size
+            self.send_response(code)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(size))
+            self.send_header("Cache-Control", "no-store")
+            for k, v in headers:
+                self.send_header(k, v)
+            self.end_headers()
+            while True:
+                chunk = f.read(1 << 20)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
 
     def is_https(self):
         return isinstance(self.connection, ssl.SSLSocket)
@@ -1109,7 +1128,7 @@ class TLSServer(ThreadingHTTPServer):
         super().finish_request(request, client_address)
 
 
-APPS = [swcli_mod.CliApp, logs_mod.SwitchLogs, inet_mod.Inet, hosts_mod.HostScan, cache_mod.LanCache, capture_mod.Capture]
+APPS = [swcli_mod.CliApp, logs_mod.SwitchLogs, inet_mod.Inet, hosts_mod.HostScan, cache_mod.LanCache, capture_mod.Capture, tftp_mod.Files]
 
 
 def main():

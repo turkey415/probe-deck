@@ -194,7 +194,7 @@ class Capture(App):
                 return Reply(body, "application/vnd.tcpdump.pcap", f"probe-capture-{time.strftime('%Y%m%d-%H%M%S')}.pcap")
             if not arg or not NAME_RE.fullmatch(arg) or not (self.keep_dir / arg).is_file():
                 raise ValueError("not found")
-            return Reply((self.keep_dir / arg).read_bytes(), "application/vnd.tcpdump.pcap", arg)
+            return Reply(self.keep_dir / arg, "application/vnd.tcpdump.pcap", arg)
         cur = dict(self.cur) if self.cur else None
         ring = sum(f.stat().st_size for f in self.ring_files()) if cur else 0
         kept = [{"name": f.name, "size": f.stat().st_size, "t": f.stat().st_mtime} for f in sorted(self.keep_dir.glob("*.pcap"), key=lambda f: -f.stat().st_mtime)]
