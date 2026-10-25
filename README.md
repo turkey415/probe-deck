@@ -46,6 +46,8 @@ It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same l
 - **Charts**: latency per target over the last 5 minutes, and live in/out traffic on the port.
 
 ### Speed tests
+The **Speed test** page (Port in the sidebar) holds the LAN test, the Stations and both histories.
+- An **internet speed test** against Cloudflare (speed.cloudflare.com): download and upload for 3–30 s each way over 1–8 streams, with live readouts and a chart. It also pings 1.1.1.1 before the test (**idle latency** and jitter) and while it runs (**loaded latency**): when latency climbs under load, the uplink has bufferbloat. It shows the public IP, the network (AS number) and the Cloudflare data centre. At gigabit one test moves 1–2 GB, so it only runs when you press the button. Cloudflare limits how often one public IP can test; the page says so when that happens.
 - An **iperf3** client against any server, as download, upload or both, with live seven-segment readouts and a live chart.
 - **History** of every test, with the switch port it ran on.
 - An **iperf3 server** on port 5201, so other machines can test the probe.
@@ -84,6 +86,13 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - **IPv6 router advertisements**: a PC sharing its connection (Windows ICS) or a rogue router.
 - **DTP**: says when the port could be talked into a trunk.
 - An **event list** of everything above. Warnings also go out at once on UDP 47474 as an `app: "probe-alert"` message (the displays ignore it; PorkChopCheck can use it), and the probe message gets an `alerts` count.
+
+### Host scan (who is on this subnet?)
+- Sends one small packet to every address on the probe's subnet (up to a /22), then reads the probe's ARP table: anything that answered ARP is a host, **even with its firewall up**. Hosts the Watchdog heard in the last 10 minutes count too.
+- For each host: IP, MAC and **maker** (from the IEEE lists, so `Cisco`, `Ubiquiti`, `Raspberry Pi`…; phones with a private MAC say so), **names** from reverse DNS, NetBIOS (Windows PCs) and mDNS, and which of a few **TCP ports** are open (22, 80, 443, 445, 3389, 5201, 8080, 9100, 27015 by default; change the list).
+- Names the probe already knows are shown first: Wake machines, Perf-Deck stations, switches from the Switches page, the gateway.
+- Hosts are remembered by MAC with first and last seen; machines that turn up after the first scan are marked **new**. Filter by anything; each host has a **Trace** button.
+- Scans every 15 minutes (or only when you press **Scan now**). A /24 takes about 12 seconds.
 
 ### Switch logs (syslog from the switches)
 - The probe is a **syslog receiver** (UDP 514). The page shows the lines to paste into each switch (`logging host <probe>`, `logging trap informational`, timestamps and `logging origin-id hostname`).
