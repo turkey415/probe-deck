@@ -101,6 +101,13 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - Kept 14 days (one file per day in `/var/lib/probe-deck/logs/`, written every 5 s to spare the SD card); download any day as text. A sender is capped at 200 messages a second.
 - The sidebar shows how many errors (severity 0–3) came in the last hour.
 
+### LAN cache (are game downloads hitting the cache?)
+For a [lancache](https://lancache.net) (or any cache that works the same way):
+- **DNS:** looks up the download names of Steam, Battle.net, Epic, Riot, EA, Ubisoft, Xbox and Windows Update through **every** DNS server the probe was given, and shows which ones point at the cache. One DNS server that skips the cache is enough to send half the room to the internet.
+- **The cache answers:** lancache's heartbeat (`/lancache-heartbeat`, which says which cache answered), and whether port 443 is open for HTTPS passthrough.
+- **A test file (optional):** paste an `http://` URL from the cache's access log (a Steam chunk is ideal). It's fetched through the cache twice: the first should say **MISS** and the second **HIT**, and the second shows how fast the cache serves.
+- The cache's address is found by itself (the LAN address most game names point at), or set it. Checks run every 10 minutes and on **Check now**. The sidebar light is green when every name goes to the cache, amber when some don't, red when the cache doesn't answer.
+
 ### Wake (Wake-on-LAN)
 - Save machines with a name, MAC, optional IP and a **group** (a row of seats). Add them by hand, **import** a list (`name, MAC, IP, group` or a CSV), or pick from **Seen on the network** (MACs the watchdog heard in ARP).
 - **Wake all**, wake a group, or wake the ones you tick. Machines wake **2 s apart** by default, so 30 PCs don't all draw power in the same second.
