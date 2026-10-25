@@ -1878,6 +1878,8 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
         <label class="f">Next seat <input type="text" id="sv-next" maxlength="30" spellcheck="false" placeholder="A-01"></label>
       </div>
       <label class="f">Speed test at each seat <select id="sv-speed"></select></label>
+      <label class="f">GXL event server <input type="text" id="sv-gxl" maxlength="80" spellcheck="false" placeholder="http://10.2.1.143:8000"></label>
+      <label class="f">GXL agent key <input type="password" id="sv-gxlkey" maxlength="128" autocomplete="off" spellcheck="false"></label>
       <div class="row" style="align-items:center"><button class="btn" type="submit" style="flex:none">Save</button><span id="sv-smsg"></span></div>
     </form>
     <div class="form" style="margin-top:14px">
@@ -1899,7 +1901,8 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
   </section>
   <section class="card admin-only">
     <h2>Finish</h2>
-    <div class="row" style="align-items:center;flex-wrap:wrap"><a class="btn ro-ok" id="sv-csv" href="/api/x/survey/csv" style="flex:none">Download CSV</a><button class="btn" type="button" id="sv-new" style="flex:none">New survey</button></div>
+    <div class="row" style="align-items:center;flex-wrap:wrap"><a class="btn ro-ok" id="sv-csv" href="/api/x/survey/csv" style="flex:none">Download CSV</a><button class="btn" type="button" id="sv-new" style="flex:none">New survey</button><button class="btn admin-only" type="button" id="sv-send" style="flex:none" title="Each seat's switch and port go to GXL's seat list; only seats already on GXL's chart are changed">Send to GXL</button></div>
+    <div class="sub" id="sv-sent" style="white-space:normal"></div>
     <p class="sub" style="margin:10px 0 0">New survey keeps a copy of this one on the probe and starts an empty list.</p>
   </section>
 </aside>

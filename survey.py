@@ -8,6 +8,9 @@ Each record gets a verdict: good, check or bad, with the reasons.
 """
 import csv
 import io
+import json
+import urllib.error
+import urllib.request
 import re
 import statistics
 import threading
@@ -32,7 +35,8 @@ def next_label(label):
 
 class Survey(App):
     name = "survey"
-    SETTINGS = {"armed": False, "next": "A-01", "title": "Survey", "speed_to": "", "speed_port": 5201}
+    SETTINGS = {"armed": False, "next": "A1", "title": "Survey", "speed_to": "", "speed_port": 5201,
+                "gxl_url": "", "gxl_key": ""}  # GXL event server and its agent key, for Send to GXL
     LIMITS = {"speed_port": (1, 65535)}
 
     def __init__(self, probe, conf_dir, data_dir):
@@ -43,12 +47,23 @@ class Survey(App):
         self.state = {"step": None, "waiting": [], "plug": None}
         self.busy = False
         self.ip_at = {}     # plug -> when the address was there (checks before that don't count)
+        self.sent = None    # the last Send to GXL: when, and what GXL said
 
     def check(self, k, v):
         if k in ("next", "title"):
             v = re.sub(r"[^\w .\-#()/]", "", str(v or ""))[:30].strip()
             if not v:
                 raise ValueError("Can't be empty")
+            return v
+        if k == "gxl_url":
+            v = str(v or "").strip().rstrip("/")
+            if v and not re.fullmatch(r"https?://[A-Za-z0-9.\-]+(:\d{1,5})?", v):
+                raise ValueError("GXL address looks like http://10.2.1.143:8000")
+            return v
+        if k == "gxl_key":
+            v = str(v or "").strip()
+            if v and not re.fullmatch(r"[A-Za-z0-9_\-]{8,128}", v):
+                raise ValueError("That does not look like a GXL agent key")
             return v
         if k == "speed_to":
             v = str(v or "").strip()
@@ -249,11 +264,43 @@ class Survey(App):
                             time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(r["t"]))])
             name = re.sub(r"[^\w\-]+", "-", self.conf["title"]).strip("-") or "survey"
             return Reply(buf.getvalue().encode(), "text/csv; charset=utf-8", f"{name}.csv")
-        return {"records": recs, "conf": {k: self.conf[k] for k in self.SETTINGS}, "state": dict(self.state), "busy": self.busy,
+        conf = {k: self.conf[k] for k in self.SETTINGS if k != "gxl_key"}  # the key never goes back to the page
+        conf["gxl_key_set"] = bool(self.conf["gxl_key"])
+        return {"records": recs, "conf": conf, "state": dict(self.state), "busy": self.busy, "sent": self.sent,
                 "now": time.time(), "jack": {"switch": (self.p.neighbor or {}).get("switch"), "port": (self.p.neighbor or {}).get("port")},
                 "archives": sorted((f.stem for f in self.dir.glob("archive-*.json")), reverse=True)[:20]}
 
+    def send_gxl(self):
+        """Sends every seat's latest record to the GXL event server. GXL only updates seats it has."""
+        url, key = self.conf["gxl_url"], self.conf["gxl_key"]
+        if not url or not key:
+            raise ValueError("Set the GXL address and the event's agent key first")
+        latest = {}
+        for r in self.graded():
+            latest[r["label"].lower()] = r  # the last time each seat was recorded wins
+        records = [{"label": r["label"], "switch": r.get("switch"), "port": r.get("port"), "vlan": r.get("vlan"),
+                    "speed": str(r["speed"]) if r.get("speed") else None, "level": r["level"], "why": r["why"][:10]}
+                   for r in latest.values()]
+        if not records:
+            raise ValueError("No seats recorded yet")
+        body = json.dumps({"records": records, "source": f"Jack survey · {self.conf['title']}"[:60]}).encode()
+        req = urllib.request.Request(f"{url}/agent/survey", data=body, method="POST",
+                                     headers={"Content-Type": "application/json", "Authorization": f"Agent {key}"})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as res:
+                out = json.loads(res.read() or b"{}")
+        except urllib.error.HTTPError as e:
+            raise ValueError("GXL does not know that agent key" if e.code == 401 else f"GXL said {e.code}") from None
+        except (urllib.error.URLError, OSError) as e:
+            raise ValueError(f"Could not reach GXL at {url}: {getattr(e, 'reason', e)}") from None
+        self.sent = {"t": time.time(), "updated": len(out.get("updated", [])), "unknown": out.get("unknown", [])[:50]}
+        return self.sent
+
     def post(self, action, body, user):
+        if action == "settings" and not body.get("gxl_key"):
+            body = {k: v for k, v in body.items() if k != "gxl_key"}  # left empty: keep the saved key
+        if action == "send_gxl":
+            return self.send_gxl()
         if action == "arm":
             on = bool(body.get("on"))
             if on:

@@ -45,13 +45,21 @@
     if (c.speed_to && !opts.some(o => o[0] === c.speed_to)) opts.push([c.speed_to, c.speed_to]);
     const html = opts.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('');
     if ($('#sv-speed')._h !== html) { const keep = $('#sv-speed')._filled ? $('#sv-speed').value : c.speed_to; $('#sv-speed').innerHTML = html; $('#sv-speed')._h = html; $('#sv-speed').value = keep; }
-    if (!$('#f-survey')._filled) { $('#sv-title').value = c.title; $('#sv-next').value = c.next; $('#sv-speed').value = c.speed_to; $('#sv-speed')._filled = true; $('#f-survey')._filled = true; }
+    if (!$('#f-survey')._filled) { $('#sv-title').value = c.title; $('#sv-next').value = c.next; $('#sv-speed').value = c.speed_to; $('#sv-speed')._filled = true; $('#sv-gxl').value = c.gxl_url; $('#f-survey')._filled = true; }
     else if (document.activeElement !== $('#sv-next')) $('#sv-next').value = c.next;
+    $('#sv-gxlkey').placeholder = c.gxl_key_set ? 'saved (type to change)' : 'from GXL › Seats › agent key';
+    $('#sv-send').disabled = !c.gxl_url || !c.gxl_key_set || !recs.length;
+    const s = d.sent;
+    $('#sv-sent').textContent = s ? `Sent ${fmtWhen(s.t)}: ${s.updated} seats updated in GXL${s.unknown.length ? `; not on GXL's chart: ${s.unknown.slice(0, 12).join(', ')}${s.unknown.length > 12 ? '…' : ''}` : ''}.` : '';
   }
   $('#f-survey').addEventListener('submit', async e => {
     e.preventDefault();
     const sp = $('#sv-speed').value, peer = ((S && S.peers) || []).find(p => p.ip === sp);
-    try { await api('/api/x/survey/settings', { title: $('#sv-title').value, next: $('#sv-next').value, speed_to: sp, speed_port: peer && peer.port ? peer.port : 5201 }); flash($('#sv-smsg'), 'Saved', true); refresh(); }
+    try {
+      await api('/api/x/survey/settings', { title: $('#sv-title').value, next: $('#sv-next').value, speed_to: sp, speed_port: peer && peer.port ? peer.port : 5201,
+        gxl_url: $('#sv-gxl').value, gxl_key: $('#sv-gxlkey').value });
+      $('#sv-gxlkey').value = ''; flash($('#sv-smsg'), 'Saved', true); refresh();
+    }
     catch (err) { flash($('#sv-smsg'), err.message); }
   });
   $('#sv-arm').addEventListener('click', async () => {
@@ -70,10 +78,15 @@
     if (r) { const l = prompt('Seat label:', r.dataset.l); if (l) { await api('/api/x/survey/relabel', { id: r.dataset.relabel, label: l }).catch(err => alert(err.message)); refresh(); } }
   });
   $('#sv-onlybad').addEventListener('change', () => D && draw());
+  $('#sv-send').addEventListener('click', async () => {
+    $('#sv-send').disabled = true;
+    try { await api('/api/x/survey/send_gxl', {}); } catch (e) { $('#sv-sent').textContent = e.message; }
+    refresh();
+  });
   $('#sv-new').addEventListener('click', async () => {
     const title = prompt('Name of the new survey:', 'Hall B');
     if (title === null) return;
-    const next = prompt('First seat label:', 'A-01');
+    const next = prompt('First seat label (as on GXL\'s chart, e.g. A1):', 'A1');
     if (next === null) return;
     try { await api('/api/x/survey/new', { title, next }); $('#f-survey')._filled = false; refresh(); } catch (e) { alert(e.message); }
   });

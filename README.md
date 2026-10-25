@@ -137,11 +137,12 @@ A kernel filter passes only broadcast and multicast frames to the watchdog, so s
 - Scans every 15 minutes (or only when you press **Scan now**). A /24 takes about 12 seconds.
 
 ### Jack survey (every seat, before the doors open)
-- Press **Start surveying**, then walk the hall and plug the probe into each seat's jack in order. On each jack it waits for the switch port (CDP/LLDP), a DHCP address, its DNS and internet checks and a few gateway pings, then **records the seat** and moves the label on (B-14 → B-15). On PoE the probe boots on every jack; the survey carries on across reboots. Plugging into the same switch port again within 10 minutes isn't counted twice.
+- Press **Start surveying**, then walk the hall and plug the probe into each seat's jack in order. On each jack it waits for the switch port (CDP/LLDP), a DHCP address, its DNS and internet checks and a few gateway pings, then **records the seat** and moves the label on (B14 → B15). On PoE the probe boots on every jack; the survey carries on across reboots. Plugging into the same switch port again within 10 minutes isn't counted twice.
 - Each seat keeps: switch, port and VLAN, link speed and duplex, seconds from plug to address, gateway latency and loss, DNS and internet, and (optional) a 3-second speed test to a Perf-Deck station.
 - A verdict per seat, **good**, **check** or **bad**, with the reasons: not gigabit, half duplex, no DHCP, slow DHCP, gateway loss or latency, DNS or internet failing, a VLAN that differs from most seats, or a switch port shared with another seat.
 - Readouts for the next seat and the good/check/bad counts, a table (with **Only problems**), rename or delete seats, **Download CSV**, and **New survey** (the old one is kept on the probe).
 - The probe message on UDP 47474 carries the survey (`sv`: armed, next seat, count, last seat's verdict), so a T-Display can show it while you walk.
+- **Send to GXL:** with the GXL event server's address and the event's agent key saved, each seat's switch and port go straight into GXL's seat list, and the verdict into the seat's history. Only seats already on GXL's chart are changed (A-01, A01 and A1 are the same seat); the ones GXL doesn't have are listed. The key is kept on the probe and never shown on the page.
 
 - **Smart devices** (on by default): PorkChopCheck's discovery (`pc_smart.py`) asks over SSDP/UPnP, mDNS, Kasa/Tapo, LIFX, Govee, WiZ, Yeelight and Tuya, and reads Roku, Hue, Shelly and Cast device pages, then shows each device's **type** (TV, speaker, camera, plug, bulb…), **brand**, **model** and, when a device publishes one, its **serial number**. A **Smart devices** filter shows just those. It adds about 20 seconds to a scan.
 
