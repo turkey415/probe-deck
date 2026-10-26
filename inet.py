@@ -56,17 +56,34 @@ class Inet(App):
         except Exception:
             return {}
 
+    _fast_ping = None
+
+    @classmethod
+    def fast_ping(cls):
+        """Whether this ping takes intervals under a second. iputils does (as root, or down to 0.2 s for
+        anyone); BusyBox's ping, on routers, only takes whole seconds and refuses "-i 0.2"."""
+        if cls._fast_ping is None:
+            try:
+                r = subprocess.run(["ping", "-n", "-c", "1", "-i", "0.2", "-W", "1", "127.0.0.1"], capture_output=True, text=True, timeout=5)
+                cls._fast_ping = "invalid" not in (r.stdout + r.stderr).lower()
+            except (OSError, subprocess.SubprocessError):
+                cls._fast_ping = False
+        return cls._fast_ping
+
     def idle_latency(self, n=12):
         """Ping 1.1.1.1 before any load, the same way the loaded latency is measured."""
-        out = subprocess.run(["ping", "-n", "-c", str(n), "-i", "0.2", "-W", "2", "1.1.1.1"], capture_output=True, text=True, timeout=n + 5).stdout
+        fast = self.fast_ping()
+        n = n if fast else 5  # at one a second, 5 is enough and keeps the test short
+        out = subprocess.run(["ping", "-n", "-c", str(n), "-i", "0.2" if fast else "1", "-W", "2", "1.1.1.1"],
+                             capture_output=True, text=True, timeout=n * (0.2 if fast else 1) + 10).stdout
         ms = [float(x) for x in re.findall(r"time=([\d.]+)", out)]
         if not ms:
             raise RuntimeError("1.1.1.1 doesn't answer ping")
         return ms
 
     def pinger(self, out, stop, phase=None, t0=None):
-        """ICMP to 1.1.1.1 every 0.25 s while the streams run: the loaded latency."""
-        p = subprocess.Popen(["ping", "-n", "-i", "0.25", "-W", "2", "1.1.1.1"], stdout=subprocess.PIPE, text=True)
+        """ICMP to 1.1.1.1 every 0.25 s (every second where ping can't go faster) while the streams run: the loaded latency."""
+        p = subprocess.Popen(["ping", "-n", "-i", "0.25" if self.fast_ping() else "1", "-W", "2", "1.1.1.1"], stdout=subprocess.PIPE, text=True)
         try:
             for line in p.stdout:
                 m = re.search(r"time=([\d.]+)", line)
