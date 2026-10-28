@@ -733,6 +733,21 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 .mddev .nm b { display: block; overflow-wrap: anywhere; } .mddev .nm .sub { font-size: 11.5px; overflow-wrap: anywhere; }
 .mddev .ad { font-size: 12.5px; overflow-wrap: anywhere; } .mddev .sv { display: flex; flex-wrap: wrap; gap: 4px; } .mddev .sv .chip { text-transform: none; letter-spacing: .03em; font-size: 10.5px; }
 .mddev .det { padding: 2px 4px 10px; } .mddev .det table { width: 100%; } .mddev .det td { font-size: 12px; vertical-align: top; }
+.dt-prog { position: relative; height: 22px; margin-top: 12px; border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden; background: var(--bg); }
+.dt-prog b { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #2e7dd7, #3dd6ff); transition: width .9s linear; }
+.dt-prog span { position: relative; display: block; text-align: center; font: 650 11.5px var(--mono, ui-monospace, monospace); line-height: 20px; color: #fff; text-shadow: 0 1px 2px #000; }
+.dt-verdict { display: flex; flex-wrap: wrap; gap: 14px; }
+.dt-pick { flex: 1 1 220px; border: 1px solid var(--line-2); border-left: 5px solid hsl(var(--h) 65% 55%); border-radius: 8px; padding: 10px 14px; background: linear-gradient(90deg, hsl(var(--h) 60% 50% / .12), transparent 70%); }
+.dt-pick .k { display: block; } .dt-pick .ip { font: 700 26px var(--mono, ui-monospace, monospace); color: hsl(var(--h) 80% 72%); } .dt-pick .nm { font-weight: 600; }
+.dt-pick .ms { font: 650 13px var(--mono, ui-monospace, monospace); color: var(--text-2); }
+.dt-note { flex: 1 1 100%; } 
+.dt-tab tr[style*="--h"] td:first-child { box-shadow: inset 4px 0 0 hsl(var(--h) 65% 55%); }
+.dt-tab .sv b { color: hsl(var(--h) 75% 72%); } .dt-tab .sv .sub { display: block; font-size: 11.5px; }
+.dt-tab .bar { display: flex; align-items: center; gap: 8px; } .dt-tab .bar .trk { flex: none; width: 160px; height: 10px; border-radius: 3px; background: var(--bg); overflow: hidden; }
+.dt-tab .bar .trk i { display: block; height: 100%; border-radius: 3px; background: hsl(var(--h) 65% 55%); box-shadow: 0 0 6px hsl(var(--h) 65% 55% / .5); }
+.dt-tab .bar span { font: 650 12.5px var(--mono, ui-monospace, monospace); white-space: nowrap; }
+.dt-tab tr.best td { background: color-mix(in srgb, var(--good) 8%, transparent); }
+.dt-hist { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: baseline; font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .md-top { margin-bottom: 0; } #v-mdns main { display: grid; gap: 18px; } .md-bar .seg label { white-space: nowrap; padding: 5px 12px; }
 .md-open { margin-left: 6px; font-size: 11px; color: var(--accent); text-decoration: none; } .md-open:hover { text-decoration: underline; } .md-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .md-kv { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); } .md-kv dd { font: 650 20px var(--mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; }
@@ -811,6 +826,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
       <a href="#net" data-view="net"><span class="dot"></span><span class="nm">Switches</span><span class="badge" id="t-net" hidden></span></a>
       <a href="#trace" data-view="trace"><span class="dot"></span><span class="nm">Trace</span></a>
       <a href="#mtr" data-view="mtr"><span class="dot" id="t-mtr"></span><span class="nm">Traceroute</span><span class="badge" id="tb-mtr" hidden></span></a>
+      <a href="#dnstest" data-view="dnstest"><span class="dot" id="t-dnstest"></span><span class="nm">DNS test</span><span class="badge" id="tb-dnstest" hidden></span></a>
       <a href="#hosts" data-view="hosts"><span class="dot" id="t-hosts"></span><span class="nm">Host scan</span><span class="badge" id="tb-hosts" hidden></span></a>
       <a href="#mdns" data-view="mdns"><span class="dot" id="t-mdns"></span><span class="nm">mDNS</span><span class="badge" id="tb-mdns" hidden></span></a>
       <a href="#mcast" data-view="mcast"><span class="dot" id="t-mcast"></span><span class="nm">Multicast</span><span class="badge" id="tb-mcast" hidden></span></a>
@@ -1479,10 +1495,10 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 </aside>
 <main>
   <section class="card deck">
-    <h2>Switch logs <span class="spacer"></span><span class="lamp" id="lg-last"></span></h2>
+    <h2>Switch logs <span class="spacer"></span><span class="lamp" id="lg-last"></span><button class="btn ghost admin-only" type="button" id="lg-read" title="The sidebar stops counting the errors you've seen">Mark read</button></h2>
     <div class="wells">
       <div class="well" id="lg-hourw"><span class="k">Last hour</span><div id="lg-hour"></div><span class="un">messages</span></div>
-      <div class="well" id="lg-errw"><span class="k">Errors</span><div id="lg-errs"></div><span class="un">severity 0–3 · last hour</span></div>
+      <div class="well" id="lg-errw"><span class="k">Errors</span><div id="lg-errs"></div><span class="un" id="lg-errs2">severity 0–3 · last hour</span></div>
       <div class="well" id="lg-nsww"><span class="k">Switches</span><div id="lg-nsw"></div><span class="un">sending today</span></div>
     </div>
   </section>
@@ -2150,6 +2166,47 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
   </section>
 </div>
 
+<!-- ================= DNS TEST ================= -->
+<div class="layout view" id="v-dnstest" hidden>
+<aside>
+  <section class="card">
+    <h2>DNS test <span class="spacer"></span><span class="lamp" id="dt-lamp"></span></h2>
+    <p class="sub" style="margin:0 0 12px">Which DNS server should this site use? Press <b>Go</b>: for <span id="dt-secs">30</span> seconds every server is asked for everyday names (Steam, Discord, Google…) four times a second, and pinged. Then it stops; nothing runs in the background.</p>
+    <div class="row" style="align-items:center"><button class="btn primary" type="button" id="dt-go" style="flex:none;min-width:96px">Go</button><button class="btn" type="button" id="dt-stop" style="flex:none" hidden>Stop</button><span id="dt-msg"></span></div>
+    <div class="dt-prog" id="dt-prog" hidden><b id="dt-bar"></b><span id="dt-left"></span></div>
+    <p class="sub" id="dt-will" style="margin:12px 0 0"></p>
+  </section>
+  <section class="card">
+    <h2>Earlier runs <span class="spacer"></span><button class="btn ghost admin-only" type="button" id="dt-forget">Forget</button></h2>
+    <div id="dt-hist"></div>
+  </section>
+  <section class="card admin-only">
+    <h2>Settings</h2>
+    <form class="form" id="f-dnstest">
+      <label class="f">Servers <span class="sub">One per line: Name = IP.</span><textarea id="dts-servers" rows="9" spellcheck="false"></textarea></label>
+      <label class="f">Names to look up <span class="sub">Separated by commas. A made-up name under example.com is added by itself.</span><textarea id="dts-names" rows="4" spellcheck="false"></textarea></label>
+      <div class="row"><label class="f">Seconds <input type="number" id="dts-secs" min="10" max="120"></label></div>
+      <label class="chk"><input type="checkbox" id="dts-dhcp"><span>Test this network's DNS too<small>The servers DHCP handed out, to compare with the public ones.</small></span></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="dts-msg"></span></div>
+    </form>
+  </section>
+</aside>
+<main>
+  <section class="card deck" id="dt-verdict-card">
+    <h2>Use this one <span class="spacer"></span><span class="sub" id="dt-where"></span></h2>
+    <div id="dt-verdict" class="dt-verdict"><div class="sub">Press Go to find out.</div></div>
+  </section>
+  <section class="card">
+    <h2>Every server <span class="spacer"></span><span class="sub" id="dt-count"></span></h2>
+    <div class="tablewrap"><table class="dt-tab">
+      <thead><tr><th>#</th><th class="l">Server</th><th class="l">Typical answer</th><th>Slow 10%</th><th>Fastest</th><th>Made-up name</th><th>Ping</th><th>Lost</th><th class="l">Notes</th></tr></thead>
+      <tbody id="dt-rows"></tbody>
+    </table></div>
+    <p class="sub" style="margin:10px 0 0"><b>Typical answer</b> is the median time for the everyday names (mostly cached at the server). <b>Slow 10%</b> is the 90th percentile. <b>Made-up name</b> is the time to say a random name under example.com doesn't exist (servers that check DNSSEC can answer that from their cache, so it isn't always slower). Servers that lose or refuse queries, or answer names that don't exist, rank lower.</p>
+  </section>
+</main>
+</div>
+
 <!-- ================= MDNS ================= -->
 <div class="layout view one" id="v-mdns" hidden>
 <main>
@@ -2529,7 +2586,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 // ---------- views (tabs) ----------
 const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
-const VIEWS = ['stats', 'tick', 'mtr', 'mdns', 'mcast', 'survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
+const VIEWS = ['dnstest', 'stats', 'tick', 'mtr', 'mdns', 'mcast', 'survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -2780,17 +2837,24 @@ function renderWatch() {
   const sw = w.switch || [];
   $('#ww-sw').classList.toggle('alarm', a.switch > 0); $('#ww-sw').classList.toggle('off', !sw.length);
   setSeg('#w-nsw', a.switch, 2);
-  $('#w-nsw2').textContent = a.switch ? `${a.switch} active` : sw.length ? 'all cleared' : 'from switch logs';
+  const acked = sw.filter(x => x.active && x.ack).length;
+  $('#w-nsw2').textContent = a.switch ? `${a.switch} active` : acked ? `${acked} acknowledged` : sw.length ? 'all cleared' : 'from switch logs';
   const swKind = { errdisable: 'err-disabled', stpguard: 'STP blocked', macflap: 'MAC flap' };
   setHTML('#w-sw', sw.map(x => {
-    const st = x.active ? `<span class="chip bad">${esc(swKind[x.kind] || x.kind)}</span>` : `<span class="chip ok">cleared</span><div class="sub">${esc(x.how || '')}</div>`;
+    const st = !x.active ? `<span class="chip ok">cleared</span><div class="sub">${esc(x.how || '')}</div>`
+      : x.ack ? `<span class="chip warn">${esc(swKind[x.kind] || x.kind)}</span><div class="sub">acked by ${esc(x.ack.by)} · ${esc(ago(x.ack.t))}</div>`
+      : `<span class="chip bad">${esc(swKind[x.kind] || x.kind)}</span>`;
+    // an active alarm is acknowledged (the switch would raise a dismissed one again); a cleared one can be removed
+    const btn = !x.active ? `<button class="btn ghost admin-only" data-swdismiss="${esc(x.id)}" title="Remove it from the list">Dismiss</button>`
+      : x.ack ? `<button class="btn ghost admin-only" data-swack="${esc(x.id)}" data-on="" title="Count it toward the Watch lamp again">Un-ack</button>`
+      : `<button class="btn ghost admin-only" data-swack="${esc(x.id)}" data-on="1" title="Seen it: stop the Watch lamp going red for this one">Acknowledge</button>`;
     const port = x.kind === 'macflap' && x.ports ? x.ports.join(' ↔ ') : x.port || '—';
     const extra = [x.vlan ? `VLAN ${x.vlan}` : '', x.mac ? `MAC ${x.mac}` : ''].filter(Boolean).join(' · ');
     const via = (x.via || []).map(v => v === 'snmp' ? 'switch poll' : 'switch log').join(' + ');
     return `<tr><td class="l">${st}</td><td class="l" style="white-space:nowrap"><b>${esc(x.switch)}</b><div class="mono">${esc(port)}</div></td>
       <td class="l wrap" style="min-width:260px" title="${esc(x.raw || '')}">${esc(x.text || x.cause || '')}<div class="sub mono">${esc([extra, via].filter(Boolean).join(' · '))}</div></td>
       <td style="white-space:nowrap">${ago(x.last)}<div class="sub">${x.n > 1 ? `${x.n}× since ${ago(x.first)}` : ''}</div></td>
-      <td><button class="btn ghost admin-only" data-swdismiss="${esc(x.id)}" title="Remove it from the list">Dismiss</button></td></tr>`;
+      <td>${btn}</td></tr>`;
   }).join('') || '<tr><td colspan="5" class="sub">None. Ports that get err-disabled, blocked by a spanning-tree guard or see a MAC flapping show here.</td></tr>');
   $('#w-swhelp').textContent = `Switches send these with "logging host ${S.net?.ip || '<probe IP>'}" (see Switch logs). Switches on the Switches page are also checked for err-disabled ports on every poll, in case a log line got lost.`;
 
@@ -2829,6 +2893,8 @@ document.addEventListener('click', async e => {
   poll();
 });
 document.addEventListener('click', async e => {
+  const k = e.target.closest('[data-swack]');
+  if (k) { try { await api('/api/watch/ack', { id: k.dataset.swack, on: !!k.dataset.on }); } catch (err) { alert(err.message); } return poll(); }
   const b = e.target.closest('[data-swdismiss]');
   if (!b) return;
   try { await api('/api/watch/dismiss', { id: b.dataset.swdismiss }); } catch (err) { alert(err.message); }
@@ -4187,6 +4253,7 @@ boot();
 <script src="/web/stats.js"></script>
 <script src="/web/mtr.js"></script>
 <script src="/web/mdns.js"></script>
+<script src="/web/dnstest.js"></script>
 <script src="/web/mcast.js"></script>
 <script src="/web/wire.js"></script>
 </body>

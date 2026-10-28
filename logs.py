@@ -13,7 +13,7 @@ import threading
 import time
 from datetime import date, datetime, timedelta
 
-from appbase import App, Reply
+from appbase import App, Reply, load_json, save_json
 import swalarms
 
 KEEP = 5000
@@ -70,6 +70,7 @@ class SwitchLogs(App):
         self.rate = {}             # ip -> [second, count]
         self.senders = {}          # ip -> {"n", "last", "worst"}
         self.restart = threading.Event()
+        self.read_t = (load_json(self.dir / "read.json", {}) or {}).get("t") or 0   # errors before this were marked read
         self.load_recent()
 
     def load_recent(self):
@@ -227,9 +228,14 @@ class SwitchLogs(App):
             return {"dot": "warn"}
         now = time.time()
         with self.lock:
-            bad = sum(1 for r in self.msgs if r["sev"] <= 3 and now - r["t"] < 3600)
+            bad = self.unread(now)
             recent = any(now - r["t"] < 600 for r in list(self.msgs)[-50:])
         return {"dot": "on" if recent else "", "badge": bad}
+
+    def unread(self, now):
+        """Errors (severity 0-3) in the last hour that came in after someone pressed Mark read. Call under the lock."""
+        since = max(now - 3600, self.read_t)
+        return sum(1 for r in self.msgs if r["sev"] <= 3 and r["t"] > since)
 
     def get(self, sub, arg, q, user):
         if sub == "download":
@@ -260,6 +266,7 @@ class SwitchLogs(App):
         text = (q.get("q") or "").lower()[:80]
         with self.lock:
             msgs = list(self.msgs)
+            unread = self.unread(now)
             senders = {k: dict(v) for k, v in self.senders.items()}
         per_min = [[0, 0, 0] for _ in range(60)]  # errors, warnings, other; index = minutes ago
         hour = errs = 0
@@ -293,7 +300,7 @@ class SwitchLogs(App):
         return {
             "on": self.conf["on"], "port": self.conf["port"], "keep_days": self.conf["keep_days"], "listening": bool(self.sock),
             "error": self.error, "dropped": self.dropped, "probe_ip": self.p.net.get("ip"), "now": now,
-            "hour": hour, "errors": errs, "per_min": per_min, "msgs": out, "days": days,
+            "hour": hour, "errors": errs, "unread": unread, "read_t": self.read_t or None, "per_min": per_min, "msgs": out, "days": days,
             "senders": sorted(({**v, "ip": ip, "name": names.get(ip) or v.get("origin") or ip, "known": ip in names, "ignored": ip in ign,
                                 "what": None if ip in names else self.what(ip)}
                                for ip, v in {**{x: {"n": 0, "last": 0, "worst": 7} for x in ign}, **senders}.items()),
@@ -335,6 +342,10 @@ class SwitchLogs(App):
             return {}
         if action == "unignore":
             self.save_conf({"ignore": ", ".join(sorted(self.ignored() - {ip}))})
+            return {}
+        if action == "read":
+            self.read_t = time.time()
+            save_json(self.dir / "read.json", {"t": self.read_t, "by": (user or {}).get("name")})
             return {}
         if action == "clear":
             with self.lock:

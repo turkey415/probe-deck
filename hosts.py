@@ -360,7 +360,7 @@ class HostScan(App):
                 if not h:
                     raise ValueError("No such host")
                 if body.get("known"):
-                    h.update(known=True, known_by=user, known_at=time.time())
+                    h.update(known=True, known_by=(user or {}).get("name"), known_at=time.time())
                 else:
                     for k in ("known", "known_by", "known_at"):
                         h.pop(k, None)

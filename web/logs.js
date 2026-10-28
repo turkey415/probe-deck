@@ -24,7 +24,9 @@
     $('#lg-last').innerHTML = d.last ? `<span class="dot on"></span>last ${esc(ago(d.last.t))}` : '<span class="dot"></span>nothing heard yet';
     setSeg('#lg-hour', d.hour, 4);
     setSeg('#lg-errs', d.errors, 3);
-    $('#lg-errw').classList.toggle('alarm', d.errors > 0);
+    $('#lg-errw').classList.toggle('alarm', d.unread > 0);
+    $('#lg-errs2').textContent = !d.errors ? 'severity 0–3 · last hour' : d.unread ? `${d.unread} new · last hour` : `all read${d.read_t ? ' · ' + ago(d.read_t) : ''}`;
+    $('#lg-read').disabled = !d.unread;
     const today = d.senders.filter(s => d.now - s.last < 86400);
     setSeg('#lg-nsw', today.length, 2);
     setHTML('#lg-senders', d.senders.map(s => `<tr class="${s.ignored ? 'ign' : ''}"><td class="l wrap" title="${esc(s.ip)}">${esc(s.name)}${s.ignored ? ' <span class="chip warn">ignored</span>' : ''}`
@@ -75,6 +77,7 @@
     } catch (err) { alert(err.message); }
     refresh();
   });
+  $('#lg-read').addEventListener('click', async () => { await api('/api/x/logs/read').catch(err => alert(err.message)); refresh(); });
   PAGES.logs = { show: refresh };
   setInterval(() => { if (view === 'logs' && ME) refresh(); }, 3000);
 })();

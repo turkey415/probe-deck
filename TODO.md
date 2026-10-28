@@ -23,6 +23,7 @@ What's next. Newest decisions first in each section.
 - **Traceroutes for GXL's traffic map** (its Paths view). The traffic map project is paused.
 
 ## Done recently
+- DNS test: a 30-second spot check of which DNS server to use at a site (0.38.0). Switch alarms can be acknowledged; Switch logs has Mark read (0.38.0).
 - Host scan: mark hosts known or unknown (green frame), colour by maker. Switches: err-disabled ports striped red, with Restore port (shutdown / no shutdown over SSH) (0.37.0).
 - Watchdog switch alarms: err-disable with its cause, spanning-tree guard blocks and MAC flapping, from Switch logs plus the err-disable table on each switch poll (0.36.0).
 - System stats page (0.34.0), now with its README section and screenshot.

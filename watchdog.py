@@ -497,7 +497,7 @@ class Watchdog:
                      and now - s["last"] < 900]
             dups = [c for c in self.conflicts.values() if now - c["t"] < 900]
             ras = [r for r in self.ra.values() if r["ip"].lower() not in tr and r.get("mac") not in tr and now - r["last"] < 900]
-        sw = len(self.switch_active())
+        sw = sum(1 for a in self.switch_active() if not a.get("ack"))   # acknowledged ones don't keep the lamp red
         return {"rogue": len(rogue), "conflicts": len(dups), "storm": bool(self.storm), "ra": len(ras), "switch": sw,
                 "total": len(rogue) + len(dups) + bool(self.storm) + len(ras) + sw}
 
@@ -547,6 +547,8 @@ class Watchdog:
             if new:
                 a = self.sw[key] = {"id": "|".join(key), "switch": switch, "ip": ip, "kind": kind, "port": port, "ports": m.get("ports"),
                                     "first": now, "n": 0, "via": []}
+            if new:
+                a["ack"] = None                 # a fresh problem needs a fresh acknowledgement
             a.update(active=True, last=now, cause=m.get("cause"), text=m.get("text"), vlan=m.get("vlan"),
                      mac=m.get("mac"), sev=m.get("sev", "crit"), cleared=None, how=None)
             a["n"] += 1
@@ -593,6 +595,16 @@ class Watchdog:
         with self.lock:
             out = [dict(a) for a in self.sw.values()]
         return sorted(out, key=lambda a: (not a["active"], -a["last"]))
+
+    def switch_ack(self, aid, user, on=True):
+        """Someone has seen it: the alarm stays listed, but no longer turns the Watch lamp red. It alerts again only if
+        it clears and comes back."""
+        with self.lock:
+            a = next((a for a in self.sw.values() if a["id"] == aid), None)
+            if not a:
+                return False
+            a["ack"] = {"by": user, "t": time.time()} if on else None
+        return True
 
     def switch_dismiss(self, aid):
         with self.lock:

@@ -53,9 +53,10 @@ import online as online_mod
 import tick as tick_mod
 import stats as stats_mod
 import mtr as mtr_mod
+import dnstest as dnstest_mod
 import swcli as swcli_mod
 
-__version__ = "0.37.0"
+__version__ = "0.38.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -1126,6 +1127,9 @@ class Handler(BaseHTTPRequestHandler):
                 elif v not in cur:
                     cur.append(v)
                 p.save_conf({"watch_trusted": ", ".join(cur)})
+            elif path == "/api/watch/ack":
+                if not p.watch.switch_ack(str(body.get("id", ""))[:200], self.user["name"], body.get("on", True) is not False):
+                    raise ValueError("That alarm is already gone")
             elif path == "/api/watch/dismiss":
                 if not p.watch.switch_dismiss(str(body.get("id", ""))[:200]):
                     raise ValueError("That alarm is already gone")
@@ -1181,7 +1185,7 @@ class TLSServer(ThreadingHTTPServer):
 
 
 APPS = [swcli_mod.CliApp, logs_mod.SwitchLogs, inet_mod.Inet, hosts_mod.HostScan, cache_mod.LanCache, capture_mod.Capture, tftp_mod.Files, configs_mod.Configs, cable_mod.CableTest, vlanwalk_mod.VlanWalk, survey_mod.Survey,
-        wire_mod.Wire, wire_mod.Mdns, wire_mod.Multicast, online_mod.Online, tick_mod.Tick, mtr_mod.Mtr, stats_mod.Stats]
+        wire_mod.Wire, wire_mod.Mdns, wire_mod.Multicast, online_mod.Online, tick_mod.Tick, mtr_mod.Mtr, stats_mod.Stats, dnstest_mod.DnsTest]
 
 
 def main():
