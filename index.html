@@ -704,6 +704,30 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 .wrsec { margin-bottom: 10px; } .wrsec > .k { display: block; margin: 6px 0 2px; }
 .ev.wr { grid-template-columns: 12px minmax(0, 1fr); }
 .mdtype { margin-bottom: 14px; } .mdh { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+.md-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } .md-bar .seg { flex: none; } .md-bar input[type=text] { flex: 1; min-width: 160px; }
+.mdcat { margin-top: 14px; } .mdcat > button { all: unset; cursor: pointer; display: flex; gap: 8px; align-items: center; width: 100%; padding: 4px 0 6px; border-bottom: 1px solid var(--line); font: 650 11px var(--mono, ui-monospace, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }
+.mdcat > button:focus-visible { outline: 2px solid var(--accent); }
+.mdcat > button .car { display: inline-block; width: 10px; transition: transform .15s; } .mdcat.shut > button .car { transform: rotate(-90deg); } .mdcat.shut .mddevs { display: none; }
+.mddev { border-bottom: 1px solid var(--line); } .mddev:last-child { border-bottom: 0; }
+.mddev > button { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: minmax(140px, 1.2fr) minmax(110px, .7fr) 2fr; gap: 4px 12px; align-items: center; width: 100%; padding: 7px 4px; }
+.mddev > button:hover { background: var(--raised); } .mddev > button:focus-visible { outline: 2px solid var(--accent); }
+.mddev .nm b { display: block; overflow-wrap: anywhere; } .mddev .nm .sub { font-size: 11.5px; overflow-wrap: anywhere; }
+.mddev .ad { font-size: 12.5px; overflow-wrap: anywhere; } .mddev .sv { display: flex; flex-wrap: wrap; gap: 4px; } .mddev .sv .chip { text-transform: none; letter-spacing: .03em; font-size: 10.5px; }
+.mddev .det { padding: 2px 4px 10px; } .mddev .det table { width: 100%; } .mddev .det td { font-size: 12px; vertical-align: top; }
+.md-top { margin-bottom: 0; } #v-mdns main { display: grid; gap: 18px; } .md-bar .seg label { white-space: nowrap; padding: 5px 12px; }
+.md-open { margin-left: 6px; font-size: 11px; color: var(--accent); text-decoration: none; } .md-open:hover { text-decoration: underline; } .md-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.md-kv { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); } .md-kv dd { font: 650 20px var(--mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; }
+.mdcat { --cc: #9aa0a6; border-left: 4px solid var(--cc); padding-left: 10px; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--cc) 9%, transparent), transparent 40%); }
+.mdcat > button { color: var(--cc); border-bottom-color: color-mix(in srgb, var(--cc) 35%, transparent); }
+:root { --c-print: #f2a33a; --c-media: #e0619e; --c-home: #4cc38a; --c-apple: #b18cff; --c-computer: #4fa3f7; --c-lab: #2ec4c9; --c-other: #9aa0a6; }
+.mdcat[data-c=print] { --cc: var(--c-print); } .mdcat[data-c=media] { --cc: var(--c-media); } .mdcat[data-c=home] { --cc: var(--c-home); } .mdcat[data-c=apple] { --cc: var(--c-apple); }
+.mdcat[data-c=computer] { --cc: var(--c-computer); } .mdcat[data-c=lab] { --cc: var(--c-lab); } .mdcat[data-c=other] { --cc: var(--c-other); }
+.mdcat[data-c=other] { background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--cc) 7%, transparent) 0 6px, transparent 6px 12px); }
+.mddev .dotc { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--hc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--hc) 30%, transparent); }
+.chip.svc { color: hsl(var(--h) 75% 72%); border-color: hsl(var(--h) 45% 38%); background: hsl(var(--h) 45% 14%); }
+.mdtype { border-left: 4px solid hsl(var(--h) 60% 55%); padding-left: 10px; } .mdtype .mdh b { color: hsl(var(--h) 75% 72%); }
+.md-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: -2px 0 4px; font-size: 12px; color: var(--text-2); } .md-legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; background: var(--cc); }
+@media (max-width: 640px) { .mddev > button { grid-template-columns: 1fr auto; } .mddev .sv { grid-column: 1 / -1; } }
 .mtrtab td { vertical-align: middle; }
 #mc-list tr.sel td { background: rgba(255, 176, 0, .06); }
 </style>
@@ -2082,19 +2106,19 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 </div>
 
 <!-- ================= MDNS ================= -->
-<div class="layout view" id="v-mdns" hidden>
-<aside>
-  <section class="card">
-    <h2>mDNS browser <span class="spacer"></span><span class="lamp" id="md-lamp"></span></h2>
-    <p class="sub" style="margin:0 0 12px">Every service announced on the LAN over multicast DNS (Bonjour, Avahi): Chromecasts, AirPlay, printers, ESPHome, WLED, Home Assistant, Matter… It asks every 10 minutes and also listens all the time.</p>
-    <dl class="kv" id="md-info"></dl>
-    <div class="row admin-only" style="margin-top:14px;align-items:center"><button class="btn primary" type="button" id="md-go" style="flex:none">Ask now</button><button class="btn" type="button" id="md-reset" style="flex:none">Start over</button></div>
-  </section>
-</aside>
+<div class="layout view one" id="v-mdns" hidden>
 <main>
+  <section class="card md-top">
+    <div class="md-head"><h2 style="margin:0">mDNS browser</h2><span class="lamp" id="md-lamp"></span><span class="spacer"></span>
+      <span class="row admin-only" style="gap:8px;flex:none"><button class="btn primary" type="button" id="md-go" style="flex:none">Ask now</button><button class="btn" type="button" id="md-reset" style="flex:none">Start over</button></span></div>
+    <p class="sub" style="margin:6px 0 12px">Every service announced on the LAN over multicast DNS (Bonjour, Avahi): Chromecasts, AirPlay, printers, ESPHome, WLED, Home Assistant, Matter… It asks every 10 minutes and also listens all the time.</p>
+    <dl class="kv md-kv" id="md-info"></dl>
+  </section>
   <section class="card">
     <h2>Services <span class="spacer"></span><span class="sub" id="md-count"></span></h2>
-    <div class="filters"><input type="text" id="md-q" class="ro-ok" placeholder="Filter: name, type, address" spellcheck="false"></div>
+    <div class="filters md-bar"><span class="seg ro-ok" role="radiogroup" aria-label="Group by"><label><input type="radio" name="md-by" value="dev" class="ro-ok" checked>By device</label><label><input type="radio" name="md-by" value="type" class="ro-ok">By service</label></span>
+      <input type="text" id="md-q" class="ro-ok" placeholder="Filter: name, type, address" spellcheck="false"></div>
+    <div id="md-legend" class="md-legend"></div>
     <div id="md-list"></div>
     <div class="sub" id="md-empty" style="margin-top:12px"></div>
   </section>

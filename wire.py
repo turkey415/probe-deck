@@ -259,6 +259,75 @@ class Wire(App):
         return super().post(action, body, user)
 
 
+# ---------------------------------------------------------------- mDNS: names and categories
+# More friendly names than PorkChopCheck's list (pc_net.FRIENDLY stays unchanged).
+MDNS_NAMES = {
+    "_home-assistant._tcp": "Home Assistant", "_asustor_adm._tcp": "ASUSTOR NAS", "_qdiscover._tcp": "QNAP NAS",
+    "_umbrel._tcp": "Umbrel", "_kdeconnect._udp": "KDE Connect", "_probe-deck._tcp": "Probe Deck",
+    "_adisk._tcp": "Time Machine", "_nfs._tcp": "NFS share", "_rfb._tcp": "Screen sharing (VNC)",
+    "_daap._tcp": "iTunes library", "_googlezone._tcp": "Google speaker group", "_mediaremotetv._tcp": "Apple TV remote",
+    "_apple-mobdev2._tcp": "Apple device", "_meshcop._udp": "Thread border router", "_trel._udp": "Thread",
+    "_srpl-tls._tcp": "Thread", "_octoprint._tcp": "OctoPrint", "_arduino._tcp": "Arduino OTA",
+    "_plexmediasvr._tcp": "Plex", "_ptp._tcp": "Camera (PTP)", "_ewelink._tcp": "eWeLink", "_miio._udp": "Xiaomi",
+    "_ecobee._tcp": "ecobee", "_nvstream._tcp": "NVIDIA GameStream", "_steam._tcp": "Steam",
+    "_teamviewer._tcp": "TeamViewer", "_dacp._tcp": "iTunes remote", "_telnet._tcp": "Telnet", "_ftp._tcp": "FTP",
+    "_webdav._tcp": "WebDAV", "_wled._tcp": "WLED", "_esphomelib._tcp": "ESPHome",
+}
+# Category order, most specific first: a device takes the first category any of its services has.
+MDNS_CATS = ["print", "media", "home", "apple", "computer", "lab", "other"]
+MDNS_CAT_NAMES = {"print": "Printers & scanners", "media": "TVs, speakers & media", "home": "Smart home",
+                  "apple": "Phones & Apple devices", "computer": "Computers & storage", "lab": "Network & lab",
+                  "other": "Other"}
+_C = {
+    "print": "ipp ipps printer pdl-datastream uscan scanner ptp octoprint",
+    "media": "airplay raop googlecast googlezone spotify-connect sonos amzn-wplay androidtvremote2 mediaremotetv "
+             "plexmediasvr daap dacp nvstream",
+    "home": "hap homekit matter matterc hue wled nanoleafapi elg shelly tuya esphomelib home-assistant mqtt "
+            "meshcop trel srpl-tls ewelink miio ecobee",
+    "apple": "companion-link rdlink touch-able apple-mobdev2 airport sleep-proxy",
+    "computer": "smb afpovertcp adisk nfs workstation rfb kdeconnect asustor_adm qdiscover umbrel sftp-ssh steam "
+                "teamviewer webdav ftp",
+    "lab": "probe-deck arduino telnet",
+}
+MDNS_CAT = {}
+for _cat, _names in _C.items():
+    for _n in _names.split():
+        for _proto in ("_tcp", "_udp"):
+            MDNS_CAT[f"_{_n}.{_proto}.local"] = _cat
+# Generic services that say nothing about what the device is (http, ssh, device-info) stay "other".
+# Samba and friends send these only to pick a Finder icon; they aren't the real model.
+FINDER_ICONS = {"MacSamba", "Xserve", "RackMac", "TimeCapsule", "AirPort", "Macmini", "MacPro", "iMac"}
+HEX_HOST = re.compile(r"^[0-9a-f-]{16,}$")
+
+
+def mdns_friendly(stype):
+    short = stype.replace(".local", "")
+    return MDNS_NAMES.get(short) or N.FRIENDLY.get(stype) or short
+
+
+def mdns_device(items):
+    """One row of the device view: a name, its addresses, what kind of thing it is and what it offers."""
+    items.sort(key=lambda i: (MDNS_CAT.get(i["type"], "other") == "other", i["friendly"].lower(), i["name"].lower()))
+    host = next((i["host"] for i in items if i["host"]), "")
+    cats = [MDNS_CAT.get(i["type"], "other") for i in items]
+    cat = min(cats, key=MDNS_CATS.index)
+    # A readable name: the host, unless it's a random hex id (Home Assistant), then the best instance name.
+    name = host if host and not HEX_HOST.match(host.lower()) else items[0]["name"]
+    model = fn = ""
+    for i in items:
+        for t in i["txt"]:
+            k, _, v = t.partition("=")
+            k = k.lower()
+            if k in ("model", "md", "ty", "usb_mdl") and v and not model and v not in FINDER_ICONS:
+                model = v
+            elif k == "fn" and v and not fn:      # Chromecast / Google: the name set in the Home app
+                fn = v
+    if fn and (not host or HEX_HOST.match(host.lower())):
+        name = fn
+    ips = sorted({ip for i in items for ip in i["ips"]}, key=lambda ip: (":" in ip, ip))
+    return {"name": name, "host": host, "model": model, "ips": ips, "cat": cat, "services": items}
+
+
 class Mdns(App):
     """The mDNS browser: services announced on the LAN, by type."""
     name = "mdns"
@@ -288,17 +357,24 @@ class Mdns(App):
 
     def get(self, sub, arg, q, user):
         s = self.browser().snapshot()
-        by_type = {}
+        by_type, by_dev = {}, {}
         for (label, stype), e in s["inst"].items():
             host = e.get("host", "")
             ips = sorted(s["hosts"].get(host, ()), key=lambda ip: (":" in ip, ip))
-            by_type.setdefault(stype, []).append({"name": label, "host": host.replace(".local", ""), "ips": ips, "port": e.get("port"),
-                                                  "txt": [t for t in (e.get("txt") or [])][:12]})
-        types = [{"type": t, "friendly": N.FRIENDLY.get(t, t.replace(".local", "")), "items": sorted(v, key=lambda x: x["name"].lower())}
-                 for t, v in by_type.items()]
+            item = {"name": label, "host": host.replace(".local", ""), "ips": ips, "port": e.get("port"),
+                    "txt": [t for t in (e.get("txt") or [])][:12]}
+            by_type.setdefault(stype, []).append(item)
+            # One device per host name; an instance heard without its SRV record stands alone.
+            key = host.lower() or ("?" + label.lower())
+            by_dev.setdefault(key, []).append({**item, "type": stype, "friendly": mdns_friendly(stype)})
+        types = [{"type": t, "friendly": mdns_friendly(t), "cat": MDNS_CAT.get(t, "other"),
+                  "items": sorted(v, key=lambda x: x["name"].lower())} for t, v in by_type.items()]
         types.sort(key=lambda x: x["friendly"].lower())
+        devices = [mdns_device(v) for v in by_dev.values()]
+        devices.sort(key=lambda d: (MDNS_CATS.index(d["cat"]), d["name"].lower()))
         empty = sorted(t.replace(".local", "") for t in s["types"] if t not in by_type and t.endswith(".local"))
-        return {"types": types, "empty": empty, "responders": len(s["responders"]), "multicast_seen": s["multicast_seen"],
+        return {"types": types, "devices": devices, "cats": MDNS_CAT_NAMES, "empty": empty,
+                "responders": len(s["responders"]), "multicast_seen": s["multicast_seen"],
                 "running": s["running"] or self.busy, "last_scan": s["last_scan"], "error": s["error"], "now": time.time()}
 
     def post(self, action, body, user):
