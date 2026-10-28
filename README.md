@@ -8,7 +8,7 @@ Every page is in the **sidebar**, grouped, under a **This jack** card that alway
 - **Watch:** **Watchdog** (rogue DHCP, IP conflicts, spoofing, storms, spanning tree, rogue IPv6 routers, and what's on the wire), **Switch logs** (a syslog receiver for the switches) and **Capture** (tcpdump to .pcap, and alarms that capture themselves).
 - **Event:** **Jack survey** (walk the hall and record every seat's jack), **CS2** (is this network fit for a match?), **Tick test** (game-rate UDP to a reflector), **LAN cache** (are game downloads hitting the cache?) and **Wake** (Wake-on-LAN for the room).
 - **Switch tools:** **Console** (the USB console cable in the browser), **Configs** (running-config backups and diffs) and **Files** (a TFTP server for images and configs).
-- **System:** **Settings & power**, **Tailscale**, **HTTPS** and **Users**.
+- **System:** **System stats** (how the probe itself is doing), **Settings & power**, **Tailscale**, **HTTPS** and **Users**.
 
 It is built on a **Radxa ZERO 3E** with its PoE HAT, and the page has the same look as [iPerf Deck](https://github.com/turkey415/Perf-Deck). The probe joins Perf-Deck's network of stations, so the two can test each other.
 
@@ -29,7 +29,7 @@ The screenshots use made-up names and addresses (core-1, access-1, 10.10.x.x), a
 <tr><td width="50%"><b>Wake</b><br><img src="docs/wake.png" alt="Wake-on-LAN: saved machines with up/down lights"></td><td width="50%"><b>Console</b><br><img src="docs/console.png" alt="The green CRT-style web console on a Cisco 3560"></td></tr>
 <tr><td width="50%"><b>Configs</b><br><img src="docs/configs.png" alt="Configs: running-config versions and a coloured diff"></td><td width="50%"><b>Files (TFTP)</b><br><img src="docs/files.png" alt="Files: IOS images and configs served over TFTP, with the commands to paste"></td></tr>
 <tr><td width="50%"><b>HTTPS</b><br><img src="docs/https.png" alt="The HTTPS page: the certificate, its expiry and fingerprint"></td><td width="50%"><b>Users</b><br><img src="docs/users.png" alt="The Users page: accounts and roles"></td></tr>
-<tr><td width="50%"><b>Log in</b><br><img src="docs/login.png" alt="The login screen"></td><td></td></tr>
+<tr><td width="50%"><b>System stats</b><br><img src="docs/stats.png" alt="System stats: needle meters for CPU, temperature, memory, SD card and traffic, per-core CPU and heat"></td><td width="50%"><b>Log in</b><br><img src="docs/login.png" alt="The login screen"></td></tr>
 </table>
 
 ## Features
@@ -80,7 +80,7 @@ The **Speed test** page (Port in the sidebar) holds the LAN test, the Stations a
 ### Settings and system
 - Probe name, ping targets, check interval, DNS test name, internet check URL, and on/off switches for the iperf3 server, Perf-Deck discovery, the broadcast, and DHCP-on-replug.
 - **Energy Efficient Ethernet off** (on by default): EEE lets the link sleep between packets, which adds a wake-up delay to every test (the probe's port came set to sleep up to a second). It's switched off at start and after a link comes up, and only when it's on, because changing it makes the link renegotiate for a few seconds. Settings are saved from the page.
-- CPU temperature, load, memory and uptime, plus **Check now** and **Renew DHCP** buttons.
+- **Check now** and **Renew DHCP** buttons on the Overview's Network card.
 - Works on a phone: the layout stacks to one column.
 
 ### Console (USB serial cable to a switch)
@@ -228,6 +228,14 @@ Everything about the network that decides a Counter-Strike match, measured from 
 - The end-port card shows the port's link, VLAN, errors and description, and warns when **several MACs** share the port (an unmanaged switch, hub or VM host behind it), when the port has **errors**, or when it's at **half duplex**.
 - A live log shows each step. The last 20 traces are kept. Viewers can trace too. On the Wake tab, every machine has a **Trace** button.
 - Limits: a host behind a switch that isn't managed (or doesn't speak CDP) can be traced only to the port that switch is on. The MAC must have been seen in the last ~5 minutes.
+
+### System stats (how is the probe itself doing?)
+- **Needle meters** for CPU, CPU temperature, memory, SD card and eth0 traffic, then uptime, load, process count and whether the clock is in sync (NTP).
+- **CPU:** every core's load and clock, the clock range and governor, and whether it's slowing down for heat.
+- **Heat and cooling:** each temperature with its trip points (it slows down at 70 °C, shuts off at 95 °C), the cooling steps, and the fan (the Zero 3E has none, so a warm room or a closed box shows here first).
+- **Memory, swap and storage:** a memory bar (in use, shared, cache), swap and zram if any, and the SD card's name, size, date and how full it is.
+- **Interfaces:** every network interface with its state, speed, rates, errors and drops.
+- **Charts** of the last 10 minutes, and the **top processes** (tracked only while the page is open, so it costs nothing otherwise).
 
 ### Power
 The **Settings & power** page (System in the sidebar, admins only) holds the probe's settings and shuts the probe down or restarts it, behind the same slide-to-ARM latch as the Tailscale switch. Shut down before pulling the PoE cable: the SD card is safe once the green light on the board stops blinking (about 15 s). After a restart the page waits and reloads by itself.
