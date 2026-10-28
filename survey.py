@@ -64,7 +64,7 @@ class Survey(App):
         if k == "gxl_url":
             v = str(v or "").strip().rstrip("/")
             if v and not re.fullmatch(r"https?://[A-Za-z0-9.\-]+(:\d{1,5})?", v):
-                raise ValueError("GXL address looks like http://10.2.1.143:8000")
+                raise ValueError("GXL address looks like http://192.168.1.10:8000")
             return v
         if k == "gxl_key":
             v = str(v or "").strip()

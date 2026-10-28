@@ -31,7 +31,8 @@
 
   function deviceRow(d) {
     const k = devKey(d), isOpen = open.has(k);
-    const subs = [d.host && d.host !== d.name ? d.host + '.local' : '', d.model].filter(Boolean);
+    // A random-id host (Chromecast, Home Assistant) says nothing; the name already came from the device.
+    const subs = [d.host && d.host !== d.name && !/^[0-9a-f-]{16,}$/i.test(d.host) ? d.host + '.local' : '', d.model].filter(Boolean);
     const chips = [...new Map(d.services.map(s => [s.friendly, s])).keys()].map(f => `<span class="chip svc" style="--h:${hue(f)}">${esc(f)}</span>`).join('');
     const extra = d.ips.length > 1 ? ` <span class="sub">+${d.ips.length - 1}</span>` : '';
     const det = isOpen ? `<div class="det tablewrap"><table><tbody>${d.services.map(i => `<tr><td class="l"><b>${esc(i.friendly)}</b>${webLink(i)}<div class="sub">${esc(i.name)}</div></td>`
