@@ -6,7 +6,7 @@ Every page is in the **sidebar**, grouped, under a **This jack** card that alway
 - **Port:** the **Overview** (what is on the other end of this cable), **Speed test** (LAN with iperf3 and the internet with Cloudflare), **Cable test** (the switch's TDR, pair by pair) and **VLAN walk** (DHCP, gateway, DNS and internet on every VLAN of a trunk).
 - **Network:** **Switches** (GXL-LANapp's Switches page over SNMP), **Trace** (the path to any IP, MAC or name), **Traceroute** (every hop watched once a second, like mtr), **DNS test** (which DNS server to use at this site), **Host scan** (who is on this subnet, with makers, names, smart-device types and open ports), **mDNS** (every service announced on the LAN) and **Multicast** (groups, the IGMP querier, a join test).
 - **Watch:** **Watchdog** (rogue DHCP, IP conflicts, spoofing, storms, spanning tree, rogue IPv6 routers, and what's on the wire), **Switch logs** (a syslog receiver for the switches) and **Capture** (tcpdump to .pcap, and alarms that capture themselves).
-- **Event:** **Jack survey** (walk the hall and record every seat's jack), **CS2** (is this network fit for a match?), **Tick test** (game-rate UDP to a reflector), **LAN cache** (are game downloads hitting the cache?) and **Wake** (Wake-on-LAN for the room).
+- **Event:** **Jack survey** (walk the hall and record every seat's jack), **CS2** (is this network fit for a match?), **Fairness** (is one team or seat worse off?), **Tick test** (game-rate UDP to a reflector), **LAN cache** (are game downloads hitting the cache?) and **Wake** (Wake-on-LAN for the room).
 - **Switch tools:** **Console** (the USB console cable in the browser), **Configs** (running-config backups and diffs) and **Files** (a TFTP server for images and configs).
 - **System:** **System stats** (how the probe itself is doing), **Settings & power**, **Tailscale**, **HTTPS** and **Users**.
 
@@ -198,6 +198,14 @@ For a [lancache](https://lancache.net) (or any cache that works the same way):
 - **Label** a version ("Before the event"); labelled versions are never thrown away. Tick two versions and **Compare** for a coloured diff. View or download any version.
 - **Switch logins:** type a user, password and enable secret right on the Cable test form or above the Configs list: it's used for that run only, or saved for that switch with **Remember**. The saved logins (one shared by every switch, and any switch can have its own) are what scheduled pulls use. They're kept in `/etc/probe-deck/logins.json`, root-only; passwords never go back to the page.
 - Configs hold password hashes and SNMP communities, so only **admins** can view, compare or download them; viewers see the list.
+
+### Fairness (is one team, or one seat, worse off?)
+- For a disputed round. Put each team's PCs in a box: IPs, ranges (`10.10.0.101-105`), names from Wake or Host scan, MACs, or a Wake group (`group:Team A`, or pick it from the list). Each box shows who it found as you type. Pick the game server from the CS2 tab, and press **Start**.
+- For 2 minutes (30 s to 10 min) every PC is pinged twice a second. A PC that ignores ping (Windows' firewall does by default) is timed with **ARP** instead, which every PC answers (same subnet only). Ping and ARP times aren't comparable, so seats are only compared with seats timed the same way.
+- The report: each team's median latency, jitter and worst loss side by side, the game server's ping and A2S times over the same minutes, and every seat with its **switch port** (from the Switches page). A seat whose latency or jitter is well above the rest, that loses packets or spikes, is flagged red with the reason.
+- The verdict: **fair** (teams within 0.5 ms), **check** (a small difference, or a seat stands out) or **not fair**.
+- It measures each seat's own path from the probe: cable, jack, switch port and network card, where seats differ. The path from the switches to the server is shared.
+- The last 20 reports are kept, and each **downloads as text** for the match record. Anyone logged in can run one.
 
 ### Tick test (what a CS2 player feels)
 - CS2 sends small UDP packets at a steady 64 or 128 a second; switches and routers often treat that differently from ping. The tick test sends the same traffic to a **reflector** and times every reply: **loss**, the **longest run of lost packets** (three in a row is a visible hitch), **late replies** that miss a tick, **jitter**, and packets **out of order** or **twice**, with a chart of every reply (lost ones in red) and a verdict for Counter-Strike: excellent, good, fair or bad, using PorkChopCheck's limits. **Stricter limits** switches to its "Claude recommended" set.

@@ -736,6 +736,21 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 .dt-prog { position: relative; height: 22px; margin-top: 12px; border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden; background: var(--bg); }
 .dt-prog b { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #2e7dd7, #3dd6ff); transition: width .9s linear; }
 .dt-prog span { position: relative; display: block; text-align: center; font: 650 11.5px var(--mono, ui-monospace, monospace); line-height: 20px; color: #fff; text-shadow: 0 1px 2px #000; }
+.fr-team { border-left: 4px solid var(--tc); padding-left: 10px; display: grid; gap: 6px; } .fr-team.t1 { --tc: #4fa3f7; } .fr-team.t2 { --tc: #f2a33a; }
+.fr-team input[type=text] { font-weight: 650; color: var(--tc); } .fr-g { flex: none; width: auto; } .fr-who { min-height: 1em; }
+.fr-verdict { border-radius: 8px; padding: 12px 14px; font-size: 14.5px; line-height: 1.45; border: 1px solid var(--line-2); }
+.fr-verdict.ok { border-color: #2f5f37; background: color-mix(in srgb, var(--good) 10%, transparent); } .fr-verdict.warn { border-color: #6a5320; background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.fr-verdict.bad { border-color: #7a2b2b; background: #2a1515; }
+.fr-verdict .lv { font: 700 12px var(--mono, ui-monospace, monospace); letter-spacing: .12em; display: block; margin-bottom: 4px; }
+.fr-verdict.ok .lv { color: var(--good); } .fr-verdict.warn .lv { color: var(--warn); } .fr-verdict.bad .lv { color: #ff9b9b; }
+.fr-vs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
+.fr-vs .t { border: 1px solid var(--line-2); border-top: 4px solid var(--tc); border-radius: 8px; padding: 10px 14px; } .fr-vs .t.t1 { --tc: #4fa3f7; } .fr-vs .t.t2 { --tc: #f2a33a; } .fr-vs .t.sv { --tc: #9aa0a6; }
+.fr-vs .t b { color: var(--tc); letter-spacing: .04em; } .fr-vs .big { font: 700 26px var(--mono, ui-monospace, monospace); } .fr-vs .sub { display: block; }
+.fr-tab tr.t1 td:first-child { box-shadow: inset 4px 0 0 #4fa3f7; } .fr-tab tr.t2 td:first-child { box-shadow: inset 4px 0 0 #f2a33a; }
+.fr-tab tr.flag td { background: #2a1515; } .fr-tab tr.flag td:first-child { box-shadow: inset 4px 0 0 #ff3b3b; }
+.fr-tab .tm.t1 { color: #4fa3f7; } .fr-tab .tm.t2 { color: #f2a33a; }
+.fr-rep { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; cursor: pointer; }
+.fr-rep:hover { background: var(--raised); } .fr-rep.sel { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .dt-verdict { display: flex; flex-wrap: wrap; gap: 14px; }
 .dt-pick { flex: 1 1 220px; border: 1px solid var(--line-2); border-left: 5px solid hsl(var(--h) 65% 55%); border-radius: 8px; padding: 10px 14px; background: linear-gradient(90deg, hsl(var(--h) 60% 50% / .12), transparent 70%); }
 .dt-pick .k { display: block; } .dt-pick .ip { font: 700 26px var(--mono, ui-monospace, monospace); color: hsl(var(--h) 80% 72%); } .dt-pick .nm { font-weight: 600; }
@@ -743,7 +758,8 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 .dt-note { flex: 1 1 100%; } 
 .dt-tab tr[style*="--h"] td:first-child { box-shadow: inset 4px 0 0 hsl(var(--h) 65% 55%); }
 .dt-tab .sv b { color: hsl(var(--h) 75% 72%); } .dt-tab .sv .sub { display: block; font-size: 11.5px; }
-.dt-tab .bar { display: flex; align-items: center; gap: 8px; } .dt-tab .bar .trk { flex: none; width: 160px; height: 10px; border-radius: 3px; background: var(--bg); overflow: hidden; }
+.dt-tab .bar, .fr-tab .bar { display: flex; align-items: center; gap: 8px; } .fr-tab td.wrap { min-width: 220px; } .fr-tab .bar .trk { flex: none; width: 90px; height: 10px; border-radius: 3px; background: var(--bg); overflow: hidden; } .fr-tab .bar .trk i { display: block; height: 100%; border-radius: 3px; } .fr-tab .bar span:last-child { font: 650 12.5px var(--mono, ui-monospace, monospace); white-space: nowrap; }
+.dt-tab .bar .trk { flex: none; width: 160px; height: 10px; border-radius: 3px; background: var(--bg); overflow: hidden; }
 .dt-tab .bar .trk i { display: block; height: 100%; border-radius: 3px; background: hsl(var(--h) 65% 55%); box-shadow: 0 0 6px hsl(var(--h) 65% 55% / .5); }
 .dt-tab .bar span { font: 650 12.5px var(--mono, ui-monospace, monospace); white-space: nowrap; }
 .dt-tab tr.best td { background: color-mix(in srgb, var(--good) 8%, transparent); }
@@ -845,6 +861,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
     <div class="items">
       <a href="#survey" data-view="survey"><span class="dot" id="t-survey"></span><span class="nm">Jack survey</span><span class="badge" id="tb-survey" hidden></span></a>
       <a href="#cs" data-view="cs"><span class="dot" id="t-cs"></span><span class="nm">CS2</span></a>
+      <a href="#fair" data-view="fair"><span class="dot" id="t-fair"></span><span class="nm">Fairness</span><span class="badge" id="tb-fair" hidden></span></a>
       <a href="#tick" data-view="tick"><span class="dot" id="t-tick"></span><span class="nm">Tick test</span><span class="badge" id="tb-tick" hidden></span></a>
       <a href="#cache" data-view="cache"><span class="dot" id="t-cache"></span><span class="nm">LAN cache</span><span class="badge" id="tb-cache" hidden></span></a>
       <a href="#wake" data-view="wake"><span class="dot"></span><span class="nm">Wake</span></a>
@@ -1212,6 +1229,44 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
     <section class="card"><h2>End port</h2><dl class="kv" id="tr-port"></dl><div id="tr-warn" style="margin-top:12px"></div></section>
     <section class="card" id="tr-wcard" hidden><h2>Wireless</h2><dl class="kv" id="tr-wifi"></dl></section>
   </div>
+</div>
+
+<!-- ================= FAIRNESS ================= -->
+<div class="layout view" id="v-fair" hidden>
+<aside>
+  <section class="card">
+    <h2>Fairness report <span class="spacer"></span><span class="lamp" id="fr-lamp"></span></h2>
+    <p class="sub" style="margin:0 0 12px">For a disputed round: is one team, or one seat, worse off? Put each team's PCs in, press <b>Start</b>, and the probe pings every PC twice a second for <span id="fr-secs-t">2 minutes</span>. PCs that ignore ping are timed with ARP, which every PC answers.</p>
+    <form class="form" id="f-fair">
+      <div class="fr-team t1"><div class="row" style="align-items:center"><input type="text" id="fr-name1" value="Team 1" maxlength="30" style="flex:1"><select id="fr-g1" class="fr-g"><option value="">+ Wake group</option></select></div>
+        <textarea id="fr-team1" rows="3" spellcheck="false" placeholder="10.10.0.101-105 · SEAT-A1, SEAT-A2 · a MAC · group:Team A"></textarea><span class="sub fr-who" id="fr-who1"></span></div>
+      <div class="fr-team t2"><div class="row" style="align-items:center"><input type="text" id="fr-name2" value="Team 2" maxlength="30" style="flex:1"><select id="fr-g2" class="fr-g"><option value="">+ Wake group</option></select></div>
+        <textarea id="fr-team2" rows="3" spellcheck="false" placeholder="10.10.0.111-115"></textarea><span class="sub fr-who" id="fr-who2"></span></div>
+      <div class="row"><label class="f">Game server <select id="fr-server"><option value="">none</option></select></label><label class="f" style="max-width:120px">Seconds <input type="number" id="fr-secs" min="30" max="600"></label></div>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" id="fr-go" style="flex:none;min-width:96px">Start</button><button class="btn" type="button" id="fr-stop" style="flex:none" hidden>Stop</button><span id="fr-msg"></span></div>
+      <div class="dt-prog" id="fr-prog" hidden><b id="fr-bar"></b><span id="fr-left"></span></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Saved reports</h2>
+    <div id="fr-reps"></div>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2>Verdict <span class="spacer"></span><span class="sub" id="fr-when"></span></h2>
+    <div id="fr-verdict" class="fr-verdict"><div class="sub">Start a report, or open a saved one.</div></div>
+    <div class="fr-vs" id="fr-vs"></div>
+  </section>
+  <section class="card">
+    <h2>Every seat <span class="spacer"></span><span class="sub" id="fr-count"></span></h2>
+    <div class="tablewrap"><table class="fr-tab">
+      <thead><tr><th class="l">Seat</th><th class="l">Team</th><th class="l">Latency</th><th>Slow 5%</th><th>Jitter</th><th>Lost</th><th class="l">Switch port</th><th class="l">Stands out</th></tr></thead>
+      <tbody id="fr-rows"></tbody>
+    </table></div>
+    <p class="sub" style="margin:10px 0 0">Measured: each seat's own path from the probe (its cable, jack, switch port and network card), which is where seats differ; the path from the switches to the server is shared. <b>ping</b> and <b>ARP</b> times aren't comparable, so seats are only compared with seats timed the same way. A LAN seat should be well under 1 ms, with jitter under 0.3 ms and nothing lost.</p>
+  </section>
+</main>
 </div>
 
 <!-- ================= CS2 ================= -->
@@ -2586,7 +2641,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 // ---------- views (tabs) ----------
 const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
-const VIEWS = ['dnstest', 'stats', 'tick', 'mtr', 'mdns', 'mcast', 'survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
+const VIEWS = ['fair', 'dnstest', 'stats', 'tick', 'mtr', 'mdns', 'mcast', 'survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -4254,6 +4309,7 @@ boot();
 <script src="/web/mtr.js"></script>
 <script src="/web/mdns.js"></script>
 <script src="/web/dnstest.js"></script>
+<script src="/web/fair.js"></script>
 <script src="/web/mcast.js"></script>
 <script src="/web/wire.js"></script>
 </body>
