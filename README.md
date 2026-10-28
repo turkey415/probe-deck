@@ -64,11 +64,13 @@ The **Speed test** page (Port in the sidebar) holds the LAN test, the Stations a
 - Round trip, retransmits and congestion window come from the sending side, so a LAN test shows them for the upload (run Upload or Both).
 - An **internet speed test** against Cloudflare (speed.cloudflare.com): download and upload for 3–30 s each way over 1–8 streams, with live readouts and a chart. It also pings 1.1.1.1 before the test (**idle latency** and jitter) and while it runs (**loaded latency**): when latency climbs under load, the uplink has bufferbloat. It shows the public IP, the network (AS number) and the Cloudflare data centre. At gigabit one test moves 1–2 GB, so it only runs when you press the button. Cloudflare limits how often one public IP can test; the page says so when that happens.
 - An **iperf3** client against any server, as download, upload or both, with live seven-segment readouts and a live chart.
+- **Pick a probe**: under the server box, every other probe on the network is a button with the switch port it's plugged into (from its CDP/LLDP), and Perf-Deck PCs are listed below them. A probe-to-probe test tests the path between two jacks, and the history shows both ends.
 - **History** of every test, with the switch port it ran on.
 - An **iperf3 server** on port 5201, so other machines can test the probe.
 
 ### Stations: Perf-Deck on the LAN
 - The probe speaks **Perf-Deck discovery** (UDP 52010). It shows up as a station in every Perf-Deck on the network segment, and it lists every Perf-Deck station it hears.
+- Other probes show up here too, tagged **PROBE**, with the switch port each one is plugged into. Probes add `probe` and `jack` (switch, port, VLAN, link speed) to the Perf-Deck hello; Perf-Deck ignores fields it doesn't know.
 - Each station shows a live **ping**, a ready/busy light, and its last result.
 - **Send / Receive / Both** buttons run a quick 5-second test against one station.
 - **Sweep all** runs a 2-second test from every station to the probe in turn. It follows Perf-Deck's rules: it waits while another station is sweeping, and every station rests 5 minutes after any sweep.
