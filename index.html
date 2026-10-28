@@ -150,6 +150,11 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
 .sweepbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .sweepbar .sub { flex: 1; min-width: 200px; }
 .empty { color: var(--muted); font-size: 13px; padding: 4px 2px; }
+/* hazard tape around a setting that is switched off but easy to miss */
+.hazard { padding: 5px; border-radius: 10px; background: repeating-linear-gradient(-45deg, #f5c400 0 12px, #141414 12px 24px); box-shadow: 0 0 18px rgba(245, 196, 0, .18); }
+.hazard > .in { background: var(--panel); border-radius: 6px; padding: 14px 16px; display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; }
+.hazard .hz-t { font: 700 13px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; color: #f5c400; }
+.hazard .hz-m { flex: 1 1 260px; color: var(--text-2); font-size: 13px; }
 @media (max-width: 760px) { .strow { grid-template-columns: 12px minmax(0, 1fr) auto; } .strow .bar, .strow .ping, .strow .state { display: none; } .dirs { grid-column: 1 / -1; } .dirs button { flex: 1; } }
 @media (prefers-reduced-motion: reduce) { .dot.live, .sled.testing { animation: none; } }
 
@@ -3892,7 +3897,7 @@ function csCard(pre, i, s, d) {
   const RP = node ? { title: 'APP REPLY', unit: 'ms · UDP · log', name: 'App reply (Perf-Deck UDP)', col: 'Reply' } : { title: 'SERVER REPLY', unit: 'ms · A2S · log', name: 'Server reply (A2S)', col: 'Reply' };
   const a = s.icmp['1m'] || {}, g = s.a2s['1m'] || {}, info = s.info;
   if (node) morph($(`#${pre}h-${i}`), `<span class="sled ${s.gone ? '' : a.avg == null ? 'testing' : csLv(a.avg, L.ping) === 'ok' && !a.loss ? 'ready' : 'busy'}"></span><b>${esc(s.name)}</b>
-    <span class="k" style="text-transform:none">${esc(s.ip || '')}</span><span class="chip ok">Perf-Deck${s.version ? ' ' + esc(s.version) : ''}</span>${s.os ? `<span class="chip">${esc(s.os)}</span>` : ''}
+    <span class="k" style="text-transform:none">${esc(s.ip || '')}</span><span class="chip ok">${s.probe ? 'Probe Deck' : 'Perf-Deck'}${s.version ? ' ' + esc(s.version) : ''}</span>${s.probe && s.jack ? `<span class="chip">${esc(jackText(s.jack))}</span>` : s.os ? `<span class="chip">${esc(s.os)}</span>` : ''}
     ${s.gone ? `<span class="chip warn">gone · last seen ${ago(s.seen)}</span>` : ''}${s.busy ? '<span class="chip warn" title="A speed test is running on this node, so latency is under load">testing</span>' : ''}
     <span class="spacer"></span>${s.mtu ? `<span class="chip ${s.mtu.ok ? 'ok' : 'warn'}" title="Largest packet that passes without fragmenting">MTU ${s.mtu.mtu ?? '?'}${s.mtu.ok ? ' OK' : ''}</span>` : ''}`);
   else morph($(`#${pre}h-${i}`), `<span class="sled ${a.avg == null ? 'testing' : csLv(a.avg, L.ping) === 'ok' && !a.loss ? 'ready' : 'busy'}"></span><b>${esc(s.name)}</b>
@@ -3948,11 +3953,12 @@ function renderCS() {
     d.servers.forEach((s, i) => { csCharts['cs' + i] = csChart('cs', i); });
   }
   d.servers.forEach((s, i) => csCard('cs', i, s, d));
-  const nodes = d.nodes || [], nkeys = nodes.map(s => s.key).join('|');
+  const nodes = d.nodes || [], nkeys = (d.nodes_on ? 'on|' : 'off|') + nodes.map(s => s.key).join('|');
   if (nkeys !== cnKeys) {
     cnKeys = nkeys;
     $('#cn-cards').innerHTML = nodes.map((s, i) => csShell('cn', i)).join('')
-      || `<section class="card"><div class="empty">${d.nodes_on ? 'No Perf-Deck nodes found. Start Perf-Deck on a PC on this LAN and it shows up here within a few seconds (the same discovery as the Stations list on the Probe tab).' : 'Node tests are off in the settings.'}</div></section>`;
+      || (d.nodes_on ? '<section class="card"><div class="empty">No Perf-Deck nodes found. Start Perf-Deck on a PC on this LAN (or plug in another probe) and it shows up here within a few seconds (the same discovery as the Stations list on the Speed test page).</div></section>'
+        : `<div class="hazard"><div class="in"><span class="hz-t">⚠ Node tests are off</span><span class="hz-m">Other probes and Perf-Deck PCs on the LAN aren't being tested. Switch it on here, or with <b>Test Perf-Deck nodes</b> in the CS2 settings.</span><button type="button" class="btn primary admin-only" id="cn-on">Turn on</button></div></div>`);
     nodes.forEach((s, i) => { csCharts['cn' + i] = csChart('cn', i); });
   }
   nodes.forEach((s, i) => csCard('cn', i, s, d));
@@ -3982,6 +3988,11 @@ $('#cs-found').onclick = async e => {
   try { await api('/api/settings', { cs_servers: (t ? t + '\n' : '') + b.dataset.csadd }); $('#f-cs')._filled = false; } catch (err) { alert(err.message); }
   csRefresh();
 };
+$('#cn-cards').addEventListener('click', async e => {
+  if (!e.target.closest('#cn-on')) return;
+  try { await api('/api/settings', { cs_nodes: true }); $('#f-cs')._filled = false; } catch (err) { alert(err.message); }
+  csRefresh();
+});
 $('#cs-scan').onclick = async () => { await api('/api/cs/scan').catch(() => {}); setTimeout(csRefresh, 2000); };
 $('#f-cs').onsubmit = async e => {
   e.preventDefault();

@@ -344,7 +344,7 @@ class CS:
                     elif t.gone:
                         self.event("info", "node", f"Perf-Deck node {p['name']} is back")
                 t.name, t.ip, t.seen, t.gone = p["name"], p["ip"], t0, False
-                t.meta = {"version": p.get("version"), "os": p.get("os"), "iperf": p.get("running"), "busy": p.get("busy") or p.get("sweeping")}
+                t.meta = {"version": p.get("version"), "os": p.get("os"), "probe": bool(p.get("probe")), "jack": p.get("jack"), "iperf": p.get("running"), "busy": p.get("busy") or p.get("sweeping")}
                 name = p["name"]
                 self.pinger.send(p["ip"], "node:" + p["id"], lambda ms, t=t, t0=t0, load=load, name=name: self.got(t.icmp, t0, ms, load, name, "ping"))
                 nonce = os.urandom(8).hex()
