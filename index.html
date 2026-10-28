@@ -345,6 +345,14 @@ dialog h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--mu
 .gx .pt.uplink.known { border-color: #b07cff; box-shadow: inset 0 0 0 1px #b07cff; } .gx .pt.uplink.known span { color: #c9a6ff; }
 .gx .pt.me { outline: 2px solid var(--amber); outline-offset: 1px; }
 .gx .pt.click { cursor: pointer; } .gx .pt.click:hover { border-color: var(--accent); }
+/* err-disabled: red hazard stripes, so it stands out on the front panel */
+.gx .pt.errdis { --tc: #ff3b3b; border-color: #ff3b3b; box-shadow: inset 0 0 0 1px #ff3b3b;
+  background: repeating-linear-gradient(135deg, rgba(255, 59, 59, .28) 0 5px, rgba(255, 59, 59, .06) 5px 10px); }
+.gx .pt.errdis.big, .gx .pt.errdis.big.sel { background: repeating-linear-gradient(135deg, rgba(255, 59, 59, .3) 0 5px, rgba(255, 59, 59, .07) 5px 10px); }
+.gx .pt.errdis.big.sel { border-color: var(--accent); }
+.gx .pt.errdis i { box-shadow: 0 0 8px #ff3b3b; animation: pulse .9s steps(2, jump-none) infinite; } .gx .pt.errdis span, .gx .pt.errdis .pn, .gx .pt.errdis .ps { color: #ffb4b4; }
+.gx .errbox { border: 1px solid #7a2b2b; background: repeating-linear-gradient(135deg, #2a1515 0 8px, #221212 8px 16px); border-radius: 8px; padding: 10px 12px; margin: 0 0 12px; }
+.gx .errbox b { color: #ff9b9b; letter-spacing: .06em; } .gx .errbox .sub { display: block; margin-top: 4px; }
 .gx .envline { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 9px; }
 .gx .chip { font: 600 10px var(--mono); letter-spacing: .06em; padding: 3px 7px; border-radius: 4px; background: #131312; border: 1px solid #2f2f2d; color: var(--text-2); white-space: nowrap; text-transform: none; }
 .gx .chip.ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, #2f2f2d); background: #131312; }
@@ -619,6 +627,15 @@ pre.cfg { margin: 0; font: 12.5px/1.6 ui-monospace, "JetBrains Mono", Menlo, Con
 .steps { margin: 0; padding-left: 18px; color: var(--text-2); font-size: 13px; line-height: 1.7; }
 td.wrap { white-space: normal; }
 .hosttab td { vertical-align: top; }
+/* a maker's colour: a stripe down the row's left edge and a tinted maker name */
+.hosttab tr[style*="--h"] td:first-child { box-shadow: inset 4px 0 0 hsl(var(--h) 65% 55%); }
+.hosttab .mk.c { color: hsl(var(--h) 75% 72%); }
+.hosttab .mkchip { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; background: hsl(var(--h) 65% 55%); }
+/* known hosts: a green frame round the whole row */
+.hosttab tr.known td { background: color-mix(in srgb, var(--good) 7%, transparent); border-top: 1px solid var(--good); border-bottom: 1px solid var(--good); }
+.hosttab tr.known td:first-child { border-left: 1px solid var(--good); } .hosttab tr.known td:last-child { border-right: 1px solid var(--good); }
+.hosttab .key.known { color: var(--good); border-color: var(--good); }
+.hosttab .kn { display: inline-block; margin-left: 6px; font: 650 9.5px var(--mono, ui-monospace, monospace); letter-spacing: .08em; padding: 1px 6px; border-radius: 4px; color: var(--good); border: 1px solid var(--good); vertical-align: 1px; }
 .hosttab .mk { display: block; color: var(--muted); font-size: 11.5px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 .hosttab .nm small { display: block; color: var(--muted); font-size: 11.5px; }
 .hosttab td.nm { white-space: normal; min-width: 150px; max-width: 300px; overflow-wrap: anywhere; }   /* long smart-device names and serials wrap */
@@ -629,6 +646,8 @@ td.wrap { white-space: normal; }
 @media (max-width: 760px) {   /* phones: each host is a small card instead of a wide row */
   .hosttab thead { display: none; }
   .hosttab, .hosttab tbody { display: block; }
+  .hosttab tr.known { outline: 1px solid var(--good); outline-offset: -1px; border-radius: 6px; }
+  .hosttab tr.known td { border: 0 !important; background: none; }
   .hosttab tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "ip last" "name act" "mac mac" "ports ports"; gap: 2px 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
   .hosttab td { border: 0; padding: 2px 4px; white-space: normal; text-align: left; }
   .hosttab td:nth-child(1) { grid-area: ip; } .hosttab td:nth-child(2) { grid-area: name; max-width: none; } .hosttab td:nth-child(3) { grid-area: mac; }
@@ -954,6 +973,20 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
     <textarea id="pa-text" rows="14" spellcheck="false" placeholder="conf t&#10;interface Gi0/5&#10; description Seat 12&#10;end"></textarea>
     <div class="row" style="align-items:center"><span class="sub" id="pa-count"></span>
       <button class="btn" value="cancel" style="flex:none">Cancel</button><button class="btn primary" id="pa-go" value="send" style="flex:none">Send</button></div>
+  </form>
+</dialog>
+
+<dialog id="d-restore">
+  <form method="dialog" class="form" id="f-restore">
+    <h3>Restore an err-disabled port</h3>
+    <p class="sub" id="rs-what" style="margin:0"></p>
+    <pre class="mono" style="margin:0;padding:8px 10px;background:var(--bg);border:1px solid var(--line-2);border-radius:6px;font-size:12px" id="rs-cmds"></pre>
+    <p class="sub" id="rs-cause" style="margin:0"></p>
+    <span class="sub">Login: the one saved for this switch (Cable test / Configs) is used. Type one to use it this time.</span>
+    <div class="row"><input type="text" id="rs-user" placeholder="User (optional)" autocomplete="off" spellcheck="false"><input type="password" id="rs-pass" placeholder="Password" autocomplete="new-password"><input type="password" id="rs-en" placeholder="Enable (if needed)" autocomplete="new-password"></div>
+    <label class="chk"><input type="checkbox" id="rs-remember"><span>Remember this login for this switch</span></label>
+    <div class="row" style="align-items:center"><span id="rs-msg" class="sub" style="flex:1"></span>
+      <button class="btn" value="cancel" style="flex:none">Close</button><button class="btn primary" type="button" id="rs-go" style="flex:none">Restore</button></div>
   </form>
 </dialog>
 
@@ -1594,6 +1627,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
     <div class="wells">
       <div class="well"><span class="k">Up now</span><div id="hs-up"></div><span class="un">answered the last scan</span></div>
       <div class="well" id="hs-neww"><span class="k">New</span><div id="hs-new"></div><span class="un">first seen today</span></div>
+      <div class="well" id="hs-unkw"><span class="k">Unknown</span><div id="hs-unk"></div><span class="un">not marked known</span></div>
       <div class="well"><span class="k">Makers</span><div id="hs-nmk"></div><span class="un">different</span></div>
       <div class="well"><span class="k">Open ports</span><div id="hs-nport"></div><span class="un">hosts with any</span></div>
     </div>
@@ -1605,6 +1639,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
       <label class="chk ro-ok"><input type="checkbox" id="hs-onlyup" class="ro-ok" checked><span>Up now</span></label>
       <label class="chk ro-ok"><input type="checkbox" id="hs-onlynew" class="ro-ok"><span>New only</span></label>
       <label class="chk ro-ok"><input type="checkbox" id="hs-onlysmart" class="ro-ok"><span>Smart devices</span></label>
+      <label class="chk ro-ok"><input type="checkbox" id="hs-onlyunk" class="ro-ok"><span>Unknown only</span></label>
     </div>
     <div class="tablewrap"><table class="hosttab">
       <thead><tr><th class="l">IP</th><th class="l">Name</th><th class="l">MAC · maker</th><th class="l">Open ports</th><th>First seen</th><th>Last seen</th><th></th></tr></thead>
@@ -3229,12 +3264,12 @@ const downNote = sw => `<div class="downnote" role="alert"><div class="dhead"><s
   <div class="dwhy">${esc(sw.down_reason || sw.error || '')}</div><div class="k" style="text-transform:none">${sw.last_ok_at ? `Last good reading ${gAgo(sw.last_ok_at)}. ` : ''}The ports shown are from that reading.</div></div>`;
 function portClass(p, sw) {
   const lit = ['ok', 'warn', 'crit'].includes(p.level) ? p.level : '';
-  return ['pt', lit, p.uplink && 'uplink', p.uplink_kind === 'switch' && 'known', p.role && `role-${p.role}`, sw && sw.id === NET.probe_switch && p.name === NET.probe_port && 'me'].filter(Boolean).join(' ');
+  return ['pt', lit, p.uplink && 'uplink', p.uplink_kind === 'switch' && 'known', p.role && `role-${p.role}`, p.errdis && 'errdis', sw && sw.id === NET.probe_switch && p.name === NET.probe_port && 'me'].filter(Boolean).join(' ');
 }
 function portTip(p) {
   const n = p.neighbor;
   return [p.role === 'firewall' ? 'EVENT FIREWALL' : p.role === 'cache' ? 'LAN CACHE' : null, `${p.name}${p.alias ? ` (${p.alias})` : ''}`,
-    p.up ? `${p.speed_mbps ?? '?'} Mbps` : p.level === 'off' ? 'shut down' : 'nothing plugged in',
+    p.errdis ? `ERR-DISABLED: ${p.errdis.text || p.errdis.cause}` : p.up ? `${p.speed_mbps ?? '?'} Mbps` : p.level === 'off' ? 'shut down' : 'nothing plugged in',
     n ? `to ${n.name}${n.their_port ? ` ${n.their_port}` : ''}${n.switch ? (n.added ? ' (added here)' : ' (a switch, not added)') : ''}` : null,
     p.uplink_kind === 'unknown' ? `${p.mac_count} addresses behind it, no switch known: an uplink?` : null,
     p.uplink_kind !== 'unknown' && p.mac_count > 0 ? `${p.mac_count} address${p.mac_count > 1 ? 'es' : ''}` : null, ...p.reasons].filter(Boolean).join(' · ');
@@ -3389,7 +3424,7 @@ function frontPanel(ports) {
 function portTile(p, sw) {
   const load = portLoad(p);
   return `<button type="button" class="${portClass(p, sw)} big${GX.picked === p.name ? ' sel' : ''}" title="${esc(portTip(p))}" data-pick="${esc(p.name)}">
-    <span class="pn">${esc(shortPort(p.name))}</span><i></i><span class="ps">${p.up ? (p.speed_mbps ? (p.speed_mbps >= 1000 ? `${p.speed_mbps / 1000}G` : `${p.speed_mbps}M`) : 'UP') : p.level === 'off' ? 'OFF' : ''}</span>
+    <span class="pn">${esc(shortPort(p.name))}</span><i></i><span class="ps">${p.errdis ? 'ERR' : p.up ? (p.speed_mbps ? (p.speed_mbps >= 1000 ? `${p.speed_mbps / 1000}G` : `${p.speed_mbps}M`) : 'UP') : p.level === 'off' ? 'OFF' : ''}</span>
     <b class="load" style="width:${Math.round(load * 100)}%"></b><span class="ps seat">${esc(p.neighbor?.switch ? p.neighbor.name.split('.')[0].slice(0, 8) : '')}</span></button>`;
 }
 function peaks(key, values) {
@@ -3415,6 +3450,9 @@ function portInfo(p, sw) {
   return `<div class="swhead"><span class="sled ${p.level === 'ok' ? 'ready' : p.level === 'warn' ? 'busy' : p.level === 'crit' ? 'live' : ''}"></span><b>${esc(p.name)}</b>
     ${p.role ? `<span class="rolebadge ${p.role}">${p.role === 'firewall' ? 'EVENT FIREWALL' : 'LAN CACHE'}</span>` : ''}${p.alias ? `<span class="k" style="text-transform:none">${esc(p.alias)}</span>` : ''}<span class="spacer"></span>
     <a class="key" href="#trace?q=${encodeURIComponent(p.macs[0] || '')}" style="text-decoration:none${p.macs.length ? '' : ';display:none'}" title="Trace the address on this port">Trace</a></div>
+    ${p.errdis ? `<div class="errbox"><b>ERR-DISABLED</b> <span class="mono sub" style="display:inline">${esc(p.errdis.cause || '')}</span>
+      <span class="sub" style="color:var(--text)">${esc(p.errdis.text || '')}</span><span class="sub">Seen by the ${esc(p.errdis.via)}. Fix the cause first, or the switch shuts it again.</span>
+      ${admin ? `<div style="margin-top:8px"><button type="button" class="key" data-restore="${esc(p.name)}">Restore port…</button></div>` : ''}</div>` : ''}
     ${admin ? `<div class="srow" style="margin-bottom:10px"><span class="k">This port is</span>
       <button type="button" class="key${p.role === 'firewall' ? ' act' : ''}" data-role="${p.role === 'firewall' ? '' : 'firewall'}">${p.role === 'firewall' ? '✓ ' : ''}The event firewall</button>
       <button type="button" class="key${p.role === 'cache' ? ' act' : ''}" data-role="${p.role === 'cache' ? '' : 'cache'}">${p.role === 'cache' ? '✓ ' : ''}The LAN cache</button>
@@ -3423,7 +3461,7 @@ function portInfo(p, sw) {
       ${gNeedle({ title: 'OUT', value: p.out_mbps ?? 0, max: p.speed_mbps, unit: 'Mbps · log', log: true, readout: num3(p.out_mbps ?? 0), warn: p.speed_mbps * .7, crit: p.speed_mbps * .9, color: '#ffb000' })}</div>` : ''}
     ${p.up ? `<div class="gauges">${gauge('IN', p.speed_mbps ? (p.in_mbps ?? 0) / p.speed_mbps : 0, `${num3(p.in_mbps ?? 0)}M`)}${gauge('OUT', p.speed_mbps ? (p.out_mbps ?? 0) / p.speed_mbps : 0, `${num3(p.out_mbps ?? 0)}M`)}</div>` : ''}
     <dl class="kv" style="margin-top:10px">
-      ${kv('Link', p.up ? `${p.speed_mbps ?? '?'} Mbps${p.duplex ? `, ${p.duplex} duplex` : ''}` : p.level === 'off' ? 'shut down' : 'nothing plugged in')}
+      ${kv('Link', p.errdis ? 'err-disabled by the switch' : p.up ? `${p.speed_mbps ?? '?'} Mbps${p.duplex ? `, ${p.duplex} duplex` : ''}` : p.level === 'off' ? 'shut down' : 'nothing plugged in', p.errdis ? 'var(--crit)' : null)}
       ${kv('Errors seen', p.errors, p.errors ? 'var(--warn)' : null)}${kv('VLAN', p.trunk ? 'trunk' : p.vlan ?? '—')}
       ${kv('Busy', p.busy_pct === null ? '—' : `${p.busy_pct}%`, (p.busy_pct ?? 0) >= 90 ? 'var(--crit)' : (p.busy_pct ?? 0) >= 70 ? 'var(--warn)' : null)}
       ${kv('Link up for', p.link_s === null ? '—' : dur(p.link_s))}${kv('Flaps, 10 min', p.flaps, p.flaps >= 2 ? 'var(--crit)' : p.flaps ? 'var(--warn)' : null)}
@@ -3532,8 +3570,9 @@ function renderNet() {
   $('#b-scan').disabled = !!scan.running || !n.community_set;
 }
 $('#v-net').addEventListener('click', async e => {
-  const t = e.target.closest('[data-open],[data-back],[data-pick],[data-goport],[data-talk],[data-role],[data-rmdev],[data-addip]');
+  const t = e.target.closest('[data-open],[data-back],[data-pick],[data-goport],[data-talk],[data-role],[data-rmdev],[data-addip],[data-restore]');
   if (!t) return;
+  if (t.dataset.restore) return openRestore(GX.open, t.dataset.restore);
   if (t.dataset.open) { GX.open = t.dataset.open; GX.picked = null; window.scrollTo({ top: 0 }); }
   else if (t.dataset.back) GX.open = null;
   else if (t.dataset.pick) GX.picked = GX.picked === t.dataset.pick ? null : t.dataset.pick;
@@ -3551,6 +3590,30 @@ $('#v-net').addEventListener('click', async e => {
     return setTimeout(netRefresh, 600);
   }
   renderNet();
+});
+// restore an err-disabled port: shutdown / no shutdown over SSH
+function openRestore(id, port) {
+  const sw = (NET.devices || []).find(d => d.id === id), p = sw && (sw.ports || []).find(x => x.name === port);
+  if (!sw || !p) return;
+  const d = $('#d-restore');
+  d.dataset.id = id; d.dataset.port = port;
+  $('#rs-what').textContent = `${sw.name} (${sw.host}), port ${port}. The probe logs in over SSH and runs:`;
+  $('#rs-cmds').textContent = `configure terminal\ninterface ${port}\n shutdown\n no shutdown\nend`;
+  $('#rs-cause').innerHTML = p.errdis ? `It was shut for <b>${esc(p.errdis.text || p.errdis.cause)}</b>. If that's still true (the same device is still plugged in), it goes straight back to err-disabled.` : '';
+  for (const k of ['#rs-user', '#rs-pass', '#rs-en']) $(k).value = '';
+  $('#rs-remember').checked = false; $('#rs-msg').textContent = ''; $('#rs-go').disabled = false;
+  d.showModal();
+}
+$('#rs-go').addEventListener('click', async () => {
+  const d = $('#d-restore');
+  $('#rs-go').disabled = true; $('#rs-msg').textContent = 'Logging in and bouncing the port…';
+  try {
+    const r = await api('/api/net/restore', { id: d.dataset.id, port: d.dataset.port, user: $('#rs-user').value, password: $('#rs-pass').value, enable: $('#rs-en').value, remember: $('#rs-remember').checked });
+    $('#rs-msg').innerHTML = r.errdisabled_again ? '<span style="color:var(--crit)">Done, but it went straight back to err-disabled: the cause is still there.</span>'
+      : '<span style="color:var(--good)">Done. The switch now says:</span>';
+    $('#rs-cmds').textContent = r.after || '';
+    setTimeout(netRefresh, 1500);
+  } catch (err) { $('#rs-msg').innerHTML = `<span style="color:var(--crit)">${esc(err.message)}</span>`; $('#rs-go').disabled = false; }
 });
 // drag a switch by its grip to reorder (as GXL)
 const gxRoot = $('#gx-root');

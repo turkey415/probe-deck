@@ -55,7 +55,7 @@ import stats as stats_mod
 import mtr as mtr_mod
 import swcli as swcli_mod
 
-__version__ = "0.36.0"
+__version__ = "0.37.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -1072,6 +1072,10 @@ class Handler(BaseHTTPRequestHandler):
                 p.netmap.set_order(ids)
             elif path == "/api/net/role":
                 p.netmap.set_role(str(body.get("id")), str(body.get("port") or ""), body.get("role") or None)
+            elif path == "/api/net/restore":
+                host = next((d["host"] for d in p.netmap.devices if d["id"] == str(body.get("id"))), None)
+                login = swcli_mod.take_login(p, body, host)
+                reply.update(p.netmap.restore_port(str(body.get("id")), str(body.get("port") or ""), login, self.user["name"]))
             elif path == "/api/net/refresh":
                 p.netmap.wake.set()
             elif path == "/api/system/power":

@@ -250,6 +250,47 @@ class NetMap:
             self.p.watch.switch_poll(st["name"].split(".")[0], None, st["errdisabled"],
                                      [swalarms.short_port(p["name"]) for p in ports if p.get("up")])
 
+    def errdisabled_ports(self, st):
+        """port (short, lower case) -> {"cause", "text", "via"}: from this switch's poll and the Watchdog's alarms."""
+        out = {}
+        for r in st.get("errdisabled") or []:
+            out[r["port"].lower()] = {"cause": r["cause"], "text": r["text"], "via": "switch poll"}
+        name = (st.get("name") or "").split(".")[0].lower()
+        if self.p.watch and name:
+            for a in self.p.watch.switch_active():
+                if a["kind"] == "errdisable" and a["switch"].lower() == name and a.get("port"):
+                    out.setdefault(a["port"].lower(), {"cause": a.get("cause"), "text": a.get("text"), "via": "switch log"})
+        up = {swalarms.short_port(p["name"]).lower() for p in st.get("ports") or [] if p.get("up")}
+        return {k: v for k, v in out.items() if k not in up}      # a port that's up isn't err-disabled any more
+
+    def restore_port(self, did, port, login, user):
+        """shutdown / no shutdown on an err-disabled port, over SSH. Returns what the switch says about it after."""
+        with self.lock:
+            d = next((x for x in self.devices if x["id"] == did), None)
+            st = dict(self.state.get(did) or {})
+        if not d:
+            raise ValueError("No such switch")
+        p = next((x for x in st.get("ports") or [] if x["name"] == port), None)
+        if not p:
+            raise ValueError("No such port on that switch")
+        if swalarms.short_port(port).lower() not in self.errdisabled_ports(st):
+            raise ValueError(f"{port} isn't err-disabled (or the switch hasn't been read since it was)")
+        import swcli                                        # here, not at the top: swcli needs the probe's logins
+        try:
+            with swcli.open_session(self.p, {"host": d["host"], "login": login}) as s:
+                for cmd in ("configure terminal", f"interface {port}", "shutdown", "no shutdown", "end"):
+                    s.run(cmd, 20)
+                time.sleep(3)                               # give the link a moment to come up
+                after = s.run(f"show interfaces {port} status", 20)
+        except swcli.CLIError as e:
+            raise ValueError(str(e)) from None
+        name = (st.get("name") or d.get("name") or d["host"]).split(".")[0]
+        print(f"restore: {user} bounced {port} on {name} ({d['host']})", flush=True)
+        if self.p.watch:
+            self.p.watch.event("info", "errdisable", f"{port} on {name}: restored by {user} (shutdown / no shutdown)", sw=name, port=port)
+        self.wake.set()                                     # read the switch again now
+        return {"after": after[-600:], "errdisabled_again": "err-disabled" in after.lower()}
+
     @staticmethod
     def attach_neighbors(st):
         """Each port gets its CDP/LLDP neighbor (as GXL shows it) and the short form the trace uses."""
@@ -351,6 +392,7 @@ class NetMap:
                 out.append(sw)
                 continue
             roles = d.get("roles") or {}
+            errdis = self.errdisabled_ports(st)
             ports = []
             for p in st.get("ports") or []:
                 n = p.get("nb")
@@ -362,7 +404,10 @@ class NetMap:
                                     added=n.get("ip") in added or G.norm_switch(n.get("name")) in added)
                 kind = "switch" if is_sw else "unknown" if p.get("mac_count", 0) > G.EDGE_MAX_MACS else None
                 ports.append({k: v for k, v in p.items() if k not in ("nb", "cdp", "if", "index", "bcast_pps", "mcast_pps")} |
-                             {"uplink": bool(kind), "uplink_kind": kind, "neighbor": neighbor, "role": roles.get(p["name"])})
+                             {"uplink": bool(kind), "uplink_kind": kind, "neighbor": neighbor, "role": roles.get(p["name"]),
+                              "errdis": errdis.get(swalarms.short_port(p["name"]).lower())})
+                if ports[-1]["errdis"]:                     # not "nothing plugged in": the switch shut it
+                    ports[-1]["reasons"] = [f"Err-disabled: {ports[-1]['errdis']['text']}"]
             uplinks = [p for p in ports if p["up"] and p["uplink"] and p["in_mbps"] is not None]
             sw.update(ports=ports, environment=st.get("environment") or {}, rates=st.get("rates") if st.get("status") == "ok" else {},
                       history=st.get("history") or [], vtp_domain=st.get("vtp_domain", ""), vtp_mode=st.get("vtp_mode", ""),

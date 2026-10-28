@@ -180,7 +180,8 @@ class HostScan(App):
                         h["smart"] = sd
                     self.hosts[mac] = h
                 if len(self.hosts) > KEEP_HOSTS:
-                    for mac in sorted(self.hosts, key=lambda m: self.hosts[m]["last"])[:len(self.hosts) - KEEP_HOSTS]:
+                    # unknown hosts go first, oldest first: the ones marked known are kept
+                    for mac in sorted(self.hosts, key=lambda m: (bool(self.hosts[m].get("known")), self.hosts[m]["last"]))[:len(self.hosts) - KEEP_HOSTS]:
                         del self.hosts[mac]
                 self.scan["last"] = {"t": now, "took": round(now - t0, 1), "found": len(found), "net": str(net)}
             self.save()
@@ -340,6 +341,7 @@ class HostScan(App):
                 "up": bool(last and h["last"] >= last["t"] - 5),
                 "new": bool(self.base_t and h["first"] > self.base_t + 60 and now - h["first"] < 86400),
                 "ports": [{"port": p, "name": PORT_NAMES.get(p, "")} for p in h.get("ports") or []],
+                "known": bool(h.get("known")),
             })
         out.sort(key=lambda h: (not h["up"], tuple(int(x) for x in h["ip"].split("."))))
         return {"scan": dict(self.scan), "hosts": out, "every": self.conf["every"], "ports": self.conf["ports"],
@@ -350,6 +352,19 @@ class HostScan(App):
             if not self.p.net.get("ip"):
                 raise ValueError("The probe has no address")
             self.wake_ev.set()
+            return {}
+        if action == "known":
+            mac = str(body.get("mac") or "").lower()
+            with self.lock:
+                h = self.hosts.get(mac)
+                if not h:
+                    raise ValueError("No such host")
+                if body.get("known"):
+                    h.update(known=True, known_by=user, known_at=time.time())
+                else:
+                    for k in ("known", "known_by", "known_at"):
+                        h.pop(k, None)
+            self.save()
             return {}
         if action == "forget":
             with self.lock:
