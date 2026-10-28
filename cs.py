@@ -29,7 +29,8 @@ from gamelan import source as gsource
 DEFAULTS = {"cs_servers": "", "cs_group": "", "cs_nodes": True}
 PERFDECK_TAG = "perf-deck"
 MAX_NODES = 16
-NODE_KEEP = 600            # seconds a node that left stays on the page
+NODE_KEEP = 120            # seconds a node that left stays on the page (dark)
+NODE_DOWN = 3.5            # no reply to anything for this long = "no reply"
 KEEP = 600                 # samples per target: 10 minutes at 1 a second
 TICK_MS = 1000 / 64        # one CS2 server tick
 # what a LAN match wants (milliseconds, percent)
@@ -330,6 +331,11 @@ class CS:
         while True:
             t0 = time.time()
             self.node_expire()
+            if not self.conf.get("cs_nodes", True):
+                with self.lock:  # switched off: clear the cards at once
+                    self.nodes.clear()
+                time.sleep(1)
+                continue
             load = self.loaded()
             live = set()
             for p in self.peers():
@@ -567,7 +573,9 @@ class CS:
             nl = sorted(self.nodes.items(), key=lambda kv: (kv[1].name or "").lower())
         for nid, t in nl:
             icmp, rep = list(t.icmp), list(t.a2s)
-            nodes.append({"kind": "node", "key": "node:" + nid, "name": t.name, "host": t.ip, "ip": t.ip, "gone": t.gone,
+            recent = [x for x in icmp[-5:] + rep[-5:] if now - x[0] <= NODE_DOWN]
+            down = not t.gone and len(recent) >= 3 and all(x[1] is None for x in recent)
+            nodes.append({"kind": "node", "key": "node:" + nid, "name": t.name, "host": t.ip, "ip": t.ip, "gone": t.gone, "down": down,
                           "seen": t.seen, **t.meta, "mtu": t.mtu, "path": t.path,
                           "icmp": {"1m": stats(icmp, now, 60), "10m": stats(icmp, now, 600)},
                           "a2s": {"1m": stats(rep, now, 60), "10m": stats(rep, now, 600)},
