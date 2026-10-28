@@ -23,6 +23,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import gxl_switch as G
 import pc_snmp as S
+import swalarms
 
 DEFAULTS = {"snmp_community": "", "snmp_version": 2}
 POLL_EVERY = 20       # as GXL-LANapp: traffic rates and the gauges need frequent readings
@@ -225,6 +226,7 @@ class NetMap:
                     st.update(self.reader.read(dev["id"], c, info, dev["host"], self.community(dev), self.version(dev),
                                                dev.get("roles") or {}))
                     self.attach_neighbors(st)
+                    self.read_errdisable(c, st)
         except (S.SnmpError, OSError) as e:   # OSError: no route for a moment (the link is renegotiating)
             st.update({k: v for k, v in prev.items() if k not in ("status", "error", "at")})
             st.update(status="error", error=str(e)[:160], down_since=prev.get("down_since") or time.time())
@@ -235,6 +237,18 @@ class NetMap:
                 dev["name"] = st["name"]
             if st.get("model") and not dev.get("model"):
                 dev["model"] = st["model"]
+
+    def read_errdisable(self, c, st):
+        """The switch's err-disable table: a backup for syslog lines that got lost (they're UDP)."""
+        try:
+            rows = c.walk(swalarms.ERRDISABLE_CAUSE_OID, limit=500)
+        except S.SnmpError:
+            return                      # no such table here: syslog only
+        ports = st.get("ports") or []
+        st["errdisabled"] = swalarms.from_snmp(rows, {p["index"]: p["name"] for p in ports})
+        if self.p.watch and st.get("name"):
+            self.p.watch.switch_poll(st["name"].split(".")[0], None, st["errdisabled"],
+                                     [swalarms.short_port(p["name"]) for p in ports if p.get("up")])
 
     @staticmethod
     def attach_neighbors(st):

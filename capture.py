@@ -20,7 +20,9 @@ RUN_DIR = Path("/run/probe-deck/capture")
 KEEP_MAX_FILES = 30
 KEEP_MAX_BYTES = 512 * 1024 * 1024
 AUTO_FILTERS = {"dhcp": "udp port 67 or udp port 68", "storm": "broadcast or multicast", "conflict": "arp", "spoof": "arp",
-                "stp": "stp", "ra": "icmp6"}
+                "stp": "stp", "ra": "icmp6",
+                # switch alarms: a loop or a bridged switch shows up here as BPDUs and flooding
+                "errdisable": "stp or broadcast or multicast", "stpguard": "stp", "macflap": "broadcast or multicast"}
 NAME_RE = re.compile(r"[\w.\-]{1,80}\.pcap")
 
 

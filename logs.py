@@ -14,6 +14,7 @@ import time
 from datetime import date, datetime, timedelta
 
 from appbase import App, Reply
+import swalarms
 
 KEEP = 5000
 RATE_CAP = 200                     # messages per second per sender, past this they're counted and dropped
@@ -144,10 +145,23 @@ class SwitchLogs(App):
                 self.msgs.append(rec)
                 self.pending.append(rec)
                 self.count_sender(rec)
+            self.alarm(rec)
             if rec.get("code") and rec["code"].endswith("CONFIG_I"):  # someone changed the config: Configs pulls it
                 cfg = self.p.apps.get("configs")
                 if cfg:
                     cfg.on_config_change(ip)
+
+    def alarm(self, rec):
+        """Lines that mean a port is in trouble (err-disable, spanning-tree guards, MAC flapping) go to the Watchdog."""
+        if not rec.get("code") or not self.p.watch:
+            return
+        try:
+            m = swalarms.match(rec["code"], rec["msg"])
+            if m:
+                switch = rec.get("origin") or self.names().get(rec["ip"]) or rec["ip"]
+                self.p.watch.switch_alarm(m, switch.split(".")[0], rec["ip"], raw=f"%{rec['code']}: {rec['msg']}")
+        except Exception as e:  # a bad line must never stop the listener
+            print(f"switch alarm: {e}", flush=True)
 
     def close(self):
         if self.sock:

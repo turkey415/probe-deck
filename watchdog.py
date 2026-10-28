@@ -6,6 +6,8 @@
 - Broadcast storms: broadcast packets per second over a limit, with the top senders.
 - Spanning tree: the root bridge and topology changes, from the BPDUs the switch sends.
 - IPv6 router advertisements (a PC sharing its connection, or a rogue router), and DTP on the port.
+- Switch alarms: err-disabled ports, spanning-tree guard blocks and MAC flapping, from the switch logs
+  (Switch logs, UDP 514) and the err-disable table on each switch poll (swalarms.py, shared with GXL).
 
 A kernel filter passes only broadcast/multicast frames, so speed tests don't load Python.
 """
@@ -27,6 +29,11 @@ PACKET_OUTGOING = 4
 EVENTS_MAX = 300
 ARP_HOLD = 600          # an IP->MAC claim older than this no longer counts toward a conflict
 REALERT = 1800          # the same problem alerts again after this much quiet
+# A switch alarm with no "it's over" line counts as over after this much quiet (err-disable stays until the
+# switch says so: a recovery line, the port coming up, or the poll no longer listing it).
+SW_QUIET = {"errdisable": 24 * 3600, "stpguard": 3600, "macflap": 300}
+SW_KEEP = 24 * 3600     # cleared switch alarms stay on the card this long
+SW_MAX = 200
 
 DEFAULTS = {
     "watch": True,
@@ -106,6 +113,7 @@ class Watchdog:
         self.gw_mac = None
         self.pkts = 0
         self.save_due = False
+        self.sw = {}                          # (switch, kind, port) -> switch alarm
 
     @property
     def conf(self):
@@ -489,8 +497,9 @@ class Watchdog:
                      and now - s["last"] < 900]
             dups = [c for c in self.conflicts.values() if now - c["t"] < 900]
             ras = [r for r in self.ra.values() if r["ip"].lower() not in tr and r.get("mac") not in tr and now - r["last"] < 900]
-        return {"rogue": len(rogue), "conflicts": len(dups), "storm": bool(self.storm), "ra": len(ras),
-                "total": len(rogue) + len(dups) + bool(self.storm) + len(ras)}
+        sw = len(self.switch_active())
+        return {"rogue": len(rogue), "conflicts": len(dups), "storm": bool(self.storm), "ra": len(ras), "switch": sw,
+                "total": len(rogue) + len(dups) + bool(self.storm) + len(ras) + sw}
 
     def snapshot(self):
         now = time.time()
@@ -509,7 +518,86 @@ class Watchdog:
             "rates": rates, "storm": self.storm, "limit": self.conf.get("watch_storm"), "talkers": self.top_talkers(8),
             "conflicts": conflicts, "gw_mac": self.gw_mac, "stp": {k: v for k, v in self.stp.items() if k not in ("tc_on", "ieee")},
             "ra": ra, "dtp": self.dtp, "events": events, "hosts": hosts, "active": self.active(), "now": now,
+            "switch": self.switch_list(),
         }
+
+    # ---------- switch alarms ----------
+    @staticmethod
+    def sw_key(switch, kind, port):
+        return ((switch or "?").lower(), kind, (port or "?").lower())
+
+    def switch_alarm(self, m, switch, ip, via="syslog", raw=None):
+        """One matched switch log line or poll row (swalarms.match). Starts, refreshes or clears an alarm."""
+        now = time.time()
+        kind, port = m["kind"], m.get("port")
+        where = f"{port} on {switch}" if port and kind != "macflap" else switch   # a flap's text names both ports
+        if m["state"] == "clear":
+            with self.lock:
+                a = self.sw.get(self.sw_key(switch, kind, port))
+                hit = [a] if a and a["active"] else []
+                for a in hit:
+                    a.update(active=False, cleared=now, how=m.get("text"))
+            for a in hit:
+                self.event("info", kind, f"{where}: {m.get('text') or 'cleared'}", sw=switch, port=port)
+            return
+        key = self.sw_key(switch, kind, ",".join(m.get("ports") or []) if kind == "macflap" else port)
+        with self.lock:
+            a = self.sw.get(key)
+            new = not a or not a["active"]
+            if new:
+                a = self.sw[key] = {"id": "|".join(key), "switch": switch, "ip": ip, "kind": kind, "port": port, "ports": m.get("ports"),
+                                    "first": now, "n": 0, "via": []}
+            a.update(active=True, last=now, cause=m.get("cause"), text=m.get("text"), vlan=m.get("vlan"),
+                     mac=m.get("mac"), sev=m.get("sev", "crit"), cleared=None, how=None)
+            a["n"] += 1
+            if via not in a["via"]:
+                a["via"].append(via)
+            if raw:
+                a["raw"] = raw[:300]
+            if len(self.sw) > SW_MAX:
+                for k in sorted(self.sw, key=lambda k: (self.sw[k]["active"], self.sw[k]["last"]))[:len(self.sw) - SW_MAX]:
+                    del self.sw[k]
+        if new:
+            label = {"errdisable": "err-disabled", "stpguard": "blocked by spanning tree", "macflap": "MAC flapping"}[kind]
+            vlan = f" (VLAN {m['vlan']})" if m.get("vlan") else ""
+            self.event(m.get("sev", "crit"), kind, f"{where} {label}{vlan}: {m.get('text')}", sw=switch, port=port,
+                       cause=m.get("cause"))
+
+    def switch_poll(self, switch, ip, rows, ports_up):
+        """The err-disable table from one switch poll (swalarms.from_snmp) and the ports that are up.
+
+        Rows start alarms the syslog missed. A port that is up again isn't err-disabled any more."""
+        for r in rows:
+            self.switch_alarm({"kind": "errdisable", "state": "set", "sev": "crit", **r}, switch, ip, via="snmp")
+        listed = {r["port"].lower() for r in rows}
+        up = {p.lower() for p in ports_up}
+        with self.lock:
+            gone = [a for k, a in self.sw.items() if a["active"] and a["kind"] == "errdisable"
+                    and k[0] == (switch or "?").lower() and a["port"] and a["port"].lower() in up - listed]
+        for a in gone:
+            self.switch_alarm({"kind": "errdisable", "state": "clear", "port": a["port"], "text": "the port is up again"},
+                              switch, ip, via="snmp")
+
+    def switch_active(self):
+        now = time.time()
+        with self.lock:
+            for a in self.sw.values():
+                if a["active"] and now - a["last"] > SW_QUIET.get(a["kind"], 3600):
+                    a.update(active=False, cleared=now, how="quiet for a while")
+            for k in [k for k, a in self.sw.items() if not a["active"] and now - (a["cleared"] or 0) > SW_KEEP]:
+                del self.sw[k]
+            return [a for a in self.sw.values() if a["active"]]
+
+    def switch_list(self):
+        self.switch_active()
+        with self.lock:
+            out = [dict(a) for a in self.sw.values()]
+        return sorted(out, key=lambda a: (not a["active"], -a["last"]))
+
+    def switch_dismiss(self, aid):
+        with self.lock:
+            k = next((k for k, a in self.sw.items() if a["id"] == aid), None)
+            return k is not None and self.sw.pop(k, None) is not None
 
     def ip_for(self, mac):
         with self.lock:

@@ -992,9 +992,19 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
       <div class="well" id="ww-bc"><span class="k">Broadcasts / s</span><div id="w-bc"></div><span class="un" id="w-bc2">—</span></div>
       <div class="well" id="ww-stp"><span class="k">STP changes</span><div id="w-ntc"></div><span class="un" id="w-ntc2">—</span></div>
       <div class="well" id="ww-ra"><span class="k">IPv6 routers</span><div id="w-nra"></div><span class="un">RA senders</span></div>
+      <div class="well" id="ww-sw"><span class="k">Switch alarms</span><div id="w-nsw"></div><span class="un" id="w-nsw2">—</span></div>
     </div>
   </section>
   <div class="note" id="w-err" hidden></div>
+
+  <section class="card" id="w-swcard">
+    <h2>Switch alarms <span class="spacer"></span><span class="sub">err-disabled ports, spanning-tree blocks, MAC flapping</span></h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="l">Status</th><th class="l">Where</th><th class="l">Problem</th><th>When</th><th></th></tr></thead>
+      <tbody id="w-sw"></tbody>
+    </table></div>
+    <p class="sub" id="w-swhelp" style="margin:10px 0 0"></p>
+  </section>
 
   <section class="card">
     <h2>DHCP servers <span class="spacer"></span><span class="sub" id="w-scan"></span><button class="btn ghost admin-only" id="w-scannow">Scan now</button></h2>
@@ -2732,6 +2742,22 @@ function renderWatch() {
   $('#w-ntc2').textContent = st.last_tc ? 'last ' + fmtDur(now - st.last_tc) + ' ago' : st.seen ? 'none since start' : 'no BPDUs heard';
   $('#ww-ra').classList.toggle('off', !w.ra.length); $('#ww-ra').classList.toggle('alarm', a.ra > 0);
   setSeg('#w-nra', w.ra.length, 2);
+  const sw = w.switch || [];
+  $('#ww-sw').classList.toggle('alarm', a.switch > 0); $('#ww-sw').classList.toggle('off', !sw.length);
+  setSeg('#w-nsw', a.switch, 2);
+  $('#w-nsw2').textContent = a.switch ? `${a.switch} active` : sw.length ? 'all cleared' : 'from switch logs';
+  const swKind = { errdisable: 'err-disabled', stpguard: 'STP blocked', macflap: 'MAC flap' };
+  setHTML('#w-sw', sw.map(x => {
+    const st = x.active ? `<span class="chip bad">${esc(swKind[x.kind] || x.kind)}</span>` : `<span class="chip ok">cleared</span><div class="sub">${esc(x.how || '')}</div>`;
+    const port = x.kind === 'macflap' && x.ports ? x.ports.join(' ↔ ') : x.port || '—';
+    const extra = [x.vlan ? `VLAN ${x.vlan}` : '', x.mac ? `MAC ${x.mac}` : ''].filter(Boolean).join(' · ');
+    const via = (x.via || []).map(v => v === 'snmp' ? 'switch poll' : 'switch log').join(' + ');
+    return `<tr><td class="l">${st}</td><td class="l" style="white-space:nowrap"><b>${esc(x.switch)}</b><div class="mono">${esc(port)}</div></td>
+      <td class="l wrap" style="min-width:260px" title="${esc(x.raw || '')}">${esc(x.text || x.cause || '')}<div class="sub mono">${esc([extra, via].filter(Boolean).join(' · '))}</div></td>
+      <td style="white-space:nowrap">${ago(x.last)}<div class="sub">${x.n > 1 ? `${x.n}× since ${ago(x.first)}` : ''}</div></td>
+      <td><button class="btn ghost admin-only" data-swdismiss="${esc(x.id)}" title="Remove it from the list">Dismiss</button></td></tr>`;
+  }).join('') || '<tr><td colspan="5" class="sub">None. Ports that get err-disabled, blocked by a spanning-tree guard or see a MAC flapping show here.</td></tr>');
+  $('#w-swhelp').textContent = `Switches send these with "logging host ${S.net?.ip || '<probe IP>'}" (see Switch logs). Switches on the Switches page are also checked for err-disabled ports on every poll, in case a log line got lost.`;
 
   const sc = w.scan;
   $('#w-scan').textContent = !sc.every ? 'scan off, listening only' : sc.last ? `scan every ${sc.every} s · last ${fmtDur(now - sc.last.t)} ago: ${sc.last.answers} answer${sc.last.answers === 1 ? '' : 's'}` : `scan every ${sc.every} s`;
@@ -2765,6 +2791,12 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-trust]');
   if (!b) return;
   try { await api('/api/watch/trust', { value: b.dataset.trust, remove: !!b.dataset.remove }); $('#f-watch')._filled = false; } catch (err) { alert(err.message); }
+  poll();
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-swdismiss]');
+  if (!b) return;
+  try { await api('/api/watch/dismiss', { id: b.dataset.swdismiss }); } catch (err) { alert(err.message); }
   poll();
 });
 $('#w-scannow').onclick = () => api('/api/watch/scan').catch(err => alert(err.message)).then(() => setTimeout(poll, 4500));

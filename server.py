@@ -55,7 +55,7 @@ import stats as stats_mod
 import mtr as mtr_mod
 import swcli as swcli_mod
 
-__version__ = "0.35.1"
+__version__ = "0.36.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -1122,6 +1122,9 @@ class Handler(BaseHTTPRequestHandler):
                 elif v not in cur:
                     cur.append(v)
                 p.save_conf({"watch_trusted": ", ".join(cur)})
+            elif path == "/api/watch/dismiss":
+                if not p.watch.switch_dismiss(str(body.get("id", ""))[:200]):
+                    raise ValueError("That alarm is already gone")
             elif path == "/api/watch/scan":
                 if not p.watch.sock:
                     raise ValueError("The watchdog isn't listening")
