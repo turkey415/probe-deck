@@ -121,6 +121,12 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
 .peers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -4px; }
 .peers button { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text-2); cursor: pointer; }
 .peers button:hover { color: var(--text); border-color: var(--accent); }
+.peers .pgk { flex-basis: 100%; font: 600 10px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.peers button.pr { border-radius: 8px; text-align: left; padding: 4px 10px; }
+.peers button.pr small { display: block; font-size: 10.5px; color: var(--muted); }
+.peers button.off { opacity: .55; }
+.peers button.sel { border-color: var(--accent); color: var(--text); }
+.peers .none { font-size: 12px; color: var(--muted); }
 /* stations (from iPerf Deck) */
 .stlist { display: flex; flex-direction: column; gap: 8px; }
 .strow { display: grid; grid-template-columns: 12px minmax(120px, 1.7fr) 64px minmax(40px, 1fr) 110px 74px auto; gap: 12px; align-items: center; padding: 9px 12px; background: var(--well); border: 1px solid rgba(255, 255, 255, .06); border-radius: 8px; }
@@ -2520,10 +2526,16 @@ function render() {
   $('#sp-go').textContent = sp.running ? 'Stop test' : 'Start test';
   $('#sp-go').className = 'btn ' + (sp.running ? 'danger' : 'primary');
   $('#sp-err').hidden = !sp.error; $('#sp-err').textContent = sp.error || '';
-  const ph = s.peers.map(p => `<button type="button" data-ip="${esc(p.ip)}" title="${esc(p.ip)}${p.running ? '' : ' (iperf3 server off)'}">${esc(p.name)}</button>`).join('');
+  const typed = $('#sp-server').value.trim();
+  const chip = p => `<button type="button" class="${p.probe ? 'pr' : ''}${p.running ? '' : ' off'}${typed === p.ip ? ' sel' : ''}" data-ip="${esc(p.ip)}" data-name="${esc(p.name)}"
+    title="${esc(p.ip)}${p.jack ? ' · ' + esc(jackText(p.jack)) : ''}${p.running ? '' : ' (iperf3 server off)'}">${esc(p.name)}${p.probe ? `<small>${p.jack ? esc(jackText(p.jack)) : 'jack unknown'}</small>` : ''}</button>`;
+  const prs = s.peers.filter(p => p.probe), pds = s.peers.filter(p => !p.probe);
+  const ph = (prs.length ? '<span class="pgk">Probes</span>' + prs.map(chip).join('') : '')
+    + (pds.length ? '<span class="pgk">Perf-Deck</span>' + pds.map(chip).join('') : '')
+    || `<span class="none">${s.conf.perfdeck ? 'No other probes or Perf-Deck stations heard yet.' : 'Perf-Deck discovery is off in Settings.'}</span>`;
   if ($('#sp-peers')._h !== ph) { $('#sp-peers').innerHTML = ph; $('#sp-peers')._h = ph; }
 
-  const hh = s.history.map(r => `<tr class="click" data-sel="lan:${r.t}"><td>${fmtWhen(r.t)}</td><td class="l" title="${esc(r.server)}">${esc(r.label && r.label !== r.server ? r.label : r.server)}</td><td class="l mono">${esc(r.port || '—')}</td>
+  const hh = s.history.map(r => `<tr class="click" data-sel="lan:${r.t}"><td>${fmtWhen(r.t)}</td><td class="l" title="${esc(r.server)}">${esc(r.label && r.label !== r.server ? r.label : r.server)}${r.far && r.far.sw ? `<div class="sub">${esc(jackText(r.far))}</div>` : ''}</td><td class="l mono">${esc(r.port || '—')}</td>
     <td>${r.down ? fmtBps(r.down.bps) : '—'}</td><td>${r.up ? fmtBps(r.up.bps) : '—'}</td><td>${r.up && r.up.retr != null ? r.up.retr : '—'}</td></tr>`).join('') || '<tr><td colspan="6" class="sub">No tests yet.</td></tr>';
   if ($('#hist')._h !== hh) { $('#hist').innerHTML = hh; $('#hist')._h = hh; }
 
@@ -2565,13 +2577,15 @@ function renderStations() {
     else rate = '<small>not tested yet</small>';
     const dis = !p.running || busyHere ? ' disabled' : '';
     return `<div class="strow"><span class="sled ${state}"></span>
-      <div class="who"><b>${esc(p.name)}</b><span class="k">${esc(p.ip)}:${p.port} · ${esc(p.os || '?')} · ${esc(p.version || '?')}</span></div>
+      <div class="who"><b>${esc(p.name)}${p.probe ? ' <span class="chip">probe</span>' : ''}</b><span class="k" title="${p.jack ? esc(jackText(p.jack)) + ' · ' : ''}${esc(p.ip)}">${p.probe
+        ? `${p.jack ? esc(ifShort(p.jack.port)) + ' · ' + esc(p.jack.sw) + ' · ' : ''}${esc(p.ip)} · ${esc(p.version || '?')}`
+        : `${esc(p.ip)}:${p.port} · ${esc(p.os || '?')} · ${esc(p.version || '?')}`}</span></div>
       <div class="num ping">${p.ping_ms == null ? '—' : esc(p.ping_ms < 10 ? p.ping_ms.toFixed(2) : p.ping_ms.toFixed(0))}<small>ms ping</small></div>
       <div class="bar">${Array.from({ length: 20 }, (_, i) => `<i${i < lit ? ' class="on"' : ''}></i>`).join('')}</div>
       <div class="num">${rate}</div><span class="k state">${word}</span>
       <div class="dirs admin-only" role="group" aria-label="Test ${esc(p.name)}">${[['up', 'Send', 'Probe sends to this station'], ['down', 'Receive', 'This station sends to the probe'], ['both', 'Both', 'Receive, then send']]
         .map(([d, label, tip]) => `<button type="button" data-ip="${esc(p.ip)}" data-port="${p.port}" data-name="${esc(p.name)}" data-dir="${d}" title="${tip} (${QUICK} s)"${dis}>${label}</button>`).join('')}</div></div>`;
-  }).join('') || `<div class="empty">${s.conf.perfdeck ? 'No Perf-Deck stations heard yet. Any machine running Perf-Deck (or another probe) on this network appears here within a few seconds.' : 'Perf-Deck discovery is off in Settings.'}</div>`;
+  }).join('') || `<div class="empty">${s.conf.perfdeck ? 'No Perf-Deck stations heard yet. Other probes and any machine running Perf-Deck on this network appear here within a few seconds.' : 'Perf-Deck discovery is off in Settings.'}</div>`;
   if ($('#st-list')._h !== html) { $('#st-list').innerHTML = html; $('#st-list')._h = html; }
   const w = sw.wait || {}, targets = s.peers.filter(p => p.running).length;
   let note;
@@ -2615,11 +2629,18 @@ $('#f-speed').onsubmit = async e => {
   try {
     if (S && S.speed.running) return await api('/api/speed/stop');
     await api('/api/settings', { iperf_secs: +$('#sp-secs').value, iperf_streams: +$('#sp-streams').value });
-    await api('/api/speed/start', { server: $('#sp-server').value.trim(), mode: $('[name=mode]:checked').value });
+    const server = $('#sp-server').value.trim(), peer = S && S.peers.find(p => p.ip === server);
+    const label = peer ? peer.name : spPick && spPick.ip === server ? spPick.name : undefined;
+    await api('/api/speed/start', { server, mode: $('[name=mode]:checked').value, label });
   } catch (err) { $('#sp-err').textContent = err.message; $('#sp-err').hidden = false; }
   poll();
 };
-$('#sp-peers').onclick = e => { const b = e.target.closest('[data-ip]'); if (b) $('#sp-server').value = b.dataset.ip; };
+$('#sp-peers').onclick = e => {
+  const b = e.target.closest('[data-ip]'); if (!b) return;
+  $('#sp-server').value = b.dataset.ip; spPick = { ip: b.dataset.ip, name: b.dataset.name };
+  $('#sp-peers')._h = null; if (S) render();
+};
+let spPick = null;
 $('#f-set').onsubmit = async e => {
   e.preventDefault();
   const m = $('#s-msg');
@@ -2669,6 +2690,7 @@ const flash = (el, text, ok) => { el.className = ok ? 'ok-msg' : 'msg'; el.textC
 const shortMac = m => m || '—';
 
 // ---------- sidebar ----------
+const jackText = j => `${j.sw} ${ifShort(j.port)}${j.vlan ? ' · VLAN ' + j.vlan : ''}`;
 const ifShort = p => (p || '?').replace(/^GigabitEthernet/, 'Gi').replace(/^FastEthernet/, 'Fa').replace(/^TenGigabitEthernet/, 'Te');
 function renderJack(s) {
   const nb = s.neighbor, net = s.net || {}, lk = s.link, ck = s.checks || {};

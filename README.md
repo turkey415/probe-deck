@@ -355,9 +355,10 @@ The photos are made by `tools/annotate_photos.py` from the originals. It keeps o
 
 ```
 tools/prepare-image.sh probe-02            # hostname; uses ~/.ssh/id_ed25519.pub and this PC's time zone
+BOARD=rpi tools/prepare-image.sh probe-02  # the same for a Raspberry Pi 3/4/5
 ```
 
-The script downloads **DietPi (Debian 13 "Trixie") for the Radxa ZERO 3** and checks its SHA-256. It then writes the first-boot settings into the image's small `DIETPISETUP` partition with `mtools`:
+The script downloads **DietPi (Debian 13 "Trixie") for the Radxa ZERO 3** (or for the Raspberry Pi with `BOARD=rpi`) and checks its SHA-256. It then writes the first-boot settings into the image's FAT setup partition with `mtools` (`DIETPISETUP` on the Radxa, the boot partition on a Pi):
 - the hostname and your time zone
 - **OpenSSH** with your key, and a random root password (saved next to the image)
 - a fully automated first boot, with the survey turned off

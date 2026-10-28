@@ -57,7 +57,7 @@ import dnstest as dnstest_mod
 import fair as fair_mod
 import swcli as swcli_mod
 
-__version__ = "0.39.0"
+__version__ = "0.40.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -525,6 +525,9 @@ class Probe:
                 entry = {"t": round(sp["started"]), "server": server, "label": sp.get("label"), "secs": sp["secs"],
                          "streams": self.conf["iperf_streams"], **res, "pts": sp["points"][:400],
                          "port": (self.neighbor or {}).get("port"), "switch": (self.neighbor or {}).get("switch")}
+                far = next((p for p in self.peers.values() if p["ip"] == server and p.get("probe")), None)
+                if far:
+                    entry["far"] = far.get("jack") or {}
                 self.history = (self.history + [entry])[-HISTORY_MAX:]
                 for p in self.peers.values():
                     if p["ip"] == server:
@@ -678,6 +681,7 @@ class Probe:
                     port=port, ping_port=pport, seen=now, running=bool(m.get("running")), busy=bool(m.get("busy")),
                     sweeping=bool(m.get("sweeping")), version=re.sub(r"[^\w.\-]", "", str(m.get("version") or ""))[:20],
                     os=re.sub(r"[^\w]", "", str(m.get("os") or ""))[:12],
+                    probe=m.get("probe") is True, jack=self.clean_jack(m.get("jack")),
                     swept=now - ago if isinstance(ago, (int, float)) and ago >= 0 else None)
 
     def disc_pong(self):
@@ -714,7 +718,7 @@ class Probe:
                              "running": bool(self.conf["iperf_listen"] and self.iperf_srv),
                              "busy": self.speed["running"] or self.sweep["running"], "sweeping": self.sweep["running"],
                              "sweep_ago": round(time.time() - self.sweep["ended"]) if self.sweep["ended"] else None,
-                             "version": __version__, "os": "linux"}
+                             "version": __version__, "os": "linux", "probe": True, "jack": self.jack()}
                     self.send(self.dsock, hello, bc, PERFDECK_PORT)
                 if self.conf["broadcast"] and n % 3 == 0:
                     self.send(self.dsock, self.probe_message(), bc, PROBE_PORT)
@@ -730,6 +734,24 @@ class Probe:
                 self.send(self.psock, {"app": PERFDECK_TAG, "t": "ping", "n": nonce}, p["ip"], p["ping_port"])
             n += 1
             time.sleep(3)
+
+    def jack(self):
+        """Where this probe is plugged in, for the hello: other probes show it next to our name."""
+        nb = self.neighbor or {}
+        if not nb.get("switch"):
+            return None
+        return {"sw": str(nb["switch"])[:40], "port": str(nb.get("port") or "")[:32],
+                "vlan": str(nb.get("vlan") or "")[:8], "speed": self.net.get("speed")}
+
+    @staticmethod
+    def clean_jack(j):
+        """A jack from another probe's hello, kept only if it is the shape we send."""
+        if not isinstance(j, dict) or not isinstance(j.get("sw"), str):
+            return None
+        txt = lambda v, n: re.sub(r"[^\w .:/\-]", "", v if isinstance(v, str) else "")[:n]
+        sp = j.get("speed")
+        return {"sw": txt(j["sw"], 40), "port": txt(j.get("port"), 32), "vlan": txt(j.get("vlan"), 8),
+                "speed": sp if isinstance(sp, int) and 0 < sp <= 400000 else None}
 
     @staticmethod
     def send(sock, msg, host, port):
