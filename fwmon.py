@@ -20,6 +20,7 @@ TEMP_PORT = 47475
 POLL = 5                 # seconds between SNMP reads
 HIST_SECS = 3600         # the charts keep an hour
 TEMP_STALE = 180         # a reading older than this is shown as stale (the cron job runs every minute)
+MERGE_SECS = 5          # packets this close together are parts of the same reading
 DROP_RECENT = 600        # memory drops in the last 10 minutes keep the light red
 CPU_WARN, CPU_CRIT = 80, 95
 MEM_WARN, MEM_CRIT = 85, 95
@@ -292,9 +293,20 @@ class Firewall(App):
                     del self.temp_ignored[min(self.temp_ignored, key=lambda k: self.temp_ignored[k][1])]
                 continue
             temps, tjmax = parse_temps(data)
-            if temps:
-                with self.lock:
-                    self.temps, self.tjmax, self.temp_at, self.temp_from = temps, tjmax, time.time(), ip
+            if not (temps or tjmax):
+                continue
+            now = time.time()
+            with self.lock:
+                # nc sends a reading as several packets, a few lines each: ones a moment apart are one reading
+                if self.temp_at and now - self.temp_at < MERGE_SECS and self.temp_from == ip:
+                    self.temps = {**self.temps, **temps}
+                    if len(self.temps) > 64:
+                        self.temps = dict(list(self.temps.items())[-64:])
+                    self.tjmax = max(x for x in (self.tjmax, tjmax) if x is not None) if (self.tjmax or tjmax) else None
+                else:
+                    self.temps, self.tjmax = temps, tjmax
+                if self.temps:
+                    self.temp_at, self.temp_from = now, ip
 
     def temp_now(self):
         """The latest reading, or None when the receiver is off or nothing has come for a while."""
