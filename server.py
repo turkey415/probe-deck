@@ -58,7 +58,7 @@ import dnstest as dnstest_mod
 import fair as fair_mod
 import swcli as swcli_mod
 
-__version__ = "0.41.1"
+__version__ = "0.41.2"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")

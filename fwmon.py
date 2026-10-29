@@ -64,6 +64,14 @@ def fnum(v):
         return None
 
 
+def add32(*vals):
+    """Sum of 32-bit counters, or None when one is just under 2**32: some NIC drivers report a
+    small negative count, which SNMP sends as a huge unsigned one."""
+    if any(v is not None and v >= 0xFFFF0000 for v in vals):
+        return None
+    return sum(v or 0 for v in vals)
+
+
 def sensor_label(name):
     """dev.cpu.3.temperature -> CPU 3, hw.acpi.thermal.tz0.temperature -> Board zone 0."""
     m = re.match(r"dev\.cpu\.(\d+)\.temperature$", name)
@@ -196,7 +204,7 @@ class Firewall(App):
             p = by_name.get(name)
             out.append({"name": name, "alias": S.text(cols["alias"].get(idx)), "up": g("oper") == 1, "speed": g("speed") or 0,
                         "rx": g("in64") if wide else g("in32"), "tx": g("out64") if wide else g("out32"), "wide": wide,
-                        "errors": (g("in_err") or 0) + (g("out_err") or 0), "drops": (g("in_disc") or 0) + (g("out_disc") or 0),
+                        "errors": add32(g("in_err"), g("out_err")), "drops": add32(g("in_disc"), g("out_disc")),
                         "in_pass": pf["in_pass"].get(p) if p else None, "in_block": pf["in_block"].get(p) if p else None,
                         "out_pass": pf["out_pass"].get(p) if p else None, "out_block": pf["out_block"].get(p) if p else None})
         return out
@@ -231,7 +239,7 @@ class Firewall(App):
             ifaces.append({**{k: i[k] for k in ("name", "alias", "up", "speed", "errors", "drops", "in_block", "out_block", "in_pass", "out_pass", "rx", "tx")},
                            "rx_bps": None if rx is None else round(rx * 8), "tx_bps": None if tx is None else round(tx * 8),
                            "block_ps": None if r("in_block", True) is None else round(r("in_block", True), 1),
-                           "err_new": bool(p and i["errors"] > p["errors"])})
+                           "err_new": bool(p and i["errors"] is not None and p["errors"] is not None and i["errors"] > p["errors"])})
         temp = self.temp_now()
         cur = {"t": now, "sysname": S.text(raw["sysname"]), "uptime": num(raw["uptime"]) / 100 if num(raw["uptime"]) is not None else None,
                "load": [fnum(raw[k]) for k in ("load1", "load5", "load15")], "cpu": cpu, "cores": raw["cores"],

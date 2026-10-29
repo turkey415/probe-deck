@@ -21,6 +21,7 @@
     return (i ? b.toFixed(b >= 100 ? 0 : 1) : Math.round(b)) + ' ' + u[i];
   }
   const ifLabel = i => i.alias || i.name;
+  const BAD = ' title="The network driver reports a negative count here, so it can\'t be trusted"';
 
   async function refresh() {
     if (busy) return;
@@ -121,7 +122,7 @@
       <td class="l"><span class="dot ${i.up ? 'on' : 'err'}"></span> ${i.up ? 'up' : 'down'}</td>
       <td>${i.up && i.speed ? (i.speed >= 1000 ? i.speed / 1000 + ' Gb/s' : i.speed + ' Mb/s') : '—'}</td>
       <td>${fmtBps(i.rx_bps)}</td><td>${fmtBps(i.tx_bps)}</td><td>${fmtB(i.rx)}</td><td>${fmtB(i.tx)}</td>
-      <td${i.err_new ? ' style="color:var(--crit)"' : ''}>${n(i.errors)}</td><td${i.drops ? ' style="color:var(--warn)"' : ''}>${n(i.drops)}</td>
+      <td${i.err_new ? ' style="color:var(--crit)"' : ''}${i.errors == null ? BAD : ''}>${n(i.errors)}</td><td${i.drops ? ' style="color:var(--warn)"' : ''}${i.drops == null ? BAD : ''}>${n(i.drops)}</td>
       <td>${i.block_ps == null ? '—' : i.block_ps + '/s'}</td><td>${n(i.in_block)}</td></tr>`).join('') || '<tr><td colspan="12" class="sub">No interfaces.</td></tr>');
 
     // charts
