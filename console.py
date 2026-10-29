@@ -170,7 +170,7 @@ class Console:
             c["console_telnet"] = bool(new["console_telnet"])
         if "console_telnet_port" in new:
             v = int(new["console_telnet_port"])
-            if not 1024 <= v <= 65535 or v in (5201, 52010, 47474):
+            if not 1024 <= v <= 65535 or v in (5201, 52010, 47474, 47475):
                 raise ValueError("Telnet port must be 1024-65535 and not one Probe Deck already uses")
             c["console_telnet_port"] = v
         if "console_macros" in new:

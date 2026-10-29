@@ -175,7 +175,9 @@ tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; let
 .st-bar i { display: block; height: 100%; }
 .st-key { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--text-2); margin-bottom: 12px; }
 .st-key span { display: inline-flex; align-items: center; gap: 6px; }
-#v-stats .gx .gauge { grid-template-columns: 64px 1fr 110px; }
+#v-stats .gx .gauge, #v-fw .gx .gauge { grid-template-columns: 64px 1fr 110px; }
+#v-fw .gx .gauge + .gauge { margin-top: 8px; }
+#v-fw .gx .gauge .k { color: var(--text-2); font: 600 11px var(--mono); }
 #v-stats .gx .gauge + .gauge { margin-top: 8px; }
 #v-stats .gx .gauge .k { color: var(--text-2); font: 600 11px var(--mono); }
 #v-stats .note { color: var(--muted); font-size: 12.5px; margin: 10px 0 0; }
@@ -853,6 +855,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
     <button type="button" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v5H4z M4 14h16v5H4z M7.5 7.5h.01 M7.5 16.5h.01 M12 10v4"/></svg><span class="mn">Network</span><span class="dot" data-lamp></span><span class="chev" aria-hidden="true">▾</span></button>
     <div class="items">
       <a href="#net" data-view="net"><span class="dot"></span><span class="nm">Switches</span><span class="badge" id="t-net" hidden></span></a>
+      <a href="#fw" data-view="fw"><span class="dot" id="t-fw"></span><span class="nm">Firewall</span></a>
       <a href="#trace" data-view="trace"><span class="dot"></span><span class="nm">Trace</span></a>
       <a href="#mtr" data-view="mtr"><span class="dot" id="t-mtr"></span><span class="nm">Traceroute</span><span class="badge" id="tb-mtr" hidden></span></a>
       <a href="#dnstest" data-view="dnstest"><span class="dot" id="t-dnstest"></span><span class="nm">DNS test</span><span class="badge" id="tb-dnstest" hidden></span></a>
@@ -2163,6 +2166,67 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 </main>
 </div>
 
+<!-- ================= FIREWALL ================= -->
+<div class="layout view" id="v-fw" hidden>
+<aside>
+  <section class="card">
+    <h2>Firewall <span class="spacer"></span><span class="lamp" id="fw-lamp2"></span></h2>
+    <form class="form" id="f-fw">
+      <label class="f">Address <span class="sub">The firewall's LAN address. Read-only SNMP v2c: turn on its SNMP service with the Host Resources, UCD and PF modules, and allow this probe.</span>
+        <input type="text" id="fw-host" placeholder="e.g. 192.168.1.1" spellcheck="false" autocomplete="off"></label>
+      <label class="f">Community <span class="sub" id="fw-commhint"></span>
+        <input type="password" id="fw-comm" spellcheck="false" autocomplete="new-password"></label>
+      <label class="chk"><input type="checkbox" id="fw-on"><span>Watch it<small>Reads it every 5 s. Untick to stop without losing the settings.</small></span></label>
+      <div class="row" style="align-items:center"><button class="btn primary" type="submit" style="flex:none">Save</button><span id="fw-msg"></span></div>
+      <div class="msg" id="fw-err" hidden></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Temperature <span class="spacer"></span><span class="lamp" id="fw-tlamp"></span></h2>
+    <p class="sub" style="margin:0 0 10px">The firewall's SNMP has no temperature, so it sends its own: a cron job reads its temperature sensors once a minute and sends one small UDP packet to this probe on port <b id="fw-tport">47475</b>. The probe only takes it from the firewall's own addresses.</p>
+    <label class="chk admin-only"><input type="checkbox" id="fw-temp"><span>Receive the temperature<small>Unticked, the probe closes the port and ignores the packets.</small></span></label>
+    <div id="fw-thow">
+      <p class="sub" style="margin:12px 0 6px">On the firewall, add a cron job that runs <b>every minute</b> (<code>* * * * *</code>) as <code>root</code>, with this command:</p>
+      <pre class="cfg" id="fw-cron" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
+      <div class="row" style="align-items:center;margin-top:10px"><button class="btn ro-ok" id="fw-copy" type="button" style="flex:none">Copy</button><span id="fw-copymsg"></span></div>
+      <p class="sub" style="margin:10px 0 0">The CPU sensors need the firewall's thermal sensor driver for your CPU loaded. Use the firewall's own cron manager if it has one: a crontab edited by hand can be lost on reboot. <b>To stop it</b>, delete the cron job.</p>
+    </div>
+    <dl class="kv" id="fw-tinfo" style="margin-top:12px"></dl>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2><span id="fw-title">Firewall</span> <span class="spacer"></span><span class="lamp" id="fw-lamp"></span></h2>
+    <div class="banner" id="fw-banner" hidden style="margin:0 0 12px"></div>
+    <div class="gx"><div class="vus" id="fw-meters"></div></div>
+    <div class="wells" id="fw-wells" style="margin-top:14px"></div>
+  </section>
+  <div class="grid2">
+    <section class="card"><h2>CPU <span class="spacer"></span><span class="sub" id="fw-cpusub"></span></h2>
+      <div class="gx" id="fw-cores"></div>
+      <dl class="kv" id="fw-cpukv" style="margin-top:14px"></dl>
+    </section>
+    <section class="card"><h2>State table <span class="spacer"></span><span class="sub" id="fw-stsub"></span></h2>
+      <div class="gx" id="fw-stbar"></div>
+      <dl class="kv" id="fw-stkv" style="margin-top:14px"></dl>
+      <p class="sub" style="margin:10px 0 0">Every connection through the firewall holds a state. When the table is full, new connections fail even with the CPU idle, and "Dropped for lack of memory" starts counting.</p>
+    </section>
+  </div>
+  <section class="card"><h2>Interfaces <span class="spacer"></span><span class="sub" id="fw-ifsub"></span></h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="l">Interface</th><th class="l">Name</th><th class="l">State</th><th>Speed</th><th>Down now</th><th>Up now</th><th>Received</th><th>Sent</th><th>Errors</th><th>Drops</th><th>Blocked in</th><th>Blocked in, total</th></tr></thead>
+      <tbody id="fw-if"></tbody>
+    </table></div>
+  </section>
+  <div class="grid2">
+    <section class="card"><h2>CPU load <span class="spacer"></span><span class="sub">last hour</span></h2><div class="legend" id="fw-lg-cpu"></div><div class="chart" id="fw-c-cpu"></div></section>
+    <section class="card"><h2>States <span class="spacer"></span><span class="sub">last hour</span></h2><div class="legend" id="fw-lg-st"></div><div class="chart" id="fw-c-st"></div></section>
+    <section class="card"><h2>Traffic <span class="spacer"></span><span class="sub">last hour · download side</span></h2><div class="legend" id="fw-lg-net"></div><div class="chart" id="fw-c-net"></div></section>
+    <section class="card"><h2>Temperature <span class="spacer"></span><span class="sub">last hour</span></h2><div class="legend" id="fw-lg-temp"></div><div class="chart" id="fw-c-temp"></div></section>
+  </div>
+</main>
+</div>
+
 <!-- ================= TICK TEST ================= -->
 <div class="layout view" id="v-tick" hidden>
 <aside>
@@ -2669,7 +2733,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 // ---------- views (tabs) ----------
 const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
-const VIEWS = ['fair', 'dnstest', 'stats', 'tick', 'mtr', 'mdns', 'mcast', 'survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
+const VIEWS = ['fw', 'fair', 'dnstest', 'stats', 'tick', 'mtr', 'mdns', 'mcast', 'survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -4343,6 +4407,7 @@ boot();
 <script src="/web/speed.js"></script>
 <script src="/web/logs.js"></script>
 <script src="/web/tick.js"></script>
+<script src="/web/fw.js"></script>
 <script src="/web/stats.js"></script>
 <script src="/web/mtr.js"></script>
 <script src="/web/mdns.js"></script>

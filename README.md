@@ -232,6 +232,16 @@ The Switches tab is the same page as GXL-LANapp's Switches tab (ported from its 
 - Set **one read-only community** (v1 or v2c) and add switches by IP, or from **found but not added** (CDP neighbors of your switches) and the subnet **Scan**. An **AireOS wireless controller** shows its access points and clients (its community is set on the controller: Management → SNMP → Communities).
 - The community is kept on the probe (`/etc/probe-deck/config.json` and `devices.json`, root-only) and never sent to the page. Viewers see everything, including the drill-down; admins add, remove, reorder and mark ports.
 
+### Firewall (how is the firewall itself doing?)
+Network › Firewall reads the LAN's firewall over **SNMP v2c, read-only**, every 5 s. Turn on the firewall's SNMP service with the Host Resources, UCD and PF modules, allow the probe, and type its address and community (blank uses the Switches community).
+- **Needles:** CPU, memory, the **state table** (states in use against the limit), the busiest interface's download, and the CPU temperature when it's sent (below).
+- **Readouts:** uptime, load, new states a second, packets blocked a second, and packets **dropped for lack of states or memory** in the last 10 minutes (red when any). A full state table makes new connections fail even with the CPU idle, so it's the number to watch at an event.
+- **CPU:** each core, busy now, memory, cache and swap. **State table:** use, new states and lookups a second, and the drop and bad-packet counters.
+- **Interfaces:** every port in use with its name, link, speed, traffic now and since boot, errors, drops, and packets the firewall blocked coming in. Unused ports are hidden.
+- **Charts** for the last hour: CPU and memory, states, traffic per interface, temperature.
+- The sidebar light is amber at 80% CPU, 85% memory, 70% of the state limit or 75 °C, and red at 95%, 95%, 90%, 90 °C, when packets are dropped, or when the firewall stops answering.
+- **Temperature:** the firewall's SNMP has none, so it sends its own. Tick **Receive the temperature** and add the command the page shows as a cron job on the firewall (every minute, as root): it reads the temperature sensors and sends one small UDP packet to the probe on **UDP 47475**. The probe only takes it from the firewall's own addresses (read over SNMP) and lists anything else it ignored. A reading older than 3 minutes is shown as stopped. To stop it, delete the cron job; unticking the box closes the port.
+
 ### CS2 (is this network fit for a match?)
 Everything about the network that decides a Counter-Strike match, measured from the probe's switch port:
 - **Game servers**: list them (`Name = host:port`) or pick one the **LAN scan** found (the same broadcast the game's server browser sends). For each: **ping** (ICMP, once a second) and **server reply** (the game's own A2S query over UDP, once a second, so it includes the server answering), as needle meters and a 5-minute chart; the server's game, **map** (split-flap), player count and the **players' names and scores**.
@@ -461,10 +471,11 @@ To try it on a PC without a cable or root: `socat -d pty,raw,echo=0,link=/tmp/tt
 | TCP 5201 | iperf3 server |
 | UDP 52010 | Perf-Deck discovery (broadcast hello, plus ping/pong for station latency) |
 | UDP 47474 | Probe message and `probe-alert` broadcasts |
+| UDP 47475 | Firewall temperature from its cron job (received, off by default) |
 | TCP 2001 | Console over telnet (off by default) |
 | UDP 9, 7 | Wake-on-LAN magic packets (sent) |
 | UDP 67/68 | DHCP scan (sent: a Discover every 60 s) |
-| UDP 161 | SNMP to your switches and controller (sent) |
+| UDP 161 | SNMP to your switches, controller and firewall (sent) |
 | UDP 5353 | mDNS: `<host>.local` and `_probe-deck._tcp` (avahi) |
 
 ## Related
