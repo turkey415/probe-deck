@@ -4,6 +4,12 @@ What's next. Newest decisions first in each section.
 
 ## To build
 
+### Internet speed test on a multi-gig server (back burner)
+- On a Proxmox container behind a ~7 Gbps line, every provider read about 100 Mbps after 0.44.0, while 8 parallel `curl` downloads on the Proxmox host itself did about 7.5 Gbps.
+- To check: the same 8-curl test inside the container (host vs container), the container's core count, whether Cloudflare/Hetzner/Vultr were refusing streams (the result notes say so), and Fast.com and Ookla on their own.
+- Ookla's CLI still hasn't run anywhere yet.
+
+
 ### Shared syslog rules module
 - `swalarms.py` is written (0.36.0). Copy it unchanged into GXL-LANapp's Event Server when its switch syslog listener is built.
 
