@@ -59,11 +59,27 @@ cmd_create() {
 
   step "Ubuntu template"
   pveam update >/dev/null || echo "(couldn't refresh the template list; using what's known)"
-  local tmpl
-  tmpl=$(pveam available --section system | awk '{print $2}' | grep -E '^ubuntu-[0-9]+\.[0-9]+-standard_' | sort -V | tail -1)
-  [ -n "$tmpl" ] || die "No Ubuntu template found in 'pveam available'."
-  echo "newest: $tmpl"
-  case $tmpl in ubuntu-26.*) ;; *) echo "Note: Proxmox doesn't offer an Ubuntu 26.04 template yet, so this uses ${tmpl%%-standard*}." ;; esac
+  # Proxmox only sets up Ubuntu versions its pve-container package knows; an older Proxmox can offer
+  # a template it then refuses ("unsupported Ubuntu version"). Take the newest one this host supports.
+  local tmpl="" newest t v pm=${UBUNTU_PM:-/usr/share/perl5/PVE/LXC/Setup/Ubuntu.pm}
+  local all; all=$(pveam available --section system | awk '{print $2}' | grep -E '^ubuntu-[0-9]+\.[0-9]+-standard_' | sort -rV)
+  [ -n "$all" ] || die "No Ubuntu template found in 'pveam available'."
+  newest=$(echo "$all" | head -1)
+  for t in $all; do
+    v=$(echo "$t" | sed -n 's/^ubuntu-\([0-9]*\.[0-9]*\)-.*/\1/p')
+    if [ ! -f "$pm" ] || grep -q "'$v'" "$pm"; then tmpl=$t; break; fi
+  done
+  [ -n "$tmpl" ] || die "This Proxmox doesn't support any Ubuntu template it offers. Update it: apt update && apt full-upgrade"
+  echo "newest offered: $newest"
+  if [ "$tmpl" != "$newest" ]; then
+    local nv=${newest#ubuntu-}; nv=${nv%%-*}
+    echo "This Proxmox can't set up Ubuntu $nv yet (its pve-container package is older)."
+    echo "Using $tmpl instead. To get $nv later: apt update && apt full-upgrade on this host, then make a new container."
+    local yn=y
+    [ -z "${YES:-}" ] && [ -t 0 ] && read -r -p "Carry on with ${tmpl%%-standard*}? [Y/n]: " yn
+    case ${yn:-y} in [Nn]*) die "Stopped. Update Proxmox, then run this again." ;; esac
+  fi
+  echo "using: $tmpl"
   if ! pveam list "$TSTORAGE" | grep -q "$tmpl"; then
     pveam download "$TSTORAGE" "$tmpl"
   else
@@ -78,7 +94,7 @@ cmd_create() {
     --hostname "$CT_NAME" --cores "$CORES" --memory "$MEM" --swap 512 \
     --rootfs "$STORAGE:$DISK" --net0 "$net" \
     --unprivileged 1 --features nesting=1 --onboot 1 \
-    --description "Probe Deck (server mode). Update: proxmox-ct.sh update $CTID. USB console: proxmox-ct.sh usb $CTID"
+    --description "Probe Deck (server mode). Update: probe-deck-ct update $CTID. USB console: probe-deck-ct usb $CTID"
   pct start "$CTID"
 
   step "Waiting for the network"

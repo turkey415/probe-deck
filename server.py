@@ -59,7 +59,7 @@ import fair as fair_mod
 import swcli as swcli_mod
 import intake as intake_mod
 
-__version__ = "0.43.0"
+__version__ = "0.43.1"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
