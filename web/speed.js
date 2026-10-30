@@ -160,9 +160,10 @@ window.SPV = (() => {
     if (!D) return [];
     const r = D.run, out = [];
     const shape = (h, live) => ({ id: live ? 'inet:live' : 'inet:' + h.t, kind: 'inet', live, t: h.t || r.started, phase: live ? r.phase : null, secs: h.secs || D.secs,
-      title: h.asn ? 'AS' + h.asn + (h.colo ? ' · Cloudflare ' + h.colo : '') : 'Internet', pts: (live ? r.points : h.pts) || [], lat: (live ? r.lat : h.lat) || [],
+      title: h.server || (h.asn ? 'AS' + h.asn + (h.colo ? ' · Cloudflare ' + h.colo : '') : live && r.server ? r.server : 'Internet'), pts: (live ? r.points : h.pts) || [], lat: (live ? r.lat : h.lat) || [],
       idle: h.idle_ms, jitter: h.jitter_ms, res: { down: h.down ? { bps: h.down, bytes: h.down_bytes } : null, up: h.up ? { bps: h.up, bytes: h.up_bytes } : null },
-      error: h.error, ok: h.ok, port: h.port, switch: h.switch, ip: h.ip, city: h.city });
+      error: h.error, ok: h.ok, provider: live ? r.provider : (h.provider || 'cloudflare'), port: h.port, switch: h.switch, ip: h.ip, city: h.city, isp: h.isp, link: h.link,
+      notes: [...(h.notes || (live ? r.notes : null) || []), h.up_note].filter(Boolean) });
     if (r.running) out.push(shape({ secs: D.secs }, true));
     for (const h of D.history) out.push(shape(h, false));
     return out;
@@ -189,7 +190,8 @@ window.SPV = (() => {
     const list = tests();
     const cur = list.find(x => x.id === SEL) || list[0];
     for (const r of document.querySelectorAll('input[name=sx-src]')) r.checked = r.value === SRC;
-    $('#sx-title').textContent = SRC === 'lan' ? 'LAN · iperf3' : 'Internet · Cloudflare';
+    const PN = { fast: 'Fast.com', cloudflare: 'Cloudflare', ookla: 'Ookla', mirror: 'Download server' };
+    $('#sx-title').textContent = SRC === 'lan' ? 'LAN · iperf3' : 'Internet · ' + (PN[(cur && cur.provider) || (D && D.conf && D.conf.provider)] || 'Cloudflare');
     if (!cur) {
       for (const k of ['down', 'up']) { I[k]({ off: true, f: 0, pf: 0, text: '----', unit: 'Mbps', labels: ['0', '', '', '', ''] }); $('#sx-sub-' + k).innerHTML = ''; }
       ['m1', 'm2', 'm3', 'm4'].forEach(k => mini(I[k], '', null));
@@ -226,13 +228,13 @@ window.SPV = (() => {
       mini(I.m4, 'BUFFERBLOAT', bloat, Math.max(bloat || 0, 30), bloat == null ? '' : bloat > 30 ? 'ms extra · high' : 'ms extra', false, 'after the test');
     }
     // lamp and note
-    const PH = { meta: 'finding Cloudflare', latency: 'measuring latency', down: 'downloading', up: 'uploading' };
+    const PH = { meta: 'finding a server', latency: 'measuring latency', down: 'downloading', up: 'uploading' };
     $('#sx-lamp').innerHTML = cur.live ? `<span class="dot live"></span>${esc(PH[cur.phase] || 'running')} · ${esc(cur.title || '')}`
       : cur.error ? `<span class="dot err"></span>${esc(cur.error)}` : `<span class="dot on"></span>${esc(cur.title || '')} · ${esc(fmtWhen(cur.t))}`;
     const where = cur.port ? `on ${ifShort(cur.port)}${cur.switch ? ' of ' + cur.switch.split('.')[0] : ''}` : '';
     $('#sx-note').textContent = cur.kind === 'lan'
       ? [where, !st.up && !cur.live ? 'Round trip, retransmits and congestion window come from the sender: run Upload or Both to see them.' : ''].filter(Boolean).join(' · ')
-      : [cur.ip ? `public IP ${cur.ip}` : '', cur.city || '', where, cur.jitter != null ? `idle jitter ${cur.jitter} ms` : ''].filter(Boolean).join(' · ');
+      : [cur.ip ? `public IP ${cur.ip}` : '', cur.isp || '', cur.city || '', where, cur.jitter != null ? `idle jitter ${cur.jitter} ms` : '', ...(cur.notes || [])].filter(Boolean).join(' · ');
     // charts
     const xMax = Math.max(cur.secs || 0, ...cur.pts.map(p => p[1]));
     const main = ['down', 'up'].map(ph => ({ name: ph === 'down' ? 'Download' : 'Upload', color: COL[ph], pts: cur.pts.filter(p => p[0] === ph).map(p => [p[1], p[2]]) })).filter(s => s.pts.length);
@@ -308,17 +310,57 @@ window.SPV = (() => {
     wasInet = run.running;
     $('#in-go').disabled = run.running;
     $('#in-go').textContent = run.running ? 'Testing…' : 'Test the internet';
-    setHTML('#in-hist', D.history.map(h => `<tr class="click" data-sel="inet:${h.t}"><td>${esc(fmtWhen(h.t))}</td><td class="l">${esc(h.ok ? (h.asn ? 'AS' + h.asn : '—') + (h.colo ? ' · ' + h.colo : '') : h.error || 'failed')}</td>`
+    setHTML('#in-hist', D.history.map(h => `<tr class="click" data-sel="inet:${h.t}"><td>${esc(fmtWhen(h.t))}</td><td class="l wrap">${esc(h.ok ? (h.server || ((h.asn ? 'AS' + h.asn : '—') + (h.colo ? ' · ' + h.colo : ''))) + (h.isp ? ' · ' + h.isp : '') : h.error || 'failed')}</td>`
       + `<td>${h.down ? fmtBps(h.down) : '—'}</td><td>${h.up ? fmtBps(h.up) : '—'}</td><td>${h.idle_ms != null ? h.idle_ms + ' ms' : '—'}</td>`
       + `<td>${h.down_ms != null ? Math.max(h.down_ms, h.up_ms || 0) + ' ms' : '—'}</td><td class="l">${esc(h.port ? ifShort(h.port) + (h.switch ? ' · ' + h.switch.split('.')[0] : '') : '—')}</td></tr>`).join('')
       || '<tr><td colspan="7" class="sub">No tests yet.</td></tr>');
-    if (!$('#f-inet')._filled) { $('#in-secs').value = D.secs; $('#in-streams').value = D.streams; $('#f-inet')._filled = true; }
+    if (!$('#f-inet')._filled) {
+      $('#in-secs').value = D.secs; $('#in-streams').value = D.streams;
+      setHTML('#in-prov', D.providers.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join(''));
+      setHTML('#in-mirror', D.mirrors.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join(''));
+      $('#in-prov').value = D.conf.provider; $('#in-mirror').value = D.conf.mirror; $('#in-url').value = D.conf.custom_url || '';
+      $('#f-inet')._filled = true;
+    }
+    const os = D.ookla.servers || [];
+    if (os.length && $('#in-oserver').options.length !== os.length + 1)
+      setHTML('#in-oserver', '<option value="">Nearest (automatic)</option>' + os.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join(''));
+    if (!$('#in-oserver')._set) { const v = D.conf.ookla_server; if (v && ![...$('#in-oserver').options].some(o => o.value === v)) $('#in-oserver').insertAdjacentHTML('beforeend', `<option value="${esc(v)}">Server ${esc(v)}</option>`); $('#in-oserver').value = v || ''; $('#in-oserver')._set = true; }
+    provShow();
     draw();
   }
+  function provShow() {
+    const id = $('#in-prov').value, p = (D && D.providers.find(x => x.id === id)) || {};
+    $('#in-provname').textContent = (p.name || '').replace(/ \(.*\)$/, '');
+    $('#in-about').textContent = (p.about || '') + (id === 'mirror' && /^vultr/.test($('#in-mirror').value) ? ' Vultr rations downloads from one address, so it can read low.' : '');
+    $('#in-mirrorrow').hidden = id !== 'mirror';
+    $('#in-urlrow').hidden = !(id === 'mirror' && $('#in-mirror').value === 'custom');
+    $('#in-ooklarow').hidden = id !== 'ookla';
+    $('#in-oinst').hidden = !(id === 'ookla' && D && !D.ookla.installed);
+    $('#in-tune').hidden = id === 'ookla';
+    $('#in-go').disabled = !D || D.run.running || (id === 'ookla' && !D.ookla.installed);
+  }
+  $('#in-prov').addEventListener('change', provShow);
+  $('#in-mirror').addEventListener('change', provShow);
+  $('#in-oinstall').addEventListener('click', async () => {
+    $('#in-oinstall').disabled = true; $('#in-omsg').textContent = 'Downloading…';
+    try { const r = await api('/api/x/speed/ookla_install'); $('#in-omsg').textContent = r.version || 'Installed'; await refresh(); }
+    catch (e) { $('#in-omsg').textContent = e.message; }
+    finally { $('#in-oinstall').disabled = false; }
+  });
+  $('#in-olist').addEventListener('click', async () => {
+    $('#in-olist').disabled = true; $('#in-olist').textContent = 'Listing…';
+    try { await api('/api/x/speed/ookla_servers'); $('#in-oserver')._set = false; await refresh(); }
+    catch (e) { $('#in-err').textContent = e.message; $('#in-err').hidden = false; }
+    finally { $('#in-olist').disabled = false; $('#in-olist').textContent = 'List servers'; }
+  });
   $('#f-inet').addEventListener('submit', async e => {
     e.preventDefault();
     $('#in-err').hidden = true;
-    try { await api('/api/x/speed/start', { secs: +$('#in-secs').value, streams: +$('#in-streams').value }); SRC = 'inet'; SEL = null; refresh(); }
+    try {
+      await api('/api/x/speed/start', { secs: +$('#in-secs').value, streams: +$('#in-streams').value, provider: $('#in-prov').value,
+        mirror: $('#in-mirror').value, custom_url: $('#in-url').value.trim(), ookla_server: $('#in-oserver').value });
+      SRC = 'inet'; SEL = null; refresh();
+    }
     catch (err) { $('#in-err').textContent = err.message; $('#in-err').hidden = false; }
   });
   $('#in-clear').addEventListener('click', async () => { if (confirm('Clear the internet test history?')) { await api('/api/x/speed/clear').catch(() => {}); refresh(); } });

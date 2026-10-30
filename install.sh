@@ -16,6 +16,7 @@ scp -q "$DIR/probe-deck.avahi.xml" "$HOST:/etc/avahi/services/probe-deck.service
 # CDP listening in lldpd (Cisco switches send CDP, not LLDP, by default).
 ssh "$HOST" 'grep -q "^DAEMON_ARGS=.*-c" /etc/default/lldpd || { echo "DAEMON_ARGS=\"-c\"" >> /etc/default/lldpd; systemctl restart lldpd; }
   python3 -c "import serial" 2>/dev/null || apt-get install -y -q python3-serial >/dev/null
+  command -v curl >/dev/null || apt-get install -y -q curl >/dev/null   # the internet speed test runs its streams in curl
   # SSH to switches (Configs, Cable test), MAC makers (Host scan), mDNS names
   python3 -c "import paramiko" 2>/dev/null && [ -f /usr/share/ieee-data/oui.csv ] && command -v avahi-resolve >/dev/null ||
     DEBIAN_FRONTEND=noninteractive apt-get install -y -q python3-paramiko ieee-data avahi-utils >/dev/null

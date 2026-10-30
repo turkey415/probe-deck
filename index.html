@@ -689,7 +689,7 @@ pre.diff { margin-top: 12px; max-height: 620px; overflow: auto; white-space: pre
 .layout.view.unsup > :not(.unsup-banner) { opacity: .4; filter: grayscale(1); pointer-events: none; user-select: none; }
 .unsup-banner { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border-radius: var(--r); background: var(--panel-2); border: 1px solid var(--line-2); border-left: 3px solid var(--muted); font-size: 13px; color: var(--text-2); }
 .unsup-banner b { color: var(--text); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; }
-#in-loginc.hl { border-color: var(--warn); box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 40%, transparent); }
+#ik-loginc.hl { border-color: var(--warn); box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 40%, transparent); }
 pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { color: #8fb8ff; }
 .svtab td { vertical-align: top; }
 .svtab .why { white-space: normal; min-width: 130px; color: var(--text-2); font-size: 12.5px; }
@@ -1647,12 +1647,21 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
   </section>
 
   <section class="card admin-only">
-    <h2>Internet speed test <span class="spacer"></span><span class="sub">Cloudflare</span></h2>
+    <h2>Internet speed test <span class="spacer"></span><span class="sub" id="in-provname"></span></h2>
     <form class="form" id="f-inet">
-      <p class="sub" style="margin:0">Downloads from and uploads to Cloudflare for a few seconds each way, and measures latency idle and under load (bufferbloat). At gigabit one test moves 1–2 GB.</p>
-      <div class="row">
+      <label class="f">Provider <select id="in-prov"></select></label>
+      <p class="sub" style="margin:0" id="in-about"></p>
+      <label class="f" id="in-mirrorrow" hidden>Server <select id="in-mirror"></select></label>
+      <label class="f" id="in-urlrow" hidden>File URL <input type="text" id="in-url" placeholder="https://example.com/1GB.bin" autocomplete="off" spellcheck="false"></label>
+      <div id="in-ooklarow" class="form" style="gap:8px" hidden>
+        <div class="row" style="align-items:flex-end"><label class="f">Ookla server <select id="in-oserver"><option value="">Nearest (automatic)</option></select></label>
+          <button class="btn sm" type="button" id="in-olist" style="flex:none">List servers</button></div>
+        <div class="note" id="in-oinst" hidden>Ookla's speedtest program isn't on this box yet. <b>Install</b> downloads it from speedtest.net. By installing it you accept <a href="https://www.speedtest.net/about/eula" target="_blank" rel="noopener">Ookla's license</a> (personal, non-commercial use).
+          <div style="margin-top:8px"><button class="btn sm primary" type="button" id="in-oinstall">Install</button> <span class="sub" id="in-omsg"></span></div></div>
+      </div>
+      <div class="row" id="in-tune">
         <label class="f">Seconds each way <input type="number" id="in-secs" min="3" max="30"></label>
-        <label class="f">Streams <input type="number" id="in-streams" min="1" max="8"></label>
+        <label class="f">Streams <span class="sub">8+ for multi-gig</span><input type="number" id="in-streams" min="1" max="16"></label>
       </div>
       <button class="btn primary" id="in-go" type="submit">Test the internet</button>
       <div class="msg" id="in-err" hidden></div>
@@ -1707,7 +1716,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
   <section class="card">
     <h2>Internet test history <span class="spacer"></span><button class="btn ghost admin-only" id="in-clear">Clear</button></h2>
     <div class="tablewrap"><table>
-      <thead><tr><th>When</th><th class="l">Network · Cloudflare</th><th>Download</th><th>Upload</th><th>Idle</th><th>Loaded</th><th class="l">Port</th></tr></thead>
+      <thead><tr><th>When</th><th class="l">Provider · server</th><th>Download</th><th>Upload</th><th>Idle</th><th>Loaded</th><th class="l">Port</th></tr></thead>
       <tbody id="in-hist"></tbody>
     </table></div>
   </section>
@@ -1720,7 +1729,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
   <section class="card">
     <h2>Scan <span class="spacer"></span><span class="lamp" id="hs-lamp"></span></h2>
     <dl class="kv" id="hs-info"></dl>
-    <div class="row admin-only" style="margin-top:14px;align-items:center"><button class="btn primary" id="hs-go" type="button" style="flex:none">Scan now</button><span id="hs-msg"></span></div>
+    <div class="row admin-only" style="margin-top:14px;align-items:center"><button class="btn primary" id="hs-go" type="button" style="flex:none">Scan now</button><span id="hsc-msg"></span></div>
     <p class="sub" style="margin:12px 0 0">Every address on the subnet gets one small packet, and every one that answers ARP counts, even with its firewall up. Names come from DNS, NetBIOS (Windows) and mDNS.</p>
   </section>
   <section class="card admin-only">
@@ -1981,35 +1990,35 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 <div class="layout view" id="v-intake" hidden>
 <aside>
   <section class="card">
-    <h2>Watch a boot <span class="spacer"></span><span class="lamp" id="in-lamp"></span></h2>
-    <p class="sub" id="in-con" style="margin:0 0 12px"></p>
-    <div class="keys admin-only"><button class="btn primary" id="in-arm">Watch for a boot</button><button class="btn" id="in-stop" hidden>Stop watching</button></div>
-    <p class="wsub" id="in-hint" style="white-space:normal;margin:12px 0 0"></p>
+    <h2>Watch a boot <span class="spacer"></span><span class="lamp" id="ik-lamp"></span></h2>
+    <p class="sub" id="ik-con" style="margin:0 0 12px"></p>
+    <div class="keys admin-only"><button class="btn primary" id="ik-arm">Watch for a boot</button><button class="btn" id="ik-stop" hidden>Stop watching</button></div>
+    <p class="wsub" id="ik-hint" style="white-space:normal;margin:12px 0 0"></p>
   </section>
-  <section class="card admin-only" id="in-loginc">
+  <section class="card admin-only" id="ik-loginc">
     <h2>Switch login</h2>
     <p class="sub" style="margin:0 0 10px">Only for a switch that still has its old config and asks for a login. A blank switch needs none.</p>
     <div class="form">
       <div class="row">
-        <label class="f">User <input type="text" id="in-user" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
-        <label class="f">Password <input type="password" id="in-pw" autocomplete="new-password"></label>
+        <label class="f">User <input type="text" id="ik-user" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+        <label class="f">Password <input type="password" id="ik-pw" autocomplete="new-password"></label>
       </div>
-      <label class="f">Enable secret <span class="sub">only if needed</span><input type="password" id="in-en" autocomplete="new-password"></label>
-      <div class="keys"><button class="btn" id="in-checks">Run checks</button><button class="btn danger" id="in-erase">Erase old config…</button><button class="btn" id="in-reload">Reload without saving…</button></div>
-      <div class="msg" id="in-err" hidden></div>
+      <label class="f">Enable secret <span class="sub">only if needed</span><input type="password" id="ik-en" autocomplete="new-password"></label>
+      <div class="keys"><button class="btn" id="ik-checks">Run checks</button><button class="btn danger" id="ik-erase">Erase old config…</button><button class="btn" id="ik-reload">Reload without saving…</button></div>
+      <div class="msg" id="ik-err" hidden></div>
     </div>
   </section>
   <section class="card admin-only">
     <h2>Settings</h2>
     <form class="form" id="f-intake">
-      <label class="chk"><input type="checkbox" id="in-auto"><span>Start watching by itself<small>When the console shows a boot starting, a new report begins without pressing the button.</small></span></label>
-      <label class="chk"><input type="checkbox" id="in-autochk"><span>Run health checks after boot<small>Answers no to the setup dialog, then reads show version, env, POST, PoE, flash and error counters.</small></span></label>
-      <label class="chk"><input type="checkbox" id="in-baud"><span>Find the console speed<small>If the text is garbled, try 9600, 115200, 38400, 19200 and 57600 baud.</small></span></label>
+      <label class="chk"><input type="checkbox" id="ik-auto"><span>Start watching by itself<small>When the console shows a boot starting, a new report begins without pressing the button.</small></span></label>
+      <label class="chk"><input type="checkbox" id="ik-autochk"><span>Run health checks after boot<small>Answers no to the setup dialog, then reads show version, env, POST, PoE, flash and error counters.</small></span></label>
+      <label class="chk"><input type="checkbox" id="ik-baud"><span>Find the console speed<small>If the text is garbled, try 9600, 115200, 38400, 19200 and 57600 baud.</small></span></label>
       <label class="f">Recommended IOS versions <span class="sub">one per line: model or family = version</span>
-        <textarea id="in-rec" rows="4" spellcheck="false" placeholder="C3560CX = 15.2(7)E13&#10;WS-C2960X = 15.2(7)E13"></textarea></label>
-      <label class="f">Cisco openVuln API client ID <span class="sub">optional: lists security advisories for the version</span><input type="text" id="in-pid" autocomplete="off" spellcheck="false"></label>
-      <label class="f">Client secret <input type="password" id="in-psec" autocomplete="new-password"></label>
-      <div class="keys"><button class="btn primary" type="submit">Save</button><button class="btn ghost" type="button" id="in-pclear">Forget the API key</button><span id="in-smsg"></span></div>
+        <textarea id="ik-rec" rows="4" spellcheck="false" placeholder="C3560CX = 15.2(7)E13&#10;WS-C2960X = 15.2(7)E13"></textarea></label>
+      <label class="f">Cisco openVuln API client ID <span class="sub">optional: lists security advisories for the version</span><input type="text" id="ik-pid" autocomplete="off" spellcheck="false"></label>
+      <label class="f">Client secret <input type="password" id="ik-psec" autocomplete="new-password"></label>
+      <div class="keys"><button class="btn primary" type="submit">Save</button><button class="btn ghost" type="button" id="ik-pclear">Forget the API key</button><span id="ik-smsg"></span></div>
     </form>
   </section>
   <section class="card">
@@ -2024,45 +2033,45 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 </aside>
 <main>
   <section class="card deck">
-    <h2>Switch <span class="spacer"></span><span class="lamp" id="in-verdict"></span></h2>
-    <div class="wells" id="in-wells"></div>
+    <h2>Switch <span class="spacer"></span><span class="lamp" id="ik-verdict"></span></h2>
+    <div class="wells" id="ik-wells"></div>
     <div>
-      <div class="st-bar" id="in-tl" style="height:22px;margin:0 0 6px"></div>
-      <div class="st-key" id="in-tlkey" style="margin:0"></div>
+      <div class="st-bar" id="ik-tl" style="height:22px;margin:0 0 6px"></div>
+      <div class="st-key" id="ik-tlkey" style="margin:0"></div>
     </div>
-    <div class="wsub" id="in-ready" style="white-space:normal"></div>
+    <div class="wsub" id="ik-ready" style="white-space:normal"></div>
   </section>
   <section class="card">
-    <h2>Findings <span class="spacer"></span><span class="sub" id="in-fcount"></span></h2>
-    <div class="evlist" id="in-finds" style="max-height:none"></div>
-    <div id="in-notes"></div>
+    <h2>Findings <span class="spacer"></span><span class="sub" id="ik-fcount"></span></h2>
+    <div class="evlist" id="ik-finds" style="max-height:none"></div>
+    <div id="ik-notes"></div>
   </section>
   <div class="grid2">
     <section class="card">
       <h2>Self tests (POST)</h2>
-      <div class="tablewrap"><table><tbody id="in-post"></tbody></table></div>
+      <div class="tablewrap"><table><tbody id="ik-post"></tbody></table></div>
     </section>
     <section class="card">
       <h2>Hardware</h2>
-      <dl class="kv" id="in-hw"></dl>
-      <div id="in-bars" style="margin-top:12px"></div>
+      <dl class="kv" id="ik-hw"></dl>
+      <div id="ik-bars" style="margin-top:12px"></div>
     </section>
   </div>
   <section class="card">
-    <h2>IOS version <span class="spacer"></span><span class="lamp" id="in-ioslamp"></span></h2>
-    <div id="in-ios"></div>
+    <h2>IOS version <span class="spacer"></span><span class="lamp" id="ik-ioslamp"></span></h2>
+    <div id="ik-ios"></div>
   </section>
-  <section class="card admin-only" id="in-prec">
-    <h2>Preload <span class="spacer"></span><span class="lamp" id="in-plamp"></span><button class="btn sm" id="in-open">Preload a config…</button></h2>
-    <div id="in-job"><p class="sub" style="margin:0">When the switch is up, pick a template, load a file or paste a config.</p></div>
+  <section class="card admin-only" id="ik-prec">
+    <h2>Preload <span class="spacer"></span><span class="lamp" id="ik-plamp"></span><button class="btn sm" id="ik-open">Preload a config…</button></h2>
+    <div id="ik-job"><p class="sub" style="margin:0">When the switch is up, pick a template, load a file or paste a config.</p></div>
   </section>
   <section class="card">
-    <h2>Boot log <span class="spacer"></span><a class="btn sm" id="in-dl" hidden>Download</a></h2>
-    <pre class="cfg" id="in-tail" style="max-height:320px;overflow:auto">No boot seen yet.</pre>
+    <h2>Boot log <span class="spacer"></span><a class="btn sm" id="ik-dl" hidden>Download</a></h2>
+    <pre class="cfg" id="ik-tail" style="max-height:320px;overflow:auto">No boot seen yet.</pre>
   </section>
   <section class="card">
     <h2>History</h2>
-    <div class="tablewrap"><table><thead><tr><th>When</th><th class="l">Model</th><th class="l">Serial</th><th class="l">IOS</th><th class="l">Result</th><th class="l"></th></tr></thead><tbody id="in-hist"></tbody></table></div>
+    <div class="tablewrap"><table><thead><tr><th>When</th><th class="l">Model</th><th class="l">Serial</th><th class="l">IOS</th><th class="l">Result</th><th class="l"></th></tr></thead><tbody id="ik-hist"></tbody></table></div>
   </section>
 </main>
 </div>

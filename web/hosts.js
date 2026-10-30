@@ -55,7 +55,7 @@
     if (!$('#f-hosts')._filled) { $('#hs-every').value = d.every; $('#hs-ports').value = d.ports; $('#hs-names').checked = d.names; $('#hs-smart').checked = d.smart; $('#f-hosts')._filled = true; }
   }
 
-  $('#hs-go').addEventListener('click', async () => { try { await api('/api/x/hosts/scan'); flash($('#hs-msg'), 'Scanning', true); setTimeout(refresh, 500); } catch (e) { flash($('#hs-msg'), e.message); } });
+  $('#hs-go').addEventListener('click', async () => { try { await api('/api/x/hosts/scan'); flash($('#hsc-msg'), 'Scanning', true); setTimeout(refresh, 500); } catch (e) { flash($('#hsc-msg'), e.message); } });
   for (const id of ['#hs-onlyup', '#hs-onlynew', '#hs-onlysmart', '#hs-onlyunk']) $(id).addEventListener('change', draw);
   $('#hs-q').addEventListener('input', () => D && draw());
   $('#hs-list').addEventListener('click', async e => {
