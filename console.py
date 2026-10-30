@@ -198,6 +198,14 @@ class Console:
 
     def loop(self):
         while True:
+            try:
+                self.loop_once()
+            except Exception as e:  # keep the reader alive whatever happens
+                self.error = f"console error: {str(e)[:120]}"
+                time.sleep(1)
+
+    def loop_once(self):
+        while True:
             if not serial:
                 time.sleep(30)
                 continue
@@ -266,7 +274,9 @@ class Console:
                     q.put(bytes(data))
         if log and self.log:
             try:
-                if self.log.tell() < LOG_MAX:
+                if self.log.tell() >= LOG_MAX and self.path:
+                    self.start_log()  # full: carry on in a new file
+                if self.log:
                     self.log.write(data)
                     self.log.flush()
             except OSError:
@@ -296,7 +306,13 @@ class Console:
     def send_break(self):
         s = self.ser
         if s:
-            threading.Thread(target=lambda: s.send_break(0.5), daemon=True).start()
+            def brk():
+                with self.wlock:
+                    try:
+                        s.send_break(0.5)
+                    except Exception:
+                        pass
+            threading.Thread(target=brk, daemon=True).start()
             self.feed(b"\r\n\x1b[2m[probe-deck] Break sent\x1b[0m\r\n", log=False)
 
     # ---------- paced paste: one line at a time, wait for the echo ----------
@@ -390,11 +406,13 @@ class Console:
     # ---------- status ----------
     def status(self):
         pj = self.paste
+        with self.lock:  # other threads add and remove clients
+            cl = list(self.clients)
         return {
             "t": "status", "open": bool(self.ser), "port": self.path, "baud": self.conf["console_baud"],
             "want": self.conf["console_port"], "error": self.error, "opened": self.opened,
-            "clients": len(self.clients), "n_web": sum(c.kind == "web" for c in self.clients),
-            "n_telnet": sum(c.kind == "telnet" for c in self.clients), "log": self.log_name,
+            "clients": len(cl), "n_web": sum(c.kind == "web" for c in cl),
+            "n_telnet": sum(c.kind == "telnet" for c in cl), "log": self.log_name,
             "paste": {k: pj[k] for k in ("total", "done", "done_at")} if pj else None,
         }
 
@@ -497,7 +515,9 @@ class Console:
                 s.close()
             except OSError:
                 pass
-        for c in [c for c in self.clients if c.kind == "telnet"]:
+        with self.lock:
+            tel = [c for c in self.clients if c.kind == "telnet"]
+        for c in tel:
             self.detach(c)
 
     def telnet_accept(self, s):
