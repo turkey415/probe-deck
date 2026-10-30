@@ -19,6 +19,7 @@ What's next. Newest decisions first in each section.
 - **Traceroutes for GXL's traffic map** (its Paths view). The traffic map project is paused.
 
 ## Done recently
+- Switch intake: boot health report from the console, IOS version check, preload by template, file or paste (0.42.0). Console fixes: the reader can't be killed by a client joining at the wrong moment, Break waits for the line being written, logs roll over at 10 MB. **Not yet tried on a real switch boot** (only a fake one).
 - CS2 fairness report: two teams' seats compared, the odd seat flagged with its switch port, ARP timing for PCs that ignore ping, reports saved and downloadable (0.39.0).
 - DNS test: a 30-second spot check of which DNS server to use at a site (0.38.0). Switch alarms can be acknowledged; Switch logs has Mark read (0.38.0).
 - Host scan: mark hosts known or unknown (green frame), colour by maker. Switches: err-disabled ports striped red, with Restore port (shutdown / no shutdown over SSH) (0.37.0).

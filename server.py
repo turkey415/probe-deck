@@ -57,8 +57,9 @@ import mtr as mtr_mod
 import dnstest as dnstest_mod
 import fair as fair_mod
 import swcli as swcli_mod
+import intake as intake_mod
 
-__version__ = "0.41.2"
+__version__ = "0.42.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
@@ -1209,7 +1210,7 @@ class TLSServer(ThreadingHTTPServer):
 
 
 APPS = [swcli_mod.CliApp, logs_mod.SwitchLogs, inet_mod.Inet, hosts_mod.HostScan, cache_mod.LanCache, capture_mod.Capture, tftp_mod.Files, configs_mod.Configs, cable_mod.CableTest, vlanwalk_mod.VlanWalk, survey_mod.Survey,
-        wire_mod.Wire, wire_mod.Mdns, wire_mod.Multicast, online_mod.Online, tick_mod.Tick, mtr_mod.Mtr, stats_mod.Stats, dnstest_mod.DnsTest, fair_mod.Fairness, fw_mod.Firewall]
+        wire_mod.Wire, wire_mod.Mdns, wire_mod.Multicast, online_mod.Online, tick_mod.Tick, mtr_mod.Mtr, stats_mod.Stats, dnstest_mod.DnsTest, fair_mod.Fairness, fw_mod.Firewall, intake_mod.Intake]
 
 
 def main():

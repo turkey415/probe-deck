@@ -684,6 +684,7 @@ pre.caplines { max-height: 420px; overflow: auto; white-space: pre; overflow-wra
 #fl-list tr.sel td, #cf-list tr.sel td { background: rgba(255, 176, 0, .06); }
 .upbar i { display: block; height: 100%; width: 0; background: var(--amber); transition: width .2s; }
 pre.diff { margin-top: 12px; max-height: 620px; overflow: auto; white-space: pre; overflow-wrap: normal; color: var(--text-2); user-select: text; }
+#in-loginc.hl { border-color: var(--warn); box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 40%, transparent); }
 pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { color: #8fb8ff; }
 .svtab td { vertical-align: top; }
 .svtab .why { white-space: normal; min-width: 130px; color: var(--text-2); font-size: 12.5px; }
@@ -887,6 +888,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
     <button type="button" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3z M7 10l3 2-3 2 M12 15h5"/></svg><span class="mn">Switch tools</span><span class="dot" data-lamp></span><span class="chev" aria-hidden="true">▾</span></button>
     <div class="items">
       <a href="#console" data-view="console"><span class="dot" id="t-con"></span><span class="nm">Console</span></a>
+      <a href="#intake" data-view="intake"><span class="dot" id="t-intake"></span><span class="nm">Switch intake</span></a>
       <a href="#configs" data-view="configs"><span class="dot" id="t-configs"></span><span class="nm">Configs</span><span class="badge" id="tb-configs" hidden></span></a>
       <a href="#files" data-view="files"><span class="dot" id="t-files"></span><span class="nm">Files (TFTP)</span><span class="badge" id="tb-files" hidden></span></a>
     </div>
@@ -1022,6 +1024,29 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
     <textarea id="pa-text" rows="14" spellcheck="false" placeholder="conf t&#10;interface Gi0/5&#10; description Seat 12&#10;end"></textarea>
     <div class="row" style="align-items:center"><span class="sub" id="pa-count"></span>
       <button class="btn" value="cancel" style="flex:none">Cancel</button><button class="btn primary" id="pa-go" value="send" style="flex:none">Send</button></div>
+  </form>
+</dialog>
+
+<dialog id="d-preload" style="width:min(820px, calc(100vw - 32px))">
+  <form method="dialog" class="form" id="f-preload">
+    <h3>Preload a config</h3>
+    <span class="sub" id="pl-who"></span>
+    <div class="seg" id="pl-src">
+      <label><input type="radio" name="pl-src" value="tpl" checked>Saved template</label>
+      <label><input type="radio" name="pl-src" value="paste">Paste</label>
+      <label><input type="radio" name="pl-src" value="file">Load a file</label>
+    </div>
+    <div class="row" id="pl-tplrow"><select id="pl-tpl"></select><button class="btn ghost" type="button" id="pl-tdel" style="flex:none">Delete</button></div>
+    <div class="row" id="pl-filerow" hidden><input type="file" id="pl-file" accept=".txt,.cfg,.conf,.ios,text/plain"></div>
+    <textarea id="pl-text" rows="14" spellcheck="false" autofocus placeholder="Paste a config here: a whole show running-config works.&#10;&#10;hostname {{hostname}}&#10;interface Gi0/1&#10; description Seat 1&#10; switchport access vlan 20"></textarea>
+    <div class="row" id="pl-vars" style="flex-wrap:wrap"></div>
+    <div id="pl-check" class="form" style="gap:6px"></div>
+    <div class="row" style="align-items:center;flex-wrap:wrap">
+      <label class="chk" style="flex:none"><input type="checkbox" id="pl-stop"><span>Stop at the first error</span></label>
+      <label class="f" style="flex:1 1 220px">Save as template <input type="text" id="pl-save" placeholder="name (optional)" autocomplete="off"></label>
+    </div>
+    <div class="row" style="align-items:center"><span class="sub" id="pl-msg" style="flex:1"></span>
+      <button class="btn" value="cancel" style="flex:none">Not now</button><button class="btn primary" type="button" id="pl-go" style="flex:none">Send to the switch</button></div>
   </form>
 </dialog>
 
@@ -1947,6 +1972,96 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(255, 255, 255
 </main>
 </div>
 
+<!-- ================= SWITCH INTAKE ================= -->
+<div class="layout view" id="v-intake" hidden>
+<aside>
+  <section class="card">
+    <h2>Watch a boot <span class="spacer"></span><span class="lamp" id="in-lamp"></span></h2>
+    <p class="sub" id="in-con" style="margin:0 0 12px"></p>
+    <div class="keys admin-only"><button class="btn primary" id="in-arm">Watch for a boot</button><button class="btn" id="in-stop" hidden>Stop watching</button></div>
+    <p class="wsub" id="in-hint" style="white-space:normal;margin:12px 0 0"></p>
+  </section>
+  <section class="card admin-only" id="in-loginc">
+    <h2>Switch login</h2>
+    <p class="sub" style="margin:0 0 10px">Only for a switch that still has its old config and asks for a login. A blank switch needs none.</p>
+    <div class="form">
+      <div class="row">
+        <label class="f">User <input type="text" id="in-user" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+        <label class="f">Password <input type="password" id="in-pw" autocomplete="new-password"></label>
+      </div>
+      <label class="f">Enable secret <span class="sub">only if needed</span><input type="password" id="in-en" autocomplete="new-password"></label>
+      <div class="keys"><button class="btn" id="in-checks">Run checks</button><button class="btn danger" id="in-erase">Erase old config…</button><button class="btn" id="in-reload">Reload without saving…</button></div>
+      <div class="msg" id="in-err" hidden></div>
+    </div>
+  </section>
+  <section class="card admin-only">
+    <h2>Settings</h2>
+    <form class="form" id="f-intake">
+      <label class="chk"><input type="checkbox" id="in-auto"><span>Start watching by itself<small>When the console shows a boot starting, a new report begins without pressing the button.</small></span></label>
+      <label class="chk"><input type="checkbox" id="in-autochk"><span>Run health checks after boot<small>Answers no to the setup dialog, then reads show version, env, POST, PoE, flash and error counters.</small></span></label>
+      <label class="chk"><input type="checkbox" id="in-baud"><span>Find the console speed<small>If the text is garbled, try 9600, 115200, 38400, 19200 and 57600 baud.</small></span></label>
+      <label class="f">Recommended IOS versions <span class="sub">one per line: model or family = version</span>
+        <textarea id="in-rec" rows="4" spellcheck="false" placeholder="C3560CX = 15.2(7)E13&#10;WS-C2960X = 15.2(7)E13"></textarea></label>
+      <label class="f">Cisco openVuln API client ID <span class="sub">optional: lists security advisories for the version</span><input type="text" id="in-pid" autocomplete="off" spellcheck="false"></label>
+      <label class="f">Client secret <input type="password" id="in-psec" autocomplete="new-password"></label>
+      <div class="keys"><button class="btn primary" type="submit">Save</button><button class="btn ghost" type="button" id="in-pclear">Forget the API key</button><span id="in-smsg"></span></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>How it works</h2>
+    <ul class="steps">
+      <li>Plug the console cable from the probe into the switch, press <b>Watch for a boot</b>, then power the switch on.</li>
+      <li>The probe only <b>listens</b> while the switch boots. Typing or a Break during boot can stop it in ROMMON.</li>
+      <li>It reads the boot loader, the self tests, the image, the model, serial and memory, and any error messages. Then it runs a few show commands.</li>
+      <li>When the switch is ready to configure, a window offers a <b>preload</b>: a saved template, a file, or a pasted config. Nothing is saved until you press <b>Save to the switch</b>.</li>
+    </ul>
+  </section>
+</aside>
+<main>
+  <section class="card deck">
+    <h2>Switch <span class="spacer"></span><span class="lamp" id="in-verdict"></span></h2>
+    <div class="wells" id="in-wells"></div>
+    <div>
+      <div class="st-bar" id="in-tl" style="height:22px;margin:0 0 6px"></div>
+      <div class="st-key" id="in-tlkey" style="margin:0"></div>
+    </div>
+    <div class="wsub" id="in-ready" style="white-space:normal"></div>
+  </section>
+  <section class="card">
+    <h2>Findings <span class="spacer"></span><span class="sub" id="in-fcount"></span></h2>
+    <div class="evlist" id="in-finds" style="max-height:none"></div>
+    <div id="in-notes"></div>
+  </section>
+  <div class="grid2">
+    <section class="card">
+      <h2>Self tests (POST)</h2>
+      <div class="tablewrap"><table><tbody id="in-post"></tbody></table></div>
+    </section>
+    <section class="card">
+      <h2>Hardware</h2>
+      <dl class="kv" id="in-hw"></dl>
+      <div id="in-bars" style="margin-top:12px"></div>
+    </section>
+  </div>
+  <section class="card">
+    <h2>IOS version <span class="spacer"></span><span class="lamp" id="in-ioslamp"></span></h2>
+    <div id="in-ios"></div>
+  </section>
+  <section class="card admin-only" id="in-prec">
+    <h2>Preload <span class="spacer"></span><span class="lamp" id="in-plamp"></span><button class="btn sm" id="in-open">Preload a config…</button></h2>
+    <div id="in-job"><p class="sub" style="margin:0">When the switch is up, pick a template, load a file or paste a config.</p></div>
+  </section>
+  <section class="card">
+    <h2>Boot log <span class="spacer"></span><a class="btn sm" id="in-dl" hidden>Download</a></h2>
+    <pre class="cfg" id="in-tail" style="max-height:320px;overflow:auto">No boot seen yet.</pre>
+  </section>
+  <section class="card">
+    <h2>History</h2>
+    <div class="tablewrap"><table><thead><tr><th>When</th><th class="l">Model</th><th class="l">Serial</th><th class="l">IOS</th><th class="l">Result</th><th class="l"></th></tr></thead><tbody id="in-hist"></tbody></table></div>
+  </section>
+</main>
+</div>
+
 <!-- ================= CABLE TEST ================= -->
 <div class="layout view" id="v-cable" hidden>
 <aside>
@@ -2733,7 +2848,7 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 // ---------- views (tabs) ----------
 const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
-const VIEWS = ['fw', 'fair', 'dnstest', 'stats', 'tick', 'mtr', 'mdns', 'mcast', 'survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
+const VIEWS = ['intake', 'fw', 'fair', 'dnstest', 'stats', 'tick', 'mtr', 'mdns', 'mcast', 'survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
   const v = location.hash.slice(1);
@@ -4399,6 +4514,7 @@ boot();
 <script src="/web/survey.js"></script>
 <script src="/web/vlans.js"></script>
 <script src="/web/cable.js"></script>
+<script src="/web/intake.js"></script>
 <script src="/web/configs.js"></script>
 <script src="/web/files.js"></script>
 <script src="/web/capture.js"></script>
