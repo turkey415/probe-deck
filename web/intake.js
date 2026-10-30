@@ -182,7 +182,7 @@
   $('#pl-tpl').addEventListener('change', async () => {
     const n = $('#pl-tpl').value;
     if (!n) return;
-    try { const r = await fetch('/api/x/intake/template/' + encodeURIComponent(n)); const t = await r.json(); if (!r.ok) throw new Error(t.error); $('#pl-text').value = t.text; $('#pl-save').value = ''; prepare(); }
+    try { const t = await api('/api/x/intake/template_get', { name: n }); $('#pl-text').value = t.text; $('#pl-save').value = ''; prepare(); }
     catch (e) { $('#pl-msg').textContent = e.message; }
   });
   $('#pl-tdel').addEventListener('click', async () => {

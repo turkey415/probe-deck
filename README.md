@@ -367,6 +367,23 @@ At idle the board sits around 45 °C with no case. Gigabit tests load the CPU, s
 
 The photos are made by `tools/annotate_photos.py` from the originals. It keeps only the pixels (no location or camera data) and blurs the serial-number stickers.
 
+## Run it on a server (Proxmox container)
+
+Most of Probe Deck doesn't need to sit on a jack: Switches, Configs, Switch logs, Cable test, Host scan, Traceroute, DNS test, Speed test, Capture, the Console and Switch intake all work from a server at the site. One command on the **Proxmox host's shell** makes an Ubuntu container (the newest Ubuntu template Proxmox offers) with Probe Deck running in it:
+
+```sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/turkey415/probe-deck/main/tools/proxmox-ct.sh)"
+```
+
+It asks for the container ID, name, bridge, VLAN tag, address and storage (Enter takes the default), downloads the template, creates a small unprivileged container (1 core, 1 GB, 8 GB disk), installs Probe Deck and prints the address. Open it and make the admin account. The script stays on the host as `probe-deck-ct`:
+
+- `probe-deck-ct usb <ctid>`: pass a USB console cable plugged into the host into the container (Proxmox VE 8.1 or newer), for Console and Switch intake. Restart the container after replugging the cable.
+- `probe-deck-ct update <ctid>`: update Probe Deck inside it (settings, users and history are kept).
+
+On any other Ubuntu or Debian box (a VM, a mini PC), run `tools/install-server.sh` as root instead.
+
+**Server mode** turns on by itself in a VM or container (or with `--mode server`). Pages that only make sense on a probe at a jack stay in the sidebar but are greyed out with the reason: **VLAN walk** (needs a trunk and tagged interfaces of its own), **Jack survey** (moves seat to seat) and **Renew DHCP** (the host handles it). The "This jack" card shows the host's CDP neighbour, if the bridge passes CDP.
+
 ## Build one
 
 ### 1. Make the SD card image (on a Linux PC, no root needed)

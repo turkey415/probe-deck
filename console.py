@@ -7,6 +7,7 @@ port). Clients send keystrokes, Break, paced pastes and macros.
 import glob
 import json
 import os
+import stat
 import queue
 import re
 import socket
@@ -65,11 +66,19 @@ def parse_macros(text):
 def list_ports():
     """USB serial adapters. by-id names say what the adapter is (FTDI, Prolific, CH340...)."""
     names = {}
+    passed = []   # in a Proxmox container the adapter is passed in by its by-id name: a device node, not a link
     for link in sorted(glob.glob("/dev/serial/by-id/*")):
+        try:
+            if not os.path.islink(link) and stat.S_ISCHR(os.stat(link).st_mode):
+                passed.append(link)
+                names[link] = os.path.basename(link)
+                continue
+        except OSError:
+            continue
         names[os.path.realpath(link)] = os.path.basename(link)
     out = []
     test = os.environ.get("PROBE_DECK_TEST_SERIAL")  # a pty from socat, for testing without a cable
-    devs = sorted(glob.glob("/dev/ttyUSB*")) + sorted(glob.glob("/dev/ttyACM*")) + ([test] if test and os.path.exists(test) else [])
+    devs = sorted(glob.glob("/dev/ttyUSB*")) + sorted(glob.glob("/dev/ttyACM*")) + passed + ([test] if test and os.path.exists(test) else [])
     for dev in devs:
         n = names.get(dev, "")
         n = re.sub(r"^usb-", "", n)
@@ -153,7 +162,7 @@ class Console:
         c = {}
         if "console_port" in new:
             v = str(new["console_port"])
-            if v != "auto" and not re.fullmatch(r"/dev/tty(USB|ACM)\d{1,2}", v):
+            if v != "auto" and not re.fullmatch(r"/dev/tty(USB|ACM)\d{1,2}|/dev/serial/by-id/[\w.:+\-]{1,200}", v):
                 raise ValueError("Bad serial port")
             c["console_port"] = v
         if "console_baud" in new:

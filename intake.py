@@ -1161,11 +1161,6 @@ class Intake(App):
                 lf = self.rep_dir / f"{arg}.log"
                 return Reply(lf.read_bytes() if lf.is_file() else b"", "text/plain; charset=utf-8", filename=f"boot-{arg}.log")
             return Reply(self.report_text(load_json(f, {})).encode(), "text/plain; charset=utf-8", filename=f"intake-{arg}.txt")
-        if sub == "template" and admin:
-            t = self.template(urllib.parse.unquote(arg or ""))
-            if not t:
-                raise ValueError("No such template")
-            return t
         raise ValueError("not found")
 
     def report_text(self, d):
@@ -1264,6 +1259,11 @@ class Intake(App):
             if action == "template_save":
                 self.save_template(body.get("name"), body.get("text"))
                 return {}
+            if action == "template_get":
+                t = self.template(str(body.get("name") or ""))
+                if not t:
+                    raise ValueError("No such template")
+                return {"name": t["name"], "text": t["text"]}
             if action == "template_delete":
                 self.templates = [t for t in self.templates if t["name"] != body.get("name")]
                 save_json(self.tpl_file, self.templates, private=True)

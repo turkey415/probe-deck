@@ -59,11 +59,18 @@ import fair as fair_mod
 import swcli as swcli_mod
 import intake as intake_mod
 
-__version__ = "0.42.0"
+__version__ = "0.43.0"
 ROOT = Path(__file__).resolve().parent
 CONF = Path("/etc/probe-deck/config.json")
 DATA = Path("/var/lib/probe-deck")
 IFACE = "eth0"
+MODE = "probe"            # "server": a VM or container (Proxmox), not a probe on a jack
+# What a server can't do, by page: the page shows it greyed out with the reason.
+SERVER_UNSUPPORTED = {
+    "vlans": "VLAN walk needs a trunk port and tagged interfaces of its own; a container's network is set by its host.",
+    "survey": "Jack survey moves the probe from seat to seat; a server stays in one place.",
+    "renew": "DHCP is handled by the host, so Renew DHCP is off.",
+}
 PERFDECK_TAG, PERFDECK_PORT = "perf-deck", 52010
 PROBE_PORT = 47474
 PING_EVERY = 2
@@ -287,7 +294,7 @@ class Probe:
     def eee_off(self):
         """Energy Efficient Ethernet lets the link sleep between packets: a wake-up delay a test probe
         shouldn't add. Switched off at start and after every link-up (renegotiation can turn it back on)."""
-        if not self.conf.get("eee_off"):
+        if not self.conf.get("eee_off") or MODE == "server":
             return
         # only when it's on: changing it makes the link renegotiate, so never touch a link that's already right
         if re.search(r"EEE status:\s*enabled", run(["ethtool", "--show-eee", IFACE], 10)):
@@ -295,7 +302,7 @@ class Probe:
 
     def renew(self):
         """New jack, maybe a new VLAN: get a fresh DHCP lease."""
-        if self.renewing:
+        if self.renewing or MODE == "server":
             return
         self.renewing = True
         try:
@@ -840,6 +847,7 @@ class Probe:
                 "wol": self.wake.snapshot() if self.wake else None,
                 "console": self.console.status() if self.console else None,
                 "apps": self.app_status(),
+                "env": env_info(),
             }
 
     def app_status(self):
@@ -1050,6 +1058,8 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/recheck":
                 p.wake_ev.set()
             elif path == "/api/renew":
+                if MODE == "server":
+                    raise ValueError(SERVER_UNSUPPORTED["renew"])
                 threading.Thread(target=p.renew, daemon=True).start()
             elif path == "/api/history/clear":
                 with p.lock:
@@ -1119,6 +1129,8 @@ class Handler(BaseHTTPRequestHandler):
                     p.ts.action(body)
             elif path == "/api/cs/scan":
                 threading.Thread(target=p.cs.scan, daemon=True).start()
+            elif app and MODE == "server" and app.name in SERVER_UNSUPPORTED:
+                raise ValueError("Not supported in this environment. " + SERVER_UNSUPPORTED[app.name])
             elif app:
                 try:
                     reply.update(app.post(m.group(2), body, self.user) or {})
@@ -1213,19 +1225,50 @@ APPS = [swcli_mod.CliApp, logs_mod.SwitchLogs, inet_mod.Inet, hosts_mod.HostScan
         wire_mod.Wire, wire_mod.Mdns, wire_mod.Multicast, online_mod.Online, tick_mod.Tick, mtr_mod.Mtr, stats_mod.Stats, dnstest_mod.DnsTest, fair_mod.Fairness, fw_mod.Firewall, intake_mod.Intake]
 
 
+def default_iface():
+    """The interface the default route uses (a container's eth0, a VM's ens18...)."""
+    try:
+        for r in json.loads(run(["ip", "-j", "route", "show", "default"]) or "[]"):
+            if r.get("dev"):
+                return r["dev"]
+    except ValueError:
+        pass
+    return "eth0"
+
+
+def detect_virt():
+    out = run(["systemd-detect-virt"], 5).strip()
+    return "" if out in ("", "none") else out
+
+
+VIRT = ""
+
+
+def env_info():
+    return {"mode": MODE, "virt": VIRT, "unsupported": SERVER_UNSUPPORTED if MODE == "server" else {}}
+
+
 def main():
     global IFACE, DATA, CONF, HTTPS_PORT
     ap = argparse.ArgumentParser(description="Probe Deck")
     ap.add_argument("--port", type=int, default=80)
     ap.add_argument("--listen", default="0.0.0.0")
-    ap.add_argument("--iface", default=IFACE, help="wired interface (default eth0)")
+    ap.add_argument("--iface", default=IFACE, help="wired interface (default eth0; auto = the default route's)")
+    ap.add_argument("--mode", default="auto", choices=("auto", "probe", "server"),
+                    help="server: running in a VM or container, not on a jack (auto: server when systemd-detect-virt says so)")
     ap.add_argument("--data", default=str(DATA), help="history, logs and saved machines")
     ap.add_argument("--conf", default=str(CONF), help="settings file")
     ap.add_argument("--https-port", type=int, default=HTTPS_PORT, help="0 = no HTTPS")
     a = ap.parse_args()
+    global MODE, VIRT
     IFACE, DATA, CONF, HTTPS_PORT = a.iface, Path(a.data), Path(a.conf), a.https_port
+    if IFACE == "auto":
+        IFACE = default_iface()
+    VIRT = detect_virt()
+    MODE = a.mode if a.mode != "auto" else ("server" if VIRT else "probe")
     probe = Probe()
     Handler.probe = probe
+    probe.iface = IFACE
     probe.read_net()
     probe.watch = watch_mod.Watchdog(probe, IFACE, DATA, on_alert=probe.on_alert)
     probe.wake = wake_mod.Wake(probe, IFACE, DATA, watchdog=probe.watch)
@@ -1258,7 +1301,7 @@ def main():
             threading.Thread(target=addon.start, daemon=True).start()
     srv = ThreadingHTTPServer((a.listen, a.port), Handler)
     srv.daemon_threads = True
-    print(f"Probe Deck {__version__} on http://{a.listen}:{a.port}", flush=True)
+    print(f"Probe Deck {__version__} on http://{a.listen}:{a.port} ({MODE} mode, {IFACE}{', ' + VIRT if VIRT else ''})", flush=True)
     srv.serve_forever()
 
 

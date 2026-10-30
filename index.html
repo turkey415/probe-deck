@@ -684,6 +684,11 @@ pre.caplines { max-height: 420px; overflow: auto; white-space: pre; overflow-wra
 #fl-list tr.sel td, #cf-list tr.sel td { background: rgba(255, 176, 0, .06); }
 .upbar i { display: block; height: 100%; width: 0; background: var(--amber); transition: width .2s; }
 pre.diff { margin-top: 12px; max-height: 620px; overflow: auto; white-space: pre; overflow-wrap: normal; color: var(--text-2); user-select: text; }
+.side .items a.unsup .nm, .side .items a.unsup .dot { opacity: .4; }
+.side .items a .na { margin-left: auto; font: 600 9px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-2); border-radius: 4px; padding: 1px 5px; }
+.layout.view.unsup > :not(.unsup-banner) { opacity: .4; filter: grayscale(1); pointer-events: none; user-select: none; }
+.unsup-banner { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border-radius: var(--r); background: var(--panel-2); border: 1px solid var(--line-2); border-left: 3px solid var(--muted); font-size: 13px; color: var(--text-2); }
+.unsup-banner b { color: var(--text); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; }
 #in-loginc.hl { border-color: var(--warn); box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 40%, transparent); }
 pre.diff .a { color: #7fe08f; } pre.diff .d { color: #ff9b9b; } pre.diff .h { color: #8fb8ff; }
 .svtab td { vertical-align: top; }
@@ -2639,6 +2644,7 @@ function render() {
   $('#h-dot').className = 'dot ' + (lk.up ? 'on' : 'err');
   $('#h-name').textContent = `${s.conf.name} · ${net.ip || 'no address'}`;
   renderJack(s);
+  applyEnv(s.env);
   for (const [k, a] of Object.entries(s.apps || {})) {
     const d = $('#t-' + k), b = $('#tb-' + k);
     if (d) d.className = 'dot ' + ((a && a.dot) || '');
@@ -2848,6 +2854,26 @@ $('#b-hclear').onclick = () => { if (confirm('Clear the speed test history?')) a
 
 // ---------- views (tabs) ----------
 const PAGES = {};  // add-on pages (web/*.js): PAGES[name] = { show() }
+// Server mode (a VM or container): pages that can't work there stay in place, greyed out, with the reason.
+let envDone = '';
+function applyEnv(env) {
+  const un = (env && env.unsupported) || {}, key = JSON.stringify(un);
+  if (key === envDone) return;
+  envDone = key;
+  document.body.classList.toggle('server-mode', !!env && env.mode === 'server');
+  for (const [k, why] of Object.entries(un)) {
+    const a = document.querySelector(`.side .items a[data-view="${k}"]`);
+    if (a) { a.classList.add('unsup'); a.title = 'Not supported in this environment'; if (!a.querySelector('.na')) a.insertAdjacentHTML('beforeend', '<span class="na">n/a</span>'); }
+    const v = $('#v-' + k);
+    if (v && !v.querySelector(':scope > .unsup-banner')) {
+      v.classList.add('unsup');
+      v.insertAdjacentHTML('afterbegin', `<div class="unsup-banner"><b>Not supported in this environment</b><span>${esc(why)}</span></div>`);
+      for (const el of v.querySelectorAll('button, input, select, textarea')) if (!el.closest('.unsup-banner')) el.disabled = true;
+    }
+  }
+  const rb = $('#b-renew');
+  if (rb && un.renew) { rb.disabled = true; rb.title = un.renew; }
+}
 const VIEWS = ['intake', 'fw', 'fair', 'dnstest', 'stats', 'tick', 'mtr', 'mdns', 'mcast', 'survey', 'vlans', 'cable', 'configs', 'files', 'capture', 'cache', 'hosts', 'speed', 'logs', 'probe', 'console', 'watch', 'wake', 'net', 'trace', 'cs', 'ts', 'https', 'users', 'settings'];
 let view = 'probe';
 function showView() {
@@ -2885,14 +2911,14 @@ function renderJack(s) {
   $('.jack').classList.toggle('off', !nb);
   $('#sj-sub').textContent = nb
     ? [nb.switch || 'unknown switch', nb.vlan ? 'VLAN ' + nb.vlan : '', lk.up && net.speed ? net.speed + ' ' + (net.duplex || '') : ''].filter(Boolean).join(' · ')
-    : lk.up ? 'Waiting for CDP / LLDP' : 'Not plugged in';
+    : s.env && s.env.mode === 'server' ? 'Server mode' : lk.up ? 'Waiting for CDP / LLDP' : 'Not plugged in';
   const dns = ck.dns && ck.dns.length ? (ck.dns.every(r => r.ok) ? 'on' : ck.dns.some(r => r.ok) ? 'warn' : 'err') : '';
   $('#sj-link').className = 'dot ' + (lk.up ? 'on' : 'err');
   $('#sj-dhcp').className = 'dot ' + (!lk.up ? '' : net.ip ? 'on' : 'warn');
   $('#sj-dns').className = 'dot ' + (lk.up ? dns : '');
   $('#sj-net').className = 'dot ' + (lk.up && ck.http ? lampClass(ck.http.ok) : '');
   $('#sj-pd').textContent = `Perf-Deck · ${s.peers.length} station${s.peers.length === 1 ? '' : 's'}`;
-  $('#sj-ver').textContent = `${s.conf.name} · ${s.system.version || ''}`;
+  $('#sj-ver').textContent = `${s.conf.name} · ${s.system.version || ''}${s.env && s.env.mode === 'server' ? ' · server' : ''}`;
   $('#t-probe').className = 'dot ' + (lk.up ? 'on' : 'err');
 }
 // each module's lamp shows the worst light inside it; a shown badge counts as red
